@@ -94,7 +94,7 @@ Ce conteneur servira à exécuter toutes les commandes Node.js nécessaires à l
 ### Générer le frontend
 
 ```bash
-docker compose run --rm node \
+sudo docker compose run --rm node \
 npx create-next-app@16.2.11 frontend
 ```
 
