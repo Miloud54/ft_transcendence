@@ -28,6 +28,9 @@ services:
     tty: true
     init: true
 
+    networks:
+      - public-net
+
   backend:
 
     build:
@@ -60,6 +63,9 @@ services:
     stdin_open: true
     tty: true
     init: true
+
+    networks:
+      - private-net
   
 
   db:
@@ -81,7 +87,16 @@ services:
     volumes:
       - db_data:/var/lib/postgresql
     
+    networks:
+      - private-net
+    
 
 volumes:
   db_data:
+
+networks:
+  public-net:
+  private-net:
+    # internal: true - à remettre une fois Nginx (WAF) sera le seul point d'entrée public
+    # et que le backend n auta plus besoin de son 'ports' direct. 
 
