@@ -89,10 +89,38 @@ services:
     
     networks:
       - private-net
+  
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+
+    container_name: transcendence-elasticsearch
+
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    
+    networks:
+      - private-net
+  
+  #vault:
+    #image: hashicorp/vault:1.17
+
+    #container_name: transcendance-vault
+
+    #cap_add:
+      #- IPC_LOCK # Ne pas faire du "swap" si la RAM est dépassée pour éviter une copie sur le disque dur
+    
+    #environment:
+      
     
 
 volumes:
   db_data:
+  es_data:
 
 networks:
   public-net:
