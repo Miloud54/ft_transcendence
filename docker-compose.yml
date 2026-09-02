@@ -106,11 +106,25 @@ services:
     
     #environment:
       
-    
+  prometheus:
+    image: docker.io/prom/prometheus:v3.11.2
+
+    container_name: transcendence-prometheus
+
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:Z
+      - prometheus_data:/prometheus
+
+    ports:
+      - "9090:9090"
+
+    networks:
+      - private-net
 
 volumes:
   db_data:
   es_data:
+  prometheus_data:
 
 networks:
   public-net:
