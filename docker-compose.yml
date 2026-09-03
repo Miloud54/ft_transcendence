@@ -24,6 +24,11 @@ services:
 
     networks:
       - public-net
+    
+    logging:
+      driver: gelf
+      options: 
+        gelf-address: "udp://localhost:12201"
 
   backend:
 
@@ -81,9 +86,14 @@ services:
     
     volumes:
       - db_data:/var/lib/postgresql
-    
+
     networks:
       - private-net
+
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://localhost:12201"
   
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
@@ -91,9 +101,9 @@ services:
     container_name: transcendence-elasticsearch
 
     environment:
-      discovery.type: single-node
-      xpack.security.enabled: "false"
-      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+      discovery.type: single-node         # une seule instance, pas de cluster
+      xpack.security.enabled: "false"     # pas d authentification (réseau déjà isolé)
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"   # limite la RAM utilisée à 512 Mo
     
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:9200 || exit 1"]
@@ -102,7 +112,7 @@ services:
       retries: 10
     
     volumes:
-      - es_data:/usr/share/elasticsearch/data
+      - es_data:/usr/share/elasticsearch/data     # garde les données entre rédemarrages
     
     networks:
       - private-net
@@ -121,7 +131,7 @@ services:
       - ./logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
     
     ports:
-       - "12201:12201/udp"
+       - "12201:12201/udp"                      # port publié pour recevoir les logs via GELF (UDP)
 
     networks:
       - private-net
@@ -132,7 +142,7 @@ services:
     container_name: transcendence-kibana
 
     environment:
-       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+       ELASTICSEARCH_HOSTS: http://elasticsearch:9200        # où aller chercher les données
     
     ports:
       - "5601:5601"
