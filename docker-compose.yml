@@ -121,10 +121,29 @@ services:
     networks:
       - private-net
 
+  grafana:
+    image: docker.io/grafana/grafana:13.2.1
+
+    container_name: transcendence-grafana
+
+    depends_on:
+      - prometheus
+
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:Z
+      - grafana_data:/var/lib/grafana
+
+    ports:
+      - "3002:3000"
+
+    networks:
+      - private-net
+
 volumes:
   db_data:
   es_data:
   prometheus_data:
+  grafana_data:
 
 networks:
   public-net:
