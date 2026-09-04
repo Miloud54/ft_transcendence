@@ -13,17 +13,25 @@ type DonutSlice = {
 
 export function DonutChart({ data }: { data: DonutSlice[] }) {
   const total = data.reduce((sum, slice) => sum + slice.value, 0);
-  let offset = 0;
+
+  const segments = data.reduce<{ slice: DonutSlice; dash: number; offset: number }[]>(
+    (acc, slice) => {
+      const fraction = total === 0 ? 0 : slice.value / total;
+      const dash = fraction * CIRCUMFERENCE;
+      const previous = acc[acc.length - 1];
+      const offset = previous ? previous.offset + previous.dash : 0;
+      return [...acc, { slice, dash, offset }];
+    },
+    []
+  );
 
   return (
     <div className="flex items-center gap-6">
       <svg viewBox="0 0 160 160" className="h-36 w-36 -rotate-90" role="img" aria-label="Répartition victoires et défaites">
         <circle cx="80" cy="80" r={RADIUS} fill="none" stroke="#e7e3f0" strokeWidth={STROKE} />
-        {data.map((slice) => {
-          const fraction = total === 0 ? 0 : slice.value / total;
-          const dash = fraction * CIRCUMFERENCE;
+        {segments.map(({ slice, dash, offset }) => {
           const visibleDash = Math.max(dash - GAP, 0);
-          const element = (
+          return (
             <circle
               key={slice.label}
               cx="80"
@@ -36,8 +44,6 @@ export function DonutChart({ data }: { data: DonutSlice[] }) {
               strokeDashoffset={-offset - GAP / 2}
             />
           );
-          offset += dash;
-          return element;
         })}
         <text
           x="80"

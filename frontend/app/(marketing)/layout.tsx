@@ -28,7 +28,7 @@ export default function MarketingLayout({
           <span>© {new Date().getFullYear()} Transcendix</span>
           <div className="flex gap-4">
             <Link href="/privacy">Politique de confidentialité</Link>
-            <Link href="/terms">Conditions d'utilisation</Link>
+            <Link href="/terms">Conditions d&apos;utilisation</Link>
           </div>
         </div>
       </footer>
