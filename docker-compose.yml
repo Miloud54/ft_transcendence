@@ -25,10 +25,10 @@ services:
     networks:
       - public-net
     
-    logging:
-      driver: gelf
-      options: 
-        gelf-address: "udp://localhost:12201"
+    # logging:
+    #   driver: gelf
+    #   options: 
+    #     gelf-address: "udp://localhost:12201"
 
   backend:
 
@@ -61,17 +61,23 @@ services:
 
     networks:
       - private-net
-    
-    logging:
-      driver: gelf
-      options:
-        gelf-address: "udp://localhost:12201"
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timout: 5s
+      retries: 5
+
+    # logging:
+    #   driver: gelf
+    #   options:
+    #     gelf-address: "udp://localhost:12201"
   
 
   db:
     image: docker.io/library/postgres:18-alpine
     
-    container_name: transcendance-db
+    container_name: transcendence-db
     
     environment:
       POSTGRES_USER: ${DB_USER}
@@ -90,10 +96,10 @@ services:
     networks:
       - private-net
 
-    logging:
-      driver: gelf
-      options:
-        gelf-address: "udp://localhost:12201"
+    # logging:
+    #   driver: gelf
+    #   options:
+    #     gelf-address: "udp://localhost:12201"
   
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
@@ -121,7 +127,7 @@ services:
 
     image: docker.elastic.co/logstash/logstash:8.15.0
 
-    container_name: transcendance-logstash
+    container_name: transcendence-logstash
 
     depends_on:
       elasticsearch:
@@ -155,7 +161,7 @@ services:
   #vault:
     #image: hashicorp/vault:1.17
 
-    #container_name: transcendance-vault
+    #container_name: transcendence-vault
 
     #cap_add:
       #- IPC_LOCK # Ne pas faire du "swap" si la RAM est dépassée pour éviter une copie sur le disque dur
