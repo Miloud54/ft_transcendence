@@ -57,7 +57,7 @@ export default function TermsPage() {
           </h2>
           <p className="mt-2">
             Transcendix est fourni dans le cadre d&apos;un projet pédagogique.
-            Le service est fourni "en l&apos;état", sans garantie de
+            Le service est fourni &quot;en l&apos;état&quot;, sans garantie de
             disponibilité continue.
           </p>
         </div>
