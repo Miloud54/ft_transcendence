@@ -124,7 +124,6 @@ services:
       - private-net
   
   logstash:
-
     image: docker.elastic.co/logstash/logstash:8.15.0
 
     container_name: transcendence-logstash
@@ -155,8 +154,6 @@ services:
 
     networks:
       - private-net
-
-
   
   #vault:
     #image: hashicorp/vault:1.17
@@ -175,6 +172,7 @@ services:
 
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:Z
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:Z
       - prometheus_data:/prometheus
 
     ports:
@@ -197,6 +195,20 @@ services:
 
     ports:
       - "3002:3000"
+
+    networks:
+      - private-net
+
+  alertmanager:
+    image: docker.io/prom/alertmanager:v0.32.0
+
+    contaner_name: transcendence-alertmanager
+
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager.yml:Z
+
+    ports:
+      - "9093:9093"
 
     networks:
       - private-net

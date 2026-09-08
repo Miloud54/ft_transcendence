@@ -1,0 +1,11 @@
+groups:
+  - name: transcendix
+    rules:
+      - alert: TargetDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cible Prometheus down : {{ $labels.job }}"
+          description: "La cible {{ $labels.instance }} (job {{ $labels.job }}) ne répond plus depuis plus d'une minute."
