@@ -202,10 +202,10 @@ services:
   alertmanager:
     image: docker.io/prom/alertmanager:v0.32.0
 
-    contaner_name: transcendence-alertmanager
+    container_name: transcendence-alertmanager
 
     volumes:
-      - ./alertmanager/alertmanager.yml:/etc/alertmanager.yml:Z
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:Z
 
     ports:
       - "9093:9093"
