@@ -5,12 +5,12 @@ export const metadata: Metadata = {
   title: "Partie",
 };
 
-export default async function GamePage({
+export default function GamePage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const { id } = await params;
+  const { id } = params;
 
   return <GameBoard gameId={id} />;
 }
