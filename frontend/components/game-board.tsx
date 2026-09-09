@@ -247,8 +247,7 @@ export function GameBoard({ gameId }: { gameId: string }) {
             </div>
             <div className="mt-4 space-y-3">
               {attempts.map((attempt, index) => (
-                <div key={`${attempt.username}-${attempt.word}`} className="flex items-center gap-3">
-                  <span className="w-4 text-xs font-semibold text-zinc-400">{index + 1}</span>
+                <div key={`${attempt.username}-${attempt.word}-${index}`} className="flex items-center gap-3">
                   <span className={`flex h-8 w-8 items-center justify-center rounded-full ${attempt.color} text-xs font-bold text-zinc-900`}>{attempt.username.charAt(0)}</span>
                   <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-zinc-800">{attempt.username}</p><p className="truncate text-xs text-zinc-400">{attempt.word}</p></div>
                   <span className="font-mono text-sm font-semibold text-zinc-700">{attempt.proximity}</span>
