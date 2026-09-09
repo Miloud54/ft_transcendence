@@ -213,7 +213,7 @@ export function GameBoard({ gameId }: { gameId: string }) {
             </div>
             <div className="rounded-xl border border-zinc-200 bg-white p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Tentatives</p>
-              <p className="mt-2 text-2xl font-semibold text-zinc-950">{attempts.length + 4}</p>
+              <p className="mt-2 text-2xl font-semibold text-zinc-950">{attempts.length}</p>
               <p className="mt-1 text-xs text-zinc-500">Cette partie</p>
             </div>
             <div className="rounded-xl border border-zinc-200 bg-white p-5">
