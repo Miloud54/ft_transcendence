@@ -81,8 +81,11 @@ function getProximity(word: string) {
   return WORD_SCORES[normalizedWord] ?? Math.max(70, 400 - normalizedWord.length * 19);
 }
 
-function ArticleText({ paragraph }: { paragraph: { label: string; status: string }[] }) {
-  return (
+type ArticleWordStatus = "found" | "hidden";
+
+type ArticleWord = { label: string; status: ArticleWordStatus };
+
+function ArticleText({ paragraph }: { paragraph: ArticleWord[] }) {
     <p className="text-base leading-8 text-zinc-700 sm:text-lg">
       {paragraph.map((word, index) => (
         <span key={`${word.label}-${index}`}>
