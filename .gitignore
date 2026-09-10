@@ -17,3 +17,6 @@ frontend/.next/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Personnal notes
+docs_odile/
