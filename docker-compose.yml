@@ -9,7 +9,7 @@ services:
 
     working_dir: /app
 
-    command: npm run dev
+    command: sh -c "npm run dev 2>&1 | tee /var/log/app/frontend.log"
 
     ports:
       - "3000:3000"
@@ -17,6 +17,7 @@ services:
     volumes:
       - ./frontend:/app:Z
       - /app/node_modules
+      - app_logs:/var/log/app
 
     stdin_open: true
     tty: true
@@ -25,11 +26,6 @@ services:
     networks:
       - public-net
     
-    # logging:
-    #   driver: gelf
-    #   options: 
-    #     gelf-address: "udp://localhost:12201"
-
   backend:
 
     build:
@@ -46,7 +42,7 @@ services:
 
     working_dir: /app
 
-    command: npm run start:dev
+    command: sh -c "npm run start:dev 2>&1 | tee /var/log/app/backend.log"
 
     ports:
       - "3001:3000"
@@ -54,6 +50,7 @@ services:
     volumes:
       - ./backend:/app:Z
       - /app/node_modules
+      - app_logs:/var/log/app
 
     stdin_open: true
     tty: true
@@ -67,22 +64,34 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  
 
-    # logging:
-    #   driver: gelf
-    #   options:
-    #     gelf-address: "udp://localhost:12201"
+  logs-init: # conteneur "jetable" : s'exécute une fois puis s'arrête
+    image: docker.io/library/postgres:18-alpine
+    command: sh -c "chmod 1777 /var/log/app" # ouvre le dossier en écriture pour tous, protégé par le sticky bit
+    volumes:
+      - app_logs:/var/log/app
   
 
   db:
     image: docker.io/library/postgres:18-alpine
     
     container_name: transcendence-db
+
+    depends_on:
+      restart: on-failure
     
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+
+    command: >
+      postgres
+      -c logging_collector=on
+      -c log_directory=/var/log/app
+      -c log_filename=db.log
+
     
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
@@ -92,14 +101,11 @@ services:
     
     volumes:
       - db_data:/var/lib/postgresql
+      - app_logs:/var/log/app
 
     networks:
       - private-net
 
-    # logging:
-    #   driver: gelf
-    #   options:
-    #     gelf-address: "udp://localhost:12201"
   
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
@@ -124,8 +130,9 @@ services:
       - private-net
   
   logstash:
-    image: docker.elastic.co/logstash/logstash:8.15.0
 
+    image: docker.elastic.co/logstash/logstash:8.15.0
+    
     container_name: transcendence-logstash
 
     depends_on:
@@ -134,9 +141,7 @@ services:
 
     volumes:
       - ./logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
-    
-    ports:
-       - "12201:12201/udp"                      # port publié pour recevoir les logs via GELF (UDP)
+      - app_logs:/var/log/app:ro
 
     networks:
       - private-net
@@ -218,6 +223,7 @@ volumes:
   es_data:
   prometheus_data:
   grafana_data:
+  app_logs: # volume partage pour les logs
 
 networks:
   public-net:
