@@ -78,8 +78,7 @@ services:
     
     container_name: transcendence-db
 
-    depends_on:
-      restart: on-failure
+    restart: on-failure
     
     environment:
       POSTGRES_USER: ${DB_USER}
@@ -91,6 +90,7 @@ services:
       -c logging_collector=on
       -c log_directory=/var/log/app
       -c log_filename=db.log
+      -c log_file_mode=0644
 
     
     healthcheck:
