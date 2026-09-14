@@ -13,3 +13,90 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum UserStatus {
+  ONLINE
+  OFFLINE
+  IN_GAME
+}
+
+enum RoomStatus {
+  DUMMY1
+  DUMMY2
+}
+
+enum GameStatus {
+  COUNTDOWN
+  RUNNING
+  FINISHED
+}
+
+//Users, Rooms, Room_players, Games et Game_players.
+//can also use @default(autoincrement()) → 1, 2, 3, 4...
+//uuid() set random id like a3f9c1e2-...
+//string is varchar(255) by default, can change it with @db.VarChar(200)
+
+model Users {
+  user_id   BigInt @id @default(autoincrement())
+  username  String
+  email     String
+  password  String
+  avatar    String
+  xp        BigInt
+  lvl       BigInt
+  status    UserStatus
+
+  rooms     Room_players[]
+  games     Game_players[]
+  rooms_created Rooms[]
+}
+
+model Rooms {
+  room_id     BigInt @id @default(autoincrement())
+  status      RoomStatus
+  min_players Int
+  max_players Int
+  created_at  DateTime
+  closed_at   DateTime
+
+  //one side in one to many
+  creator_id  BigInt
+  creator     Users @relation(fields: [creator_id], references: [user_id])
+
+  players     Room_players[]
+  games_hosted Games[]
+}
+
+model Games {
+  game_id     BigInt @id @default(autoincrement())
+  wikipage_id BigInt
+  status      GameStatus
+  started_at  DateTime
+  ended_at    DateTime
+
+  room_id     BigInt
+  room        Rooms @relation(fields: [room_id], references: [room_id])
+
+  player      Game_players[]
+}
+
+// tables intermediaires pour many-to-many
+model Room_players {
+  player_id BigInt @id @default(autoincrement())
+
+  room_id   BigInt
+  room      Rooms @relation(fields: [room_id], references: [room_id])
+
+  user_id   BigInt
+  users     Users @relation(fields: [user_id], references: [user_id])
+}
+
+model Game_players {
+  id      BigInt @id @default(autoincrement())
+
+  game_id BigInt
+  game    Games @relation(fields: [game_id], references: [game_id])
+
+  user_id BigInt
+  users   Users @relation(fields: [user_id], references: [user_id])
+}
