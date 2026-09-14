@@ -174,7 +174,7 @@ export function GameBoard({ gameId }: { gameId: string }) {
             </div>
             <div className="space-y-6 px-5 py-8 sm:px-10 sm:py-12">
               <div className="border-b border-zinc-100 pb-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Extrait de l'article</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Extrait de l&apos;article</p>
                 <h3 className="mt-2 text-2xl font-semibold text-zinc-950">Article encyclopédique</h3>
               </div>
               <div className="max-w-4xl space-y-5">
@@ -184,7 +184,7 @@ export function GameBoard({ gameId }: { gameId: string }) {
               </div>
               <details className="max-w-4xl rounded-lg border border-dashed border-zinc-200 px-4 py-3 text-sm text-zinc-500">
                 <summary className="cursor-pointer font-medium text-zinc-700">Voir les indices de structure</summary>
-                <p className="mt-2 leading-6">Le texte contient des informations sur la construction, l'histoire et les dimensions du monument.</p>
+                <p className="mt-2 leading-6">Le texte contient des informations sur la construction, l&apos;histoire et les dimensions du monument.</p>
               </details>
             </div>
             <div className="border-t border-zinc-100 bg-zinc-50 px-5 py-4 sm:px-7">
@@ -266,7 +266,7 @@ export function GameBoard({ gameId }: { gameId: string }) {
           ) : (
             <div className="rounded-2xl bg-violet-700 p-5 text-white">
               <p className="text-xs font-semibold uppercase tracking-wide text-violet-200">Objectif bonus</p>
-              <p className="mt-2 text-lg font-semibold">Trouvez l'article en moins de 10 mots.</p>
+              <p className="mt-2 text-lg font-semibold">Trouvez l&apos;article en moins de 10 mots.</p>
               <p className="mt-2 text-sm leading-6 text-violet-100">Chaque mot chaud révèle progressivement le texte original.</p>
             </div>
           )}
