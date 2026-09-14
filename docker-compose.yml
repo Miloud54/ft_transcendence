@@ -74,6 +74,10 @@ services:
   
 
   db:
+    depends_on:
+      logs-init:
+        condition: service_completed_successfully
+
     image: docker.io/library/postgres:18-alpine
     
     container_name: transcendence-db
