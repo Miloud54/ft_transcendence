@@ -100,7 +100,6 @@ function ArticleText({ paragraph }: { paragraph: ArticleWord[] }) {
         </span>
       ))}
     </p>
-  );
 }
 
 export function GameBoard({ gameId }: { gameId: string }) {
