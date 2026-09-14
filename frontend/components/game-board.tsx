@@ -86,6 +86,7 @@ type ArticleWordStatus = "found" | "hidden";
 type ArticleWord = { label: string; status: ArticleWordStatus };
 
 function ArticleText({ paragraph }: { paragraph: ArticleWord[] }) {
+  return (  
     <p className="text-base leading-8 text-zinc-700 sm:text-lg">
       {paragraph.map((word, index) => (
         <span key={`${word.label}-${index}`}>
