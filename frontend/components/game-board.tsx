@@ -9,7 +9,7 @@ const INITIAL_ATTEMPTS = [
   { username: "Maria", word: "fer", proximity: 615, color: "bg-rose-400" },
 ];
 
-const ARTICLE_PARAGRAPHS = [
+const ARTICLE_PARAGRAPHS: ArticleWord[][] = [
   [
     { label: "La", status: "found" },
     { label: "tour", status: "found" },
@@ -69,6 +69,7 @@ const ARTICLE_PARAGRAPHS = [
 const WORD_SCORES: Record<string, number> = {
   eiffel: 1000,
   tour: 1000,
+  "tour eiffel": 1000,
   fer: 615,
   paris: 540,
   monument: 488,
@@ -110,6 +111,10 @@ export function GameBoard({ gameId }: { gameId: string }) {
   const [discoveredCount, setDiscoveredCount] = useState(3);
   const [isSolved, setIsSolved] = useState(false);
   const [notice, setNotice] = useState("Trouvez le mot le plus proche de l'article secret.");
+  const [bestScore, setBestScore] = useState(
+    Math.max(...INITIAL_ATTEMPTS.filter((attempt) => attempt.username === "Vous").map((attempt) => attempt.proximity)),
+  );
+  const [attemptCount, setAttemptCount] = useState(0);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -127,6 +132,8 @@ export function GameBoard({ gameId }: { gameId: string }) {
       { username: "Vous", word, proximity, color: "bg-lime-400" },
       ...currentAttempts.filter((attempt) => attempt.username !== "Vous"),
     ]);
+    setBestScore((currentBest: number) => Math.max(currentBest, proximity));
+    setAttemptCount((count: number) => count + 1);
     setGuess("");
 
     if (isCorrect) {
@@ -209,12 +216,12 @@ export function GameBoard({ gameId }: { gameId: string }) {
           <section className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-xl border border-zinc-200 bg-white p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Meilleur score</p>
-              <p className="mt-2 text-2xl font-semibold text-zinc-950">1 000</p>
+              <p className="mt-2 text-2xl font-semibold text-zinc-950">{bestScore.toLocaleString("fr-FR")}</p>
               <p className="mt-1 text-xs text-lime-700">Votre meilleur mot</p>
             </div>
             <div className="rounded-xl border border-zinc-200 bg-white p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Tentatives</p>
-              <p className="mt-2 text-2xl font-semibold text-zinc-950">{attempts.length}</p>
+              <p className="mt-2 text-2xl font-semibold text-zinc-950">{attemptCount}</p>
               <p className="mt-1 text-xs text-zinc-500">Cette partie</p>
             </div>
             <div className="rounded-xl border border-zinc-200 bg-white p-5">
