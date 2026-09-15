@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { GameBoard } from "@/components/game-board";
 
 export const metadata: Metadata = {
-  title: "Partie",
+  title: "Game",
 };
 
 export default function GamePage({

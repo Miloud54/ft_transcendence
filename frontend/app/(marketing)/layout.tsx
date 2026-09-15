@@ -13,10 +13,10 @@ export default function MarketingLayout({
           Transcendix
         </Link>
         <nav className="flex items-center gap-6 text-sm text-zinc-600">
-          <Link href="/how-to-play">Comment jouer</Link>
-          <Link href="/leaderboard">Classement</Link>
+          <Link href="/how-to-play">How to play</Link>
+          <Link href="/leaderboard">Leaderboard</Link>
           <Link href="/login" className="font-medium text-zinc-950">
-            Compte
+            Account
           </Link>
         </nav>
       </header>
@@ -27,8 +27,8 @@ export default function MarketingLayout({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span>© {new Date().getFullYear()} Transcendix</span>
           <div className="flex gap-4">
-            <Link href="/privacy">Politique de confidentialité</Link>
-            <Link href="/terms">Conditions d&apos;utilisation</Link>
+            <Link href="/privacy">Privacy Policy</Link>
+            <Link href="/terms">Terms of Service</Link>
           </div>
         </div>
       </footer>

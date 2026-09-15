@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Accueil",
+  title: "Home",
 };
 
 export default function LandingPage() {
@@ -10,20 +10,20 @@ export default function LandingPage() {
       <div className="mx-auto grid w-full max-w-6xl gap-12 md:grid-cols-2 md:items-center">
         <div>
           <span className="inline-block rounded-full bg-lime-100 px-3 py-1 text-xs font-medium text-lime-800">
-            Nouveau — multijoueur en temps réel
+            New — real-time multiplayer
           </span>
 
           <h1 className="mt-4 text-4xl font-semibold tracking-tight text-zinc-950 md:text-5xl">
-            Trouve la page avant les autres
+            Find the page before everyone else
           </h1>
 
           <p className="mt-4 max-w-md text-lg text-zinc-600">
-            Jeu de devinettes sémantiques multijoueur en temps réel
+            A real-time multiplayer semantic guessing game
           </p>
         </div>
 
         <div className="flex aspect-video items-center justify-center rounded-xl bg-zinc-100 text-sm text-zinc-400">
-          aperçu du jeu
+          game preview
         </div>
       </div>
     </section>

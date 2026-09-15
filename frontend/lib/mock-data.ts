@@ -1,5 +1,5 @@
-// Données de démo utilisées pour construire le front avant que l'API existe.
-// Les formes sont pensées pour se rapprocher des futurs modèles Prisma (Users, Games, GamePlayers, UserStatistics, Friends).
+// Mock data used to build out the frontend before the backend API exists.
+// Shapes are meant to mirror the future Prisma models (Users, Games, GamePlayers, UserStatistics, Friends).
 
 export type MockUser = {
   id: string;
@@ -27,9 +27,9 @@ export const mockStats = {
   wins: 27,
   winsTrend: "+8%",
   averageScoreByDifficulty: [
-    { label: "Froid", value: 0.2 },
-    { label: "Tiede", value: 0.55 },
-    { label: "Chaud", value: 0.9 },
+    { label: "Cold", value: 0.2 },
+    { label: "Warm", value: 0.55 },
+    { label: "Hot", value: 0.9 },
   ],
   progression: [4, 6, 5, 8, 7, 9, 8, 10, 9, 11],
   distribution: { wins: 27, losses: 15 },
@@ -54,17 +54,17 @@ export type MockGuess = {
 };
 
 export const mockMaskedArticle: MockGuess[] = [
-  { word: "Tour", count: 12, found: true },
-  { word: "de", count: 8, found: false },
+  { word: "The", count: 12, found: true },
+  { word: "of", count: 8, found: false },
   { word: "1889", count: 3, found: false },
-  { word: "est", count: 5, found: true },
-  { word: "une", count: 4, found: false },
-  { word: "tour", count: 6, found: true },
-  { word: "de", count: 8, found: false },
+  { word: "is", count: 5, found: true },
+  { word: "a", count: 4, found: false },
+  { word: "tower", count: 6, found: true },
+  { word: "of", count: 8, found: false },
   { word: "1330", count: 1, found: false },
-  { word: "metres", count: 2, found: false },
-  { word: "situee", count: 1, found: false },
-  { word: "a", count: 20, found: false },
+  { word: "feet", count: 2, found: false },
+  { word: "located", count: 1, found: false },
+  { word: "in", count: 20, found: false },
   { word: "Paris", count: 9, found: false },
 ];
 
@@ -76,9 +76,9 @@ export type MockAttempt = {
 };
 
 export const mockLatestAttempts: MockAttempt[] = [
-  { rank: 1, username: "Vous", word: "tour", proximity: 1000 },
-  { rank: 2, username: "Odile", word: "metallique", proximity: 842 },
-  { rank: 3, username: "Maria", word: "fer", proximity: 615 },
+  { rank: 1, username: "You", word: "tower", proximity: 1000 },
+  { rank: 2, username: "Odile", word: "metallic", proximity: 842 },
+  { rank: 3, username: "Maria", word: "iron", proximity: 615 },
 ];
 
 export type MockResultEntry = {
@@ -93,7 +93,7 @@ export const mockResults: MockResultEntry[] = [
   { rank: 3, username: "Emilie", time: "1:57" },
 ];
 
-export const mockWinnerArticleTitle = "Tour Eiffel";
+export const mockWinnerArticleTitle = "Eiffel Tower";
 
 export type MockFriend = {
   id: string;
@@ -132,7 +132,7 @@ export type MockMatch = {
 };
 
 export const mockMatchHistory: MockMatch[] = [
-  { id: "g1", articleTitle: "Tour Eiffel", result: "win", playedAt: "2026-08-27", opponents: ["Odile", "Maria"] },
+  { id: "g1", articleTitle: "Eiffel Tower", result: "win", playedAt: "2026-08-27", opponents: ["Odile", "Maria"] },
   { id: "g2", articleTitle: "Napoleon Bonaparte", result: "loss", playedAt: "2026-08-25", opponents: ["Bru"] },
-  { id: "g3", articleTitle: "Photosynthese", result: "win", playedAt: "2026-08-22", opponents: ["Odile", "Maria", "Bru", "Zoé"] },
+  { id: "g3", articleTitle: "Photosynthesis", result: "win", playedAt: "2026-08-22", opponents: ["Odile", "Maria", "Bru", "Zoé"] },
 ];

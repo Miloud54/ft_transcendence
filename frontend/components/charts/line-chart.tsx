@@ -38,7 +38,7 @@ export function LineChart({ data }: { data: number[] }) {
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="w-full"
         role="img"
-        aria-label="Progression du nombre de parties jouées dans le temps"
+        aria-label="Number of games played over time"
       >
         {[0.25, 0.5, 0.75].map((fraction) => (
           <line
