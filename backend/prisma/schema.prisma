@@ -4,6 +4,13 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+
+
+//every time DB is updated run docker compose exec backend npx prisma migrate dev --name name
+// to apply the changes to the actual db
+
+//to visualize it in browser run docker compose exec backend npx prisma studio 
+
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -21,8 +28,10 @@ enum UserStatus {
 }
 
 enum RoomStatus {
-  DUMMY1
-  DUMMY2
+  OPEN
+  STARTING
+  IN_GAME
+  CLOSED
 }
 
 enum GameStatus {
@@ -36,67 +45,76 @@ enum GameStatus {
 //uuid() set random id like a3f9c1e2-...
 //string is varchar(255) by default, can change it with @db.VarChar(200)
 
-model Users {
+model User {
   user_id   BigInt @id @default(autoincrement())
-  username  String
-  email     String
+  username  String @unique
+  email     String @unique
   password  String
   avatar    String
   xp        BigInt
   lvl       BigInt
   status    UserStatus
 
-  rooms     Room_players[]
-  games     Game_players[]
-  rooms_created Rooms[]
+  rooms     RoomPlayer[]
+  games     GamePlayer[]
+  rooms_created Room[]
+	@@map("Users")
 }
 
-model Rooms {
+model Room {
   room_id     BigInt @id @default(autoincrement())
   status      RoomStatus
   min_players Int
   max_players Int
-  created_at  DateTime
-  closed_at   DateTime
+  created_at  DateTime? @default(now())  
+  closed_at   DateTime?
 
   //one side in one to many
   creator_id  BigInt
-  creator     Users @relation(fields: [creator_id], references: [user_id])
+  creator     User @relation(fields: [creator_id], references: [user_id])
 
-  players     Room_players[]
-  games_hosted Games[]
+  players     RoomPlayer[]
+  games_hosted Game[]
+	@@map("Rooms")
 }
 
-model Games {
+model Game {
   game_id     BigInt @id @default(autoincrement())
-  wikipage_id BigInt
+  //wikipage_id BigInt
   status      GameStatus
   started_at  DateTime
   ended_at    DateTime
 
   room_id     BigInt
-  room        Rooms @relation(fields: [room_id], references: [room_id])
+  room        Room @relation(fields: [room_id], references: [room_id])
 
-  player      Game_players[]
+  player      GamePlayer[]
+	@@map("Games")
 }
 
 // tables intermediaires pour many-to-many
-model Room_players {
-  player_id BigInt @id @default(autoincrement())
+model RoomPlayer {
+  room_player_id BigInt @id @default(autoincrement())
 
   room_id   BigInt
-  room      Rooms @relation(fields: [room_id], references: [room_id])
+  room      Room @relation(fields: [room_id], references: [room_id])
 
   user_id   BigInt
-  users     Users @relation(fields: [user_id], references: [user_id])
+  users     User @relation(fields: [user_id], references: [user_id])
+
+  @@unique([room_id, user_id])
+	@@map("Room_players")
 }
 
-model Game_players {
-  id      BigInt @id @default(autoincrement())
+model GamePlayer {
+  game_player_id      BigInt @id @default(autoincrement())
 
   game_id BigInt
-  game    Games @relation(fields: [game_id], references: [game_id])
+  game    Game @relation(fields: [game_id], references: [game_id])
 
   user_id BigInt
-  users   Users @relation(fields: [user_id], references: [user_id])
+  users   User @relation(fields: [user_id], references: [user_id])
+
+    @@unique([game_id, user_id])
+	@@map("Game_players")
 }
