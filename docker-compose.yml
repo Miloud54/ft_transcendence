@@ -46,6 +46,8 @@ services:
 
     ports:
       - "3001:3000"
+    #for prisma db visualization in browser (maybe delete it at the end)
+      - "5555:5555"
 
     volumes:
       - ./backend:/app:Z
@@ -88,7 +90,7 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
-
+    
     command: >
       postgres
       -c logging_collector=on
