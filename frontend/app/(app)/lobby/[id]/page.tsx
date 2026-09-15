@@ -18,8 +18,8 @@ export default async function LobbyPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-950">Lobby de partie</h1>
-        <p className="text-sm text-zinc-500">En attente des joueurs · Partie #{id}</p>
+        <h1 className="text-2xl font-semibold text-zinc-950">Game lobby</h1>
+        <p className="text-sm text-zinc-500">Waiting for players · Game #{id}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -38,7 +38,7 @@ export default async function LobbyPage({
                   player.isReady ? "text-[#0ca30c]" : "text-zinc-400"
                 }`}
               >
-                {player.isHost ? "Hôte" : player.isReady ? "Prêt" : "Pas prêt"}
+                {player.isHost ? "Host" : player.isReady ? "Ready" : "Not ready"}
               </span>
             </div>
           ) : (
@@ -47,19 +47,19 @@ export default async function LobbyPage({
               className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-300 p-6 text-zinc-400"
             >
               <span className="text-xl">+</span>
-              <span className="text-sm">Inviter</span>
+              <span className="text-sm">Invite</span>
             </div>
           )
         )}
       </div>
 
       <div className="rounded-xl border border-zinc-200 bg-white p-4">
-        <p className="text-sm font-medium text-zinc-700">Chat du lobby</p>
+        <p className="text-sm font-medium text-zinc-700">Lobby chat</p>
         <div className="mt-3 h-24 rounded-md bg-zinc-50" />
       </div>
 
       <button className="w-full rounded-md bg-lime-400 py-3 text-sm font-semibold text-violet-900 sm:w-auto sm:px-8">
-        Lancer la partie
+        Start game
       </button>
     </div>
   );

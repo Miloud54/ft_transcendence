@@ -1,78 +1,76 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Politique de confidentialité",
+  title: "Privacy Policy",
 };
 
 export default function PrivacyPage() {
   return (
     <section className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
       <h1 className="text-3xl font-semibold text-zinc-950">
-        Politique de confidentialité
+        Privacy Policy
       </h1>
-      <p className="mt-2 text-sm text-zinc-500">Dernière mise à jour : 28 août 2026</p>
+      <p className="mt-2 text-sm text-zinc-500">Last updated: August 28, 2026</p>
 
       <div className="mt-8 space-y-8 text-zinc-700">
         <div>
           <h2 className="text-lg font-semibold text-zinc-950">
-            1. Données que nous collectons
+            1. Data we collect
           </h2>
           <p className="mt-2">
-            Pour créer un compte et jouer sur Transcendix, nous collectons votre
-            adresse email, un nom d&apos;utilisateur, un mot de passe (stocké
-            uniquement sous forme hachée, jamais en clair) et, si vous en
-            ajoutez un, un avatar. Pendant que vous jouez, nous enregistrons
-            vos statistiques de partie (victoires, défaites, temps de jeu,
-            nombre d&apos;indices utilisés), l&apos;historique de vos parties,
-            ainsi que les messages que vous envoyez dans le chat.
+            To create an account and play on Transcendix, we collect your
+            email address, a username, a password (stored only in hashed
+            form, never in plain text) and, if you add one, an avatar. While
+            you play, we record your game statistics (wins, losses, time
+            played, number of hints used), your match history, as well as
+            the messages you send in chat.
           </p>
         </div>
 
         <div>
           <h2 className="text-lg font-semibold text-zinc-950">
-            2. Pourquoi nous les collectons
+            2. Why we collect it
           </h2>
           <p className="mt-2">
-            Ces données sont nécessaires au fonctionnement du jeu :
-            authentification, synchronisation des parties en temps réel entre
-            joueurs, calcul des classements et de vos statistiques
-            personnelles, et affichage de votre profil aux autres joueurs
-            (nom d&apos;utilisateur, avatar, statut en ligne).
+            This data is necessary for the game to work: authentication,
+            real-time synchronization of matches between players,
+            calculating leaderboards and your personal statistics, and
+            displaying your profile to other players (username, avatar,
+            online status).
           </p>
         </div>
 
         <div>
           <h2 className="text-lg font-semibold text-zinc-950">
-            3. Partage avec des tiers
+            3. Sharing with third parties
           </h2>
           <p className="mt-2">
-            Lorsque vous demandez un indice en cours de partie, le texte de
-            l&apos;article à deviner (jamais votre identité ni vos données de
-            compte) est envoyé à un fournisseur d&apos;intelligence
-            artificielle tiers afin de générer l&apos;indice. Nous ne vendons
-            ni ne partageons vos données personnelles à des fins publicitaires.
+            When you request a hint during a match, the text of the article
+            to guess (never your identity or account data) is sent to a
+            third-party artificial intelligence provider to generate the
+            hint. We do not sell or share your personal data for advertising
+            purposes.
           </p>
         </div>
 
         <div>
           <h2 className="text-lg font-semibold text-zinc-950">
-            4. Conservation et suppression
+            4. Retention and deletion
           </h2>
           <p className="mt-2">
-            Vos données sont conservées tant que votre compte est actif. Vous
-            pouvez demander la suppression de votre compte et des données
-            associées à tout moment depuis vos paramètres, ou en nous
-            contactant.
+            Your data is kept for as long as your account is active. You can
+            request deletion of your account and associated data at any time
+            from your settings, or by contacting us.
           </p>
         </div>
 
         <div>
           <h2 className="text-lg font-semibold text-zinc-950">
-            5. Vos droits
+            5. Your rights
           </h2>
           <p className="mt-2">
-            Vous pouvez demander l&apos;accès, la rectification ou la
-            suppression de vos données personnelles à tout moment.
+            You can request access to, correction of, or deletion of your
+            personal data at any time.
           </p>
         </div>
       </div>

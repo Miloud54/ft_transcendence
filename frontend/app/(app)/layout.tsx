@@ -4,10 +4,10 @@ import { currentUser } from "@/lib/mock-data";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/games", label: "Mes parties" },
-  { href: "/friends", label: "Amis" },
-  { href: "/leaderboard", label: "Classement" },
-  { href: "/settings", label: "Paramètres" },
+  { href: "/games", label: "My games" },
+  { href: "/friends", label: "Friends" },
+  { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export default function AppLayout({
@@ -25,7 +25,7 @@ export default function AppLayout({
 
         <input
           type="search"
-          placeholder="Rechercher..."
+          placeholder="Search..."
           className="mx-4 mt-6 rounded-md bg-violet-600 px-3 py-2 text-sm text-white placeholder:text-violet-200 focus:outline-none"
         />
 
@@ -38,9 +38,9 @@ export default function AppLayout({
         </div>
 
         <div className="mx-4 rounded-lg bg-violet-600 p-4 text-sm">
-          <p className="font-medium">Lancer une partie dès maintenant</p>
+          <p className="font-medium">Start a game now</p>
           <button className="mt-3 w-full rounded-md bg-lime-400 py-2 text-sm font-semibold text-violet-900">
-            Créer
+            Create
           </button>
         </div>
       </aside>

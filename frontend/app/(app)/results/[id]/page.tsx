@@ -3,7 +3,7 @@ import Link from "next/link";
 import { mockResults, mockWinnerArticleTitle } from "@/lib/mock-data";
 
 export const metadata: Metadata = {
-  title: "Résultats",
+  title: "Results",
 };
 
 export default async function ResultsPage({
@@ -21,10 +21,10 @@ export default async function ResultsPage({
           🏆
         </div>
         <h1 className="mt-4 text-xl font-semibold text-zinc-950">
-          {winner.username} remporte la partie
+          {winner.username} wins the game
         </h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Article à deviner : {mockWinnerArticleTitle} · Partie #{id}
+          Article to guess: {mockWinnerArticleTitle} · Game #{id}
         </p>
       </div>
 
@@ -50,7 +50,7 @@ export default async function ResultsPage({
           Dashboard
         </Link>
         <button className="rounded-md bg-lime-400 px-6 py-2.5 text-sm font-semibold text-violet-900">
-          Rejouer
+          Play again
         </button>
       </div>
     </div>

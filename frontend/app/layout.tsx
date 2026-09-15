@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     default: "Transcendix",
     template: "%s · Transcendix",
   },
-  description: "Trouve la page Wikipedia avant les autres.",
+  description: "Find the Wikipedia page before everyone else.",
 };
 
 export default function RootLayout({
@@ -27,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="fr"
+      lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-zinc-50 text-zinc-900">

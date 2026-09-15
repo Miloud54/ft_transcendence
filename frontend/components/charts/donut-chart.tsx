@@ -27,7 +27,7 @@ export function DonutChart({ data }: { data: DonutSlice[] }) {
 
   return (
     <div className="flex items-center gap-6">
-      <svg viewBox="0 0 160 160" className="h-36 w-36 -rotate-90" role="img" aria-label="Répartition victoires et défaites">
+      <svg viewBox="0 0 160 160" className="h-36 w-36 -rotate-90" role="img" aria-label="Wins and losses breakdown">
         <circle cx="80" cy="80" r={RADIUS} fill="none" stroke="#e7e3f0" strokeWidth={STROKE} />
         {segments.map(({ slice, dash, offset }) => {
           const visibleDash = Math.max(dash - GAP, 0);

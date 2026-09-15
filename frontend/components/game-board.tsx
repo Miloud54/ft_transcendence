@@ -4,76 +4,77 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 
 const INITIAL_ATTEMPTS = [
-  { username: "Vous", word: "tour", proximity: 1000, color: "bg-lime-400" },
-  { username: "Odile", word: "metallique", proximity: 842, color: "bg-violet-500" },
-  { username: "Maria", word: "fer", proximity: 615, color: "bg-rose-400" },
+  { username: "You", word: "tower", proximity: 1000, color: "bg-lime-400" },
+  { username: "Odile", word: "metallic", proximity: 842, color: "bg-violet-500" },
+  { username: "Maria", word: "iron", proximity: 615, color: "bg-rose-400" },
 ];
 
 const ARTICLE_PARAGRAPHS: ArticleWord[][] = [
   [
-    { label: "La", status: "found" },
-    { label: "tour", status: "found" },
-    { label: "de", status: "hidden" },
-    { label: "fer", status: "found" },
-    { label: "puddlé", status: "hidden" },
-    { label: "est", status: "found" },
-    { label: "un", status: "hidden" },
-    { label: "monument", status: "found" },
-    { label: "emblématique", status: "hidden" },
-    { label: "de", status: "hidden" },
+    { label: "The", status: "found" },
+    { label: "Eiffel", status: "hidden" },
+    { label: "Tower", status: "hidden" },
+    { label: "is", status: "found" },
+    { label: "a", status: "hidden" },
+    { label: "wrought-iron", status: "hidden" },
+    { label: "lattice", status: "hidden" },
+    { label: "tower", status: "found" },
+    { label: "and", status: "hidden" },
+    { label: "landmark", status: "found" },
+    { label: "of", status: "hidden" },
     { label: "Paris", status: "hidden" },
-    { label: "en", status: "hidden" },
+    { label: "in", status: "hidden" },
     { label: "France", status: "hidden" },
     { label: ".", status: "found" },
   ],
   [
-    { label: "Construite", status: "hidden" },
-    { label: "pour", status: "hidden" },
-    { label: "l'Exposition", status: "hidden" },
-    { label: "universelle", status: "hidden" },
-    { label: "de", status: "hidden" },
+    { label: "Built", status: "hidden" },
+    { label: "for", status: "hidden" },
+    { label: "the", status: "hidden" },
     { label: "1889", status: "hidden" },
+    { label: "World's", status: "hidden" },
+    { label: "Fair", status: "hidden" },
     { label: ",", status: "found" },
-    { label: "elle", status: "found" },
-    { label: "porte", status: "hidden" },
-    { label: "le", status: "hidden" },
-    { label: "nom", status: "hidden" },
-    { label: "de", status: "hidden" },
-    { label: "l'ingénieur", status: "hidden" },
+    { label: "it", status: "found" },
+    { label: "is", status: "hidden" },
+    { label: "named", status: "hidden" },
+    { label: "after", status: "hidden" },
+    { label: "the", status: "hidden" },
+    { label: "engineer", status: "hidden" },
     { label: "Gustave", status: "hidden" },
     { label: "Eiffel", status: "hidden" },
     { label: ".", status: "found" },
   ],
   [
-    { label: "Haute", status: "hidden" },
-    { label: "de", status: "hidden" },
+    { label: "Standing", status: "hidden" },
     { label: "330", status: "hidden" },
-    { label: "mètres", status: "hidden" },
+    { label: "meters", status: "hidden" },
+    { label: "tall", status: "hidden" },
     { label: ",", status: "found" },
-    { label: "elle", status: "found" },
+    { label: "it", status: "found" },
+    { label: "was", status: "hidden" },
+    { label: "for", status: "hidden" },
     { label: "a", status: "hidden" },
-    { label: "été", status: "hidden" },
-    { label: "pendant", status: "hidden" },
-    { label: "longtemps", status: "hidden" },
-    { label: "la", status: "hidden" },
+    { label: "long", status: "hidden" },
+    { label: "time", status: "hidden" },
+    { label: "the", status: "hidden" },
+    { label: "tallest", status: "hidden" },
     { label: "structure", status: "hidden" },
-    { label: "la", status: "hidden" },
-    { label: "plus", status: "hidden" },
-    { label: "haute", status: "hidden" },
-    { label: "du", status: "hidden" },
-    { label: "monde", status: "hidden" },
+    { label: "in", status: "hidden" },
+    { label: "the", status: "hidden" },
+    { label: "world", status: "hidden" },
     { label: ".", status: "found" },
   ],
 ];
 
 const WORD_SCORES: Record<string, number> = {
   eiffel: 1000,
-  tour: 1000,
-  "tour eiffel": 1000,
-  fer: 615,
+  tower: 1000,
+  "eiffel tower": 1000,
+  iron: 615,
   paris: 540,
   monument: 488,
-  acier: 430,
+  steel: 430,
   france: 322,
 };
 
@@ -87,7 +88,7 @@ type ArticleWordStatus = "found" | "hidden";
 type ArticleWord = { label: string; status: ArticleWordStatus };
 
 function ArticleText({ paragraph }: { paragraph: ArticleWord[] }) {
-  return (  
+  return (
     <p className="text-base leading-8 text-zinc-700 sm:text-lg">
       {paragraph.map((word, index) => (
         <span key={`${word.label}-${index}`}>
@@ -95,7 +96,7 @@ function ArticleText({ paragraph }: { paragraph: ArticleWord[] }) {
             <span className="border-b-2 border-lime-400 text-zinc-950">{word.label}</span>
           ) : (
             <span
-              aria-label="Mot masqué"
+              aria-label="Hidden word"
               className="mx-1 inline-block h-7 min-w-12 select-none rounded bg-zinc-100 align-middle text-[0]"
             />
           )}{" "}
@@ -110,9 +111,9 @@ export function GameBoard({ gameId }: { gameId: string }) {
   const [attempts, setAttempts] = useState(INITIAL_ATTEMPTS);
   const [discoveredCount, setDiscoveredCount] = useState(3);
   const [isSolved, setIsSolved] = useState(false);
-  const [notice, setNotice] = useState("Trouvez le mot le plus proche de l'article secret.");
+  const [notice, setNotice] = useState("Find the word closest to the secret article.");
   const [bestScore, setBestScore] = useState(
-    Math.max(...INITIAL_ATTEMPTS.filter((attempt) => attempt.username === "Vous").map((attempt) => attempt.proximity)),
+    Math.max(...INITIAL_ATTEMPTS.filter((attempt) => attempt.username === "You").map((attempt) => attempt.proximity)),
   );
   const [attemptCount, setAttemptCount] = useState(0);
 
@@ -121,16 +122,16 @@ export function GameBoard({ gameId }: { gameId: string }) {
     const word = guess.trim();
 
     if (!word) {
-      setNotice("Écrivez un mot avant de valider votre tentative.");
+      setNotice("Enter a word before submitting your attempt.");
       return;
     }
 
     const proximity = getProximity(word);
-    const isCorrect = word.toLowerCase() === "eiffel" || word.toLowerCase() === "tour eiffel";
+    const isCorrect = word.toLowerCase() === "eiffel" || word.toLowerCase() === "eiffel tower";
 
     setAttempts((currentAttempts) => [
-      { username: "Vous", word, proximity, color: "bg-lime-400" },
-      ...currentAttempts.filter((attempt) => attempt.username !== "Vous"),
+      { username: "You", word, proximity, color: "bg-lime-400" },
+      ...currentAttempts.filter((attempt) => attempt.username !== "You"),
     ]);
     setBestScore((currentBest: number) => Math.max(currentBest, proximity));
     setAttemptCount((count: number) => count + 1);
@@ -138,12 +139,12 @@ export function GameBoard({ gameId }: { gameId: string }) {
 
     if (isCorrect) {
       setIsSolved(true);
-      setNotice("Bravo, vous avez trouvé l'article secret.");
+      setNotice("Well done, you found the secret article!");
       return;
     }
 
     setDiscoveredCount((count) => Math.min(12, count + (proximity > 500 ? 1 : 0)));
-    setNotice(proximity > 500 ? "Vous êtes très proche. Continuez dans cette direction." : "Encore un peu froid, explorez un autre champ lexical.");
+    setNotice(proximity > 500 ? "You're very close. Keep going in that direction." : "Still a bit cold, try a different angle.");
   }
 
   return (
@@ -152,19 +153,19 @@ export function GameBoard({ gameId }: { gameId: string }) {
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
             <span className="h-2 w-2 rounded-full bg-lime-500" />
-            Partie en cours · #{gameId}
+            Game in progress · #{gameId}
           </div>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">Le mot secret</h1>
-          <p className="mt-1 text-sm text-zinc-500">Un article Wikipedia, 12 indices visibles, une seule bonne réponse.</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">The secret word</h1>
+          <p className="mt-1 text-sm text-zinc-500">One Wikipedia article, 12 visible clues, only one right answer.</p>
         </div>
         <div className="flex items-center gap-3 text-sm">
           <div className="rounded-lg border border-zinc-200 bg-white px-4 py-2">
-            <span className="block text-xs text-zinc-400">Temps</span>
+            <span className="block text-xs text-zinc-400">Time</span>
             <strong className="font-mono text-zinc-900">04:28</strong>
           </div>
           <div className="rounded-lg border border-zinc-200 bg-white px-4 py-2">
-            <span className="block text-xs text-zinc-400">Joueurs</span>
-            <strong className="text-zinc-900">3 en ligne</strong>
+            <span className="block text-xs text-zinc-400">Players</span>
+            <strong className="text-zinc-900">3 online</strong>
           </div>
         </div>
       </header>
@@ -174,15 +175,15 @@ export function GameBoard({ gameId }: { gameId: string }) {
           <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 sm:px-7">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Article brouillé</p>
-                <h2 className="mt-1 text-lg font-semibold text-zinc-950">Complétez les mots manquants</h2>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Scrambled article</p>
+                <h2 className="mt-1 text-lg font-semibold text-zinc-950">Fill in the missing words</h2>
               </div>
-              <span className="rounded-full bg-lime-100 px-3 py-1 text-xs font-semibold text-lime-800">{discoveredCount}/12 trouvés</span>
+              <span className="rounded-full bg-lime-100 px-3 py-1 text-xs font-semibold text-lime-800">{discoveredCount}/12 found</span>
             </div>
             <div className="space-y-6 px-5 py-8 sm:px-10 sm:py-12">
               <div className="border-b border-zinc-100 pb-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Extrait de l&apos;article</p>
-                <h3 className="mt-2 text-2xl font-semibold text-zinc-950">Article encyclopédique</h3>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Article excerpt</p>
+                <h3 className="mt-2 text-2xl font-semibold text-zinc-950">Encyclopedia article</h3>
               </div>
               <div className="max-w-4xl space-y-5">
                 {ARTICLE_PARAGRAPHS.map((paragraph, index) => (
@@ -190,23 +191,23 @@ export function GameBoard({ gameId }: { gameId: string }) {
                 ))}
               </div>
               <details className="max-w-4xl rounded-lg border border-dashed border-zinc-200 px-4 py-3 text-sm text-zinc-500">
-                <summary className="cursor-pointer font-medium text-zinc-700">Voir les indices de structure</summary>
-                <p className="mt-2 leading-6">Le texte contient des informations sur la construction, l&apos;histoire et les dimensions du monument.</p>
+                <summary className="cursor-pointer font-medium text-zinc-700">View structural hints</summary>
+                <p className="mt-2 leading-6">The text contains information about the construction, history, and dimensions of the monument.</p>
               </details>
             </div>
             <div className="border-t border-zinc-100 bg-zinc-50 px-5 py-4 sm:px-7">
               <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
-                <label className="sr-only" htmlFor="guess">Votre proposition</label>
+                <label className="sr-only" htmlFor="guess">Your guess</label>
                 <input
                   id="guess"
                   value={guess}
                   onChange={(event) => setGuess(event.target.value)}
-                  placeholder="Entrez un mot..."
+                  placeholder="Enter a word..."
                   className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-950 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
                   autoComplete="off"
                 />
                 <button className="rounded-lg bg-violet-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-violet-800" type="submit">
-                  Deviner
+                  Guess
                 </button>
               </form>
               <p className="mt-3 text-xs text-zinc-500" aria-live="polite">{notice}</p>
@@ -215,19 +216,19 @@ export function GameBoard({ gameId }: { gameId: string }) {
 
           <section className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-xl border border-zinc-200 bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Meilleur score</p>
-              <p className="mt-2 text-2xl font-semibold text-zinc-950">{bestScore.toLocaleString("fr-FR")}</p>
-              <p className="mt-1 text-xs text-lime-700">Votre meilleur mot</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Best score</p>
+              <p className="mt-2 text-2xl font-semibold text-zinc-950">{bestScore.toLocaleString("en-US")}</p>
+              <p className="mt-1 text-xs text-lime-700">Your best word</p>
             </div>
             <div className="rounded-xl border border-zinc-200 bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Tentatives</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Attempts</p>
               <p className="mt-2 text-2xl font-semibold text-zinc-950">{attemptCount}</p>
-              <p className="mt-1 text-xs text-zinc-500">Cette partie</p>
+              <p className="mt-1 text-xs text-zinc-500">This game</p>
             </div>
             <div className="rounded-xl border border-zinc-200 bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Série actuelle</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Current streak</p>
               <p className="mt-2 text-2xl font-semibold text-zinc-950">x3</p>
-              <p className="mt-1 text-xs text-zinc-500">Mots découverts</p>
+              <p className="mt-1 text-xs text-zinc-500">Words discovered</p>
             </div>
           </section>
         </main>
@@ -235,22 +236,22 @@ export function GameBoard({ gameId }: { gameId: string }) {
         <aside className="space-y-6">
           <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-zinc-950">Température</h2>
-              <span className="text-xs text-zinc-400">proximité</span>
+              <h2 className="font-semibold text-zinc-950">Temperature</h2>
+              <span className="text-xs text-zinc-400">proximity</span>
             </div>
             <div className="mt-5 h-3 overflow-hidden rounded-full bg-gradient-to-r from-sky-400 via-amber-300 to-rose-500">
               <div className="h-full w-[68%] border-r-2 border-white" />
             </div>
-            <div className="mt-2 flex justify-between text-[11px] text-zinc-400"><span>Froid</span><span>Brûlant</span></div>
+            <div className="mt-2 flex justify-between text-[11px] text-zinc-400"><span>Cold</span><span>Scorching</span></div>
             <div className="mt-5 rounded-lg bg-lime-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-lime-800">Dernier indice</p>
-              <p className="mt-1 text-sm font-medium text-lime-950">Les mots liés à la matière sont proches.</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-lime-800">Latest hint</p>
+              <p className="mt-1 text-sm font-medium text-lime-950">Words related to materials are close.</p>
             </div>
           </section>
 
           <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-zinc-950">Classement live</h2>
+              <h2 className="font-semibold text-zinc-950">Live leaderboard</h2>
               <span className="h-2 w-2 rounded-full bg-lime-500" />
             </div>
             <div className="mt-4 space-y-3">
@@ -266,15 +267,15 @@ export function GameBoard({ gameId }: { gameId: string }) {
 
           {isSolved ? (
             <div className="rounded-2xl border border-lime-300 bg-lime-50 p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-lime-800">Article trouvé</p>
-              <p className="mt-1 text-lg font-semibold text-lime-950">La Tour Eiffel</p>
-              <Link href={`/results/${gameId}`} className="mt-4 block rounded-lg bg-lime-400 px-4 py-2.5 text-center text-sm font-semibold text-violet-950 hover:bg-lime-300">Voir les résultats</Link>
+              <p className="text-xs font-semibold uppercase tracking-wide text-lime-800">Article found</p>
+              <p className="mt-1 text-lg font-semibold text-lime-950">The Eiffel Tower</p>
+              <Link href={`/results/${gameId}`} className="mt-4 block rounded-lg bg-lime-400 px-4 py-2.5 text-center text-sm font-semibold text-violet-950 hover:bg-lime-300">View results</Link>
             </div>
           ) : (
             <div className="rounded-2xl bg-violet-700 p-5 text-white">
-              <p className="text-xs font-semibold uppercase tracking-wide text-violet-200">Objectif bonus</p>
-              <p className="mt-2 text-lg font-semibold">Trouvez l&apos;article en moins de 10 mots.</p>
-              <p className="mt-2 text-sm leading-6 text-violet-100">Chaque mot chaud révèle progressivement le texte original.</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-violet-200">Bonus objective</p>
+              <p className="mt-2 text-lg font-semibold">Find the article in under 10 words.</p>
+              <p className="mt-2 text-sm leading-6 text-violet-100">Each hot word gradually reveals the original text.</p>
             </div>
           )}
         </aside>
