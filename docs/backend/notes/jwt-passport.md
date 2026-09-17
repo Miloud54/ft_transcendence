@@ -106,4 +106,3 @@ JwtAuthGuard → JwtStrategy vérifie signature + expiration
 
 Un JWT remplace la question "est-ce que je connais cet utilisateur ?" par "est-ce que je peux vérifier que ce jeton vient bien de moi ?" — le serveur n'a besoin de retenir aucun état, juste de savoir vérifier une signature. Passport standardise *comment* on brasse cette vérification (et n'importe quelle autre méthode d'authentification) dans le cycle de vie d'une requête NestJS, via le duo stratégie (la logique de vérification) + guard (le point d'accroche sur une route). Une fois ce mécanisme posé une fois, protéger une nouvelle route ne demande plus qu'une ligne : `@UseGuards(JwtAuthGuard)`.
 
-coucou
