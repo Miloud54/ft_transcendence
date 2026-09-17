@@ -30,6 +30,8 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      DATABASE_URL: postgresql://user:password@localhost:5432/db
 
     steps:
       - uses: actions/checkout@v4
