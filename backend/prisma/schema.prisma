@@ -12,7 +12,7 @@
 //to visualize it in browser run docker compose exec backend npx prisma studio 
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
 
