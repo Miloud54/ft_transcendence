@@ -39,6 +39,7 @@ services:
     
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
 
     working_dir: /app
 
@@ -87,13 +88,15 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     
-    command: >
-      postgres
-      -c logging_collector=on
-      -c log_directory=/var/log/app
-      -c log_filename=db.log
-      -c log_file_mode=0644
-
+    entrypoint: ["sh", "-c"]
+    command:
+      - >
+        chmod 1777 /var/log/app &&
+        exec docker-entrypoint.sh postgres
+        -c logging_collector=on
+        -c log_directory=/var/log/app
+        -c log_filename=db.log
+        -c log_file_mode=0644
     
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
