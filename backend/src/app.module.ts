@@ -5,9 +5,10 @@ import { HealthModule } from './health/health.module';
 import { RoomModule } from './room/room.module';
 import { GameModule } from './game/game.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
-  imports: [PrismaModule, HealthModule, RoomModule, GameModule],
+  imports: [PrismaModule, HealthModule, RoomModule, GameModule, AuthModule],
   controllers: [AppController],
   providers: [AppService],
 })
