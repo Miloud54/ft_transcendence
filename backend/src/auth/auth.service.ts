@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,7 +11,8 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
 const SALT_ROUNDS = 10;
-const DEFAULT_AVATAR = 'https://api.dicebear.com/9.x/identicon/svg?seed=default';
+const DEFAULT_AVATAR =
+  'https://api.dicebear.com/9.x/identicon/svg?seed=default';
 
 type UserRecord = {
   user_id: bigint;
@@ -65,7 +70,9 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
 
     if (!user || !user.password) {
       throw new UnauthorizedException('Invalid credentials');
