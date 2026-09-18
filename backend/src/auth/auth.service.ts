@@ -2,7 +2,8 @@ import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/co
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { UserStatus } from '../../generated/prisma';
+// import { UserStatus } from '../../generated/prisma';
+import { UserStatus } from '../../generated/prisma/enums';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 

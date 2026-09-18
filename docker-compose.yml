@@ -42,7 +42,8 @@ services:
 
     working_dir: /app
 
-    command: sh -c "npm run start:dev 2>&1 | tee /var/log/app/backend.log"
+    # command: sh -c "npm run start:dev 2>&1 | tee /var/log/app/backend.log"
+    command: sh -c "npx prisma generate && npm run start:dev 2>&1 | tee /var/log/app/backend.log" # TO CORRECT THE PROBLEM WITH GENERATED PRISMA FILES
 
     ports:
       - "3001:3000"
@@ -79,6 +80,10 @@ services:
     image: docker.io/library/postgres:18-alpine
     
     container_name: transcendence-db
+
+    depends_on:
+      logs-init:
+        condition: service_completed_successfully
 
     restart: on-failure
     
