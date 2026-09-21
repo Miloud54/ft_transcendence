@@ -6,9 +6,9 @@
 
 Trois services dans `docker-compose.yml` :
 
-- **Elasticsearch** (`8.15.0`) — stocke et indexe les logs, mode single-node (pas de cluster), accessible uniquement depuis les autres conteneurs (pas de port publié)
-- **Logstash** (`8.15.0`) — lit les fichiers de logs dans un volume partagé et les transmet à Elasticsearch
-- **Kibana** (`8.15.0`) — visualise les logs stockés dans Elasticsearch, accessible sur `http://localhost:5601`
+- **Elasticsearch** (`8.15.0`) — stocke et indexe les logs, mode single-node (pas de cluster), accessible uniquement depuis les autres conteneurs (pas de port publié), **authentification obligatoire** (voir section Sécurisation plus bas)
+- **Logstash** (`8.15.0`) — lit les fichiers de logs dans un volume partagé et les transmet à Elasticsearch avec un compte dédié à droits limités
+- **Kibana** (`8.15.0`) — visualise les logs stockés dans Elasticsearch, accessible sur `http://localhost:5601`, login requis
 
 `backend`, `frontend` et `db` écrivent leurs logs dans un volume partagé `app_logs` (au lieu du driver `gelf` de Docker, testé puis abandonné : non supporté par Podman, seule alternative — `journald` — ne fonctionnait que par accident sous Podman/Fedora et pas sous Docker Engine). `frontend`/`backend` utilisent `tee` sur leur commande de démarrage, `db` utilise le `logging_collector` natif de Postgres.
 
@@ -25,11 +25,45 @@ Confirmé fonctionnel de bout en bout : la Data View `docker-logs-*` est active 
 
 Bug rencontré et corrigé au premier test réel : Postgres écrit `db.log` en `0600` par défaut, illisible par Logstash (utilisateur différent) malgré le sticky bit du volume. Réglé en forçant `log_file_mode=0644` sur `db`.
 
+## **Sécurisation — authentification (21/09/2026)**
+
+Doc de référence sur ce qui est en place. Le point bloquant du sujet ("sécuriser l'accès à tous les composants") est traité : avant ce changement, `xpack.security.enabled` était à `false` sur Elasticsearch, donc n'importe qui atteignant Kibana (port `5601` publié) avait un accès total et anonyme à toutes les données de logs, sans mot de passe.
+
+### Ce qui a changé
+
+- **Elasticsearch** : `xpack.security.enabled: "true"` — authentification obligatoire sur toute requête. `xpack.security.http.ssl.enabled: "false"` assumé délibérément : le trafic reste en HTTP (non chiffré) mais authentifié, car il ne sort jamais du réseau Docker `private-net` déjà isolé ; le chiffrement TLS complet reste une amélioration possible mais pas prioritaire ici.
+- **Comptes dédiés, principe du moindre privilège** — aucun service autre que l'admin humain n'utilise le compte superadmin `elastic` :
+  - `elastic` — superadmin, usage humain (connexion Kibana, administration)
+  - `kibana_system` — compte intégré fourni par Elastic, utilisé uniquement par Kibana pour parler à Elasticsearch (ne peut pas se connecter à l'UI Kibana lui-même)
+  - `logstash_writer` — compte créé manuellement, rôle custom limité à l'écriture/création sur les index `docker-logs-*` (`create_index`, `write`, `manage`) + `manage_index_templates` côté cluster (nécessaire pour que Logstash installe son template `ecs-logstash` au démarrage) ; pas de droit de lecture ni d'administration
+- **Secrets** : `ELASTIC_PASSWORD`, `KIBANA_PASSWORD`, `LOGSTASH_PASSWORD` ajoutés dans `.env`/`.env.example`, même pattern que `DB_PASSWORD`/`JWT_SECRET`
+
+### Fichiers modifiés
+
+| Fichier | Changement |
+| --- | --- |
+| `docker-compose.yml` (service `elasticsearch`) | `xpack.security.enabled: "true"`, `xpack.security.http.ssl.enabled: "false"`, `ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}` |
+| `docker-compose.yml` (service `kibana`) | ajout `environment.ELASTICSEARCH_USERNAME: kibana_system` / `ELASTICSEARCH_PASSWORD: ${KIBANA_PASSWORD}` |
+| `docker-compose.yml` (service `logstash`) | ajout bloc `environment.LOGSTASH_PASSWORD: ${LOGSTASH_PASSWORD}` (pour que `${LOGSTASH_PASSWORD}` soit résolu dans `logstash.conf`) |
+| `logstash/logstash.conf` | bloc `output.elasticsearch` : ajout `user => "logstash_writer"` / `password => "${LOGSTASH_PASSWORD}"` |
+| `.env` / `.env.example` | ajout `ELASTIC_PASSWORD`, `KIBANA_PASSWORD`, `LOGSTASH_PASSWORD` |
+
+Le rôle `logstash_writer` et l'utilisateur associé ne sont **pas** définis dans un fichier du repo — ils sont créés une fois via l'API `_security` d'Elasticsearch (stockés dans l'index interne de sécurité, persistant tant que le volume `es_data` n'est pas supprimé). Si le volume est recréé, il faut relancer les deux appels API (voir historique de session ou refaire via `curl -u elastic:... -X POST http://elasticsearch:9200/_security/role/logstash_writer ...` puis `/_security/user/logstash_writer`).
+
+### Validé
+
+- Sans identifiants : `401` sur `http://elasticsearch:9200`
+- Avec `elastic` : accès complet
+- Kibana démarre (`Kibana is now available`) et se connecte à Elasticsearch via `kibana_system` sans erreur
+- Logstash démarre (`Pipelines running {:count=>1}`) et écrit via `logstash_writer` sans erreur (après ajout de `manage_index_templates`, sinon `403` au moment d'installer le template `ecs-logstash`)
+
 ## **Prochaines étapes (ELK)**
 
 - [ ]  Tester la stack sur une machine Docker Engine réelle (idéalement macOS), pour confirmer la portabilité — validé pour l'instant uniquement sur Linux/Podman
 - [ ]  **Politique de rétention/archivage des logs** (exigence du sujet) — pas encore configurée, Elasticsearch garde tout indéfiniment pour l'instant
-- [ ]  **Sécuriser l'accès à tous les composants** (exigence du sujet) — `xpack.security.enabled` est actuellement à `false` sur Elasticsearch, aucune authentification en place sur Elasticsearch/Kibana
+- [ ]  Filtrer/masquer les données sensibles (mots de passe, tokens) dans le pipeline Logstash avant indexation — aucun filtre en place actuellement, les logs bruts sont indexés tels quels
+- [ ]  TLS interne complet (chiffrement, pas juste authentification) entre Elasticsearch/Kibana/Logstash — actuellement HTTP en clair sur le réseau Docker isolé
+- [ ]  Revoir l'exposition de Kibana (`5601:5601` publié directement sur l'hôte) — à faire passer derrière le WAF ou restreindre l'accès réseau
 - [ ]  Un premier dashboard Kibana pour visualiser les logs par service / niveau d'erreur
 - [ ]  Documenter ce choix d'architecture dans le `README.md` du projet (section Modules, module ELK)
 
