@@ -143,18 +143,40 @@ services:
     networks:
       - private-net
   
+  es-init: # conteneur jetable : configure les comptes kibana_system et logstash_writer dans Elasticsearch (mots de passe connus, pas de génération aléatoire), à chaque démarrage
+    image: docker.io/curlimages/curl:latest
+
+    container_name: transcendence-es-init
+
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      KIBANA_PASSWORD: ${KIBANA_PASSWORD}
+      LOGSTASH_PASSWORD: ${LOGSTASH_PASSWORD}
+
+    volumes:
+      - ./elasticsearch/init.sh:/init.sh:ro
+
+    entrypoint: sh /init.sh
+
+    networks:
+      - private-net
+
   logstash:
 
     image: docker.elastic.co/logstash/logstash:8.15.0
-    
+
     container_name: transcendence-logstash
 
     environment:
       LOGSTASH_PASSWORD: ${LOGSTASH_PASSWORD}
 
     depends_on:
-      elasticsearch:
-        condition: service_healthy
+      es-init:
+        condition: service_completed_successfully
 
     volumes:
       - ./logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
@@ -162,17 +184,21 @@ services:
 
     networks:
       - private-net
-  
+
   kibana:
     image: docker.elastic.co/kibana/kibana:8.15.0
 
     container_name: transcendence-kibana
 
+    depends_on:
+      es-init:
+        condition: service_completed_successfully
+
     environment:
        ELASTICSEARCH_HOSTS: http://elasticsearch:9200        # où aller chercher les données
        ELASTICSEARCH_USERNAME: kibana_system
        ELASTICSEARCH_PASSWORD: ${KIBANA_PASSWORD}
-    
+
     ports:
       - "5601:5601"
 
