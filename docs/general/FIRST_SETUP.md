@@ -368,6 +368,12 @@ git clone git@github.com:<organisation>/ft_transcendence.git
 cd ft_transcendence
 ```
 
+Activer les hooks Git du projet (une seule fois, voir explication ci-dessous) :
+
+```bash
+git config core.hooksPath .githooks
+```
+
 Construire les images Docker et démarrer l'environnement de développement :
 
 ```bash
@@ -375,6 +381,12 @@ docker compose up --build
 ```
 
 Cette commande construit automatiquement les images Docker si elles n'existent pas encore, puis lance le frontend et le backend.
+
+> **Pourquoi `git config core.hooksPath .githooks` ?**
+>
+> Le repo contient un script (`.githooks/env-sync.sh`) qui met automatiquement à jour ton `.env` local dès que `.env.example` a évolué (nouvelle variable ajoutée par quelqu'un de l'équipe). Mais Git n'active jamais les hooks tout seul sur un clone — c'est une mesure de sécurité volontaire (sinon un repo cloné pourrait exécuter du code sans qu'on le demande). Il faut donc lancer cette commande une fois, manuellement.
+>
+> **Si tu avais déjà cloné le repo avant l'ajout de cette étape**, pas besoin de re-cloner : fais un `git pull` pour récupérer le dossier `.githooks/`, puis lance la commande ci-dessus une seule fois dans ton clone existant. Le réglage est stocké dans `.git/config`, propre à cette copie du repo — il reste actif pour tous les futurs `pull`/`checkout`, tu n'as jamais à le refaire (sauf si tu re-clones le repo de zéro).
 
 # 2. Après chaque `git pull`
 
