@@ -48,7 +48,7 @@ Doc de référence sur ce qui est en place. Le point bloquant du sujet ("sécuri
 | `logstash/logstash.conf` | bloc `output.elasticsearch` : ajout `user => "logstash_writer"` / `password => "${LOGSTASH_PASSWORD}"` |
 | `.env` / `.env.example` | ajout `ELASTIC_PASSWORD`, `KIBANA_PASSWORD`, `LOGSTASH_PASSWORD` |
 
-Le rôle `logstash_writer` et l'utilisateur associé ne sont **pas** définis dans un fichier du repo — ils sont créés une fois via l'API `_security` d'Elasticsearch (stockés dans l'index interne de sécurité, persistant tant que le volume `es_data` n'est pas supprimé). Si le volume est recréé, il faut relancer les deux appels API (voir historique de session ou refaire via `curl -u elastic:... -X POST http://elasticsearch:9200/_security/role/logstash_writer ...` puis `/_security/user/logstash_writer`).
+**(22/09/2026) Automatisé** — un service jetable `es-init` (même principe que `vault-init`) configure `kibana_system` et `logstash_writer` à chaque `docker compose up`, avec les mots de passe définis dans `.env` (pas de génération aléatoire à copier-coller). Fichiers : `elasticsearch/init.sh` (les 3 appels API), service `es-init` dans `docker-compose.yml` (`kibana`/`logstash` en dépendent via `service_completed_successfully`). Donc même si le volume `es_data` est recréé (nouveau poste, `docker compose down -v`), un simple `docker compose up -d` suffit — plus d'étape manuelle.
 
 ### Validé
 
