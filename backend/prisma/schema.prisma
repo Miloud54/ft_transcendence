@@ -82,8 +82,8 @@ model Game {
   game_id     BigInt @id @default(autoincrement())
   //wikipage_id BigInt
   status      GameStatus
-  started_at  DateTime
-  ended_at    DateTime
+  started_at  DateTime?
+  ended_at    DateTime?
 
   room_id     BigInt
   room        Room @relation(fields: [room_id], references: [room_id])
