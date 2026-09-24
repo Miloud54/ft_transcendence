@@ -97,7 +97,7 @@ export class AuthService {
     return this.buildAuthResponse(user);
   }
 
-  async refresh(refreshToken: string) {
+  refresh(refreshToken: string) {
     let payload: RefreshPayload;
 
     try {
