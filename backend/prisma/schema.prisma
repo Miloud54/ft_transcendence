@@ -6,8 +6,10 @@
 
 
 
-//every time DB is updated run docker compose exec backend npx prisma migrate dev --name name
+//every time DB is updated run docker compose exec backend npx prisma migrate dev --name name (obsolete)
 // to apply the changes to the actual db
+// new cmd:
+// docker compose exec backend sh -c '. <(npx tsx scripts/load-vault-env.ts) && npx prisma migrate deploy
 
 //to visualize it in browser run docker compose exec backend npx prisma studio 
 
@@ -63,7 +65,7 @@ model User {
 
 model Room {
   room_id     BigInt @id @default(autoincrement())
-  status      RoomStatus
+  status      RoomStatus 
   min_players Int
   max_players Int
   created_at  DateTime? @default(now())  

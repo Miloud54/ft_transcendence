@@ -1,0 +1,526 @@
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+AxiosError: getaddrinfo EAI_AGAIN vault
+    at AxiosError.from [90m(/app/[39mnode_modules/[4maxios[24m/dist/node/axios.cjs:1577:24[90m)[39m
+    at RedirectableRequest.handleRequestError [90m(/app/[39mnode_modules/[4maxios[24m/dist/node/axios.cjs:4792:25[90m)[39m
+[90m    at RedirectableRequest.emit (node:events:521:24)[39m
+    at eventHandlers.<computed> [90m(/app/[39mnode_modules/[4mfollow-redirects[24m/index.js:56:24[90m)[39m
+[90m    at ClientRequest.emit (node:events:509:28)[39m
+[90m    at emitErrorEvent (node:_http_client:109:11)[39m
+[90m    at Socket.socketErrorListener (node:_http_client:593:5)[39m
+[90m    at Socket.emit (node:events:521:24)[39m
+[90m    at emitErrorNT (node:internal/streams/destroy:170:8)[39m
+[90m    at emitErrorCloseNT (node:internal/streams/destroy:129:3)[39m
+    at Axios.request [90m(/app/[39mnode_modules/[4maxios[24m/dist/node/axios.cjs:6308:43[90m)[39m
+[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at async loadSecretsFromVault [90m(/app/[39msrc/vault.ts:23:27[90m)[39m
+    at async main [90m(/app/[39mscripts/load-vault-env.ts:4:21[90m)[39m {
+  isAxiosError: [33mtrue[39m,
+  code: [32m'EAI_AGAIN'[39m,
+  config: [Object: null prototype] {
+    transitional: {
+      silentJSONParsing: [33mtrue[39m,
+      forcedJSONParsing: [33mtrue[39m,
+      clarifyTimeoutError: [33mfalse[39m,
+      legacyInterceptorReqResOrdering: [33mtrue[39m,
+      advertiseZstdAcceptEncoding: [33mfalse[39m,
+      validateStatusUndefinedResolves: [33mtrue[39m
+    },
+    adapter: [ [32m'xhr'[39m, [32m'http'[39m, [32m'fetch'[39m ],
+    transformRequest: [ [36m[Function: transformRequest][39m ],
+    transformResponse: [ [36m[Function: transformResponse][39m ],
+    timeout: [33m0[39m,
+    xsrfCookieName: [32m'XSRF-TOKEN'[39m,
+    xsrfHeaderName: [32m'X-XSRF-TOKEN'[39m,
+    maxContentLength: [33m-1[39m,
+    maxBodyLength: [33m-1[39m,
+    env: {
+      FormData: [Function: FormData] {
+        LINE_BREAK: [32m'\r\n'[39m,
+        DEFAULT_CONTENT_TYPE: [32m'application/octet-stream'[39m
+      },
+      Blob: [36m[class Blob][39m
+    },
+    validateStatus: [36m[Function: validateStatus][39m,
+    headers: Object [AxiosHeaders] {
+      Accept: [32m'application/json, text/plain, */*'[39m,
+      [32m'Content-Type'[39m: [90mundefined[39m,
+      [32m'X-Vault-Token'[39m: [32m'change_me_locally'[39m,
+      [32m'User-Agent'[39m: [32m'axios/1.20.0'[39m,
+      [32m'Accept-Encoding'[39m: [32m'gzip, compress, deflate, br'[39m
+    },
+    method: [32m'get'[39m,
+    url: [32m'http://vault:8200/v1/secret/data/backend'[39m,
+    allowAbsoluteUrls: [33mtrue[39m,
+    data: [90mundefined[39m
+  },
+  request: [36m<ref *1>[39m Writable {
+    _events: {
+      close: [90mundefined[39m,
+      error: [36m[Function: handleRequestError][39m,
+      prefinish: [90mundefined[39m,
+      finish: [90mundefined[39m,
+      drain: [90mundefined[39m,
+      response: [36m[Function: handleResponse][39m,
+      socket: [
+        [36m[Function: handleRequestSocket][39m,
+        [36m[Function: destroyOnTimeout][39m,
+        [32mSymbol(events.emitting)[39m: [33m0[39m
+      ],
+      abort: [90mundefined[39m
+    },
+    _writableState: WritableState {
+      highWaterMark: [33m65536[39m,
+      length: [33m0[39m,
+      corked: [33m0[39m,
+      onwrite: [36m[Function (anonymous)][39m,
+      writelen: [33m0[39m,
+      bufferedIndex: [33m0[39m,
+      pendingcb: [33m0[39m,
+      [32mSymbol(kState)[39m: [33m17581054[39m,
+      [32mSymbol(kBufferedValue)[39m: [1mnull[22m,
+      [32mSymbol(kErroredValue)[39m: Error: getaddrinfo EAI_AGAIN vault
+      [90m    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)[39m {
+        errno: [33m-3001[39m,
+        code: [32m'EAI_AGAIN'[39m,
+        syscall: [32m'getaddrinfo'[39m,
+        hostname: [32m'vault'[39m
+      }
+    },
+    _maxListeners: [90mundefined[39m,
+    _options: {
+      maxRedirects: [33m21[39m,
+      maxBodyLength: [33mInfinity[39m,
+      protocol: [32m'http:'[39m,
+      path: [32m'/v1/secret/data/backend'[39m,
+      method: [32m'GET'[39m,
+      headers: [Object: null prototype] {
+        Accept: [32m'application/json, text/plain, */*'[39m,
+        [32m'X-Vault-Token'[39m: [32m'change_me_locally'[39m,
+        [32m'User-Agent'[39m: [32m'axios/1.20.0'[39m,
+        [32m'Accept-Encoding'[39m: [32m'gzip, compress, deflate, br'[39m
+      },
+      agents: { http: [90mundefined[39m, https: [90mundefined[39m },
+      auth: [90mundefined[39m,
+      family: [90mundefined[39m,
+      beforeRedirect: [36m[Function: dispatchBeforeRedirect][39m,
+      beforeRedirects: [Object: null prototype] { proxy: [36m[Function: beforeRedirect][39m },
+      http2Options: [90mundefined[39m,
+      createConnection: [90mundefined[39m,
+      hostname: [32m'vault'[39m,
+      port: [32m'8200'[39m,
+      agent: [90mundefined[39m,
+      sensitiveHeaders: [],
+      insecureHTTPParser: [33mfalse[39m,
+      nativeProtocols: {
+        [32m'http:'[39m: {
+          _connectionListener: [36m[Function: connectionListener][39m,
+          METHODS: [
+            [32m'ACL'[39m,        [32m'BIND'[39m,        [32m'CHECKOUT'[39m,
+            [32m'CONNECT'[39m,    [32m'COPY'[39m,        [32m'DELETE'[39m,
+            [32m'GET'[39m,        [32m'HEAD'[39m,        [32m'LINK'[39m,
+            [32m'LOCK'[39m,       [32m'M-SEARCH'[39m,    [32m'MERGE'[39m,
+            [32m'MKACTIVITY'[39m, [32m'MKCALENDAR'[39m,  [32m'MKCOL'[39m,
+            [32m'MOVE'[39m,       [32m'NOTIFY'[39m,      [32m'OPTIONS'[39m,
+            [32m'PATCH'[39m,      [32m'POST'[39m,        [32m'PROPFIND'[39m,
+            [32m'PROPPATCH'[39m,  [32m'PURGE'[39m,       [32m'PUT'[39m,
+            [32m'QUERY'[39m,      [32m'REBIND'[39m,      [32m'REPORT'[39m,
+            [32m'SEARCH'[39m,     [32m'SOURCE'[39m,      [32m'SUBSCRIBE'[39m,
+            [32m'TRACE'[39m,      [32m'UNBIND'[39m,      [32m'UNLINK'[39m,
+            [32m'UNLOCK'[39m,     [32m'UNSUBSCRIBE'[39m
+          ],
+          STATUS_CODES: {
+            [32m'100'[39m: [32m'Continue'[39m,
+            [32m'101'[39m: [32m'Switching Protocols'[39m,
+            [32m'102'[39m: [32m'Processing'[39m,
+            [32m'103'[39m: [32m'Early Hints'[39m,
+            [32m'200'[39m: [32m'OK'[39m,
+            [32m'201'[39m: [32m'Created'[39m,
+            [32m'202'[39m: [32m'Accepted'[39m,
+            [32m'203'[39m: [32m'Non-Authoritative Information'[39m,
+            [32m'204'[39m: [32m'No Content'[39m,
+            [32m'205'[39m: [32m'Reset Content'[39m,
+            [32m'206'[39m: [32m'Partial Content'[39m,
+            [32m'207'[39m: [32m'Multi-Status'[39m,
+            [32m'208'[39m: [32m'Already Reported'[39m,
+            [32m'226'[39m: [32m'IM Used'[39m,
+            [32m'300'[39m: [32m'Multiple Choices'[39m,
+            [32m'301'[39m: [32m'Moved Permanently'[39m,
+            [32m'302'[39m: [32m'Found'[39m,
+            [32m'303'[39m: [32m'See Other'[39m,
+            [32m'304'[39m: [32m'Not Modified'[39m,
+            [32m'305'[39m: [32m'Use Proxy'[39m,
+            [32m'307'[39m: [32m'Temporary Redirect'[39m,
+            [32m'308'[39m: [32m'Permanent Redirect'[39m,
+            [32m'400'[39m: [32m'Bad Request'[39m,
+            [32m'401'[39m: [32m'Unauthorized'[39m,
+            [32m'402'[39m: [32m'Payment Required'[39m,
+            [32m'403'[39m: [32m'Forbidden'[39m,
+            [32m'404'[39m: [32m'Not Found'[39m,
+            [32m'405'[39m: [32m'Method Not Allowed'[39m,
+            [32m'406'[39m: [32m'Not Acceptable'[39m,
+            [32m'407'[39m: [32m'Proxy Authentication Required'[39m,
+            [32m'408'[39m: [32m'Request Timeout'[39m,
+            [32m'409'[39m: [32m'Conflict'[39m,
+            [32m'410'[39m: [32m'Gone'[39m,
+            [32m'411'[39m: [32m'Length Required'[39m,
+            [32m'412'[39m: [32m'Precondition Failed'[39m,
+            [32m'413'[39m: [32m'Payload Too Large'[39m,
+            [32m'414'[39m: [32m'URI Too Long'[39m,
+            [32m'415'[39m: [32m'Unsupported Media Type'[39m,
+            [32m'416'[39m: [32m'Range Not Satisfiable'[39m,
+            [32m'417'[39m: [32m'Expectation Failed'[39m,
+            [32m'418'[39m: [32m"I'm a Teapot"[39m,
+            [32m'421'[39m: [32m'Misdirected Request'[39m,
+            [32m'422'[39m: [32m'Unprocessable Entity'[39m,
+            [32m'423'[39m: [32m'Locked'[39m,
+            [32m'424'[39m: [32m'Failed Dependency'[39m,
+            [32m'425'[39m: [32m'Too Early'[39m,
+            [32m'426'[39m: [32m'Upgrade Required'[39m,
+            [32m'428'[39m: [32m'Precondition Required'[39m,
+            [32m'429'[39m: [32m'Too Many Requests'[39m,
+            [32m'431'[39m: [32m'Request Header Fields Too Large'[39m,
+            [32m'451'[39m: [32m'Unavailable For Legal Reasons'[39m,
+            [32m'500'[39m: [32m'Internal Server Error'[39m,
+            [32m'501'[39m: [32m'Not Implemented'[39m,
+            [32m'502'[39m: [32m'Bad Gateway'[39m,
+            [32m'503'[39m: [32m'Service Unavailable'[39m,
+            [32m'504'[39m: [32m'Gateway Timeout'[39m,
+            [32m'505'[39m: [32m'HTTP Version Not Supported'[39m,
+            [32m'506'[39m: [32m'Variant Also Negotiates'[39m,
+            [32m'507'[39m: [32m'Insufficient Storage'[39m,
+            [32m'508'[39m: [32m'Loop Detected'[39m,
+            [32m'509'[39m: [32m'Bandwidth Limit Exceeded'[39m,
+            [32m'510'[39m: [32m'Not Extended'[39m,
+            [32m'511'[39m: [32m'Network Authentication Required'[39m
+          },
+          Agent: [Function: Agent] { defaultMaxSockets: [33mInfinity[39m },
+          ClientRequest: [36m[Function: ClientRequest][39m,
+          IncomingMessage: [36m[Function: IncomingMessage][39m,
+          OutgoingMessage: [36m[Function: OutgoingMessage][39m,
+          Server: [36m[Function: Server][39m,
+          ServerResponse: [36m[Function: ServerResponse][39m,
+          createServer: [36m[Function: createServer][39m,
+          validateHeaderName: [Function: validateHeaderName] {
+            withoutStackTrace: [36m[Function (anonymous)][39m
+          },
+          validateHeaderValue: [Function: validateHeaderValue] {
+            withoutStackTrace: [36m[Function (anonymous)][39m
+          },
+          get: [36m[Function: get][39m,
+          request: [36m[Function: request][39m,
+          setMaxIdleHTTPParsers: [36m[Function: setMaxIdleHTTPParsers][39m,
+          setGlobalProxyFromEnv: [36m[Function: setGlobalProxyFromEnv][39m,
+          maxHeaderSize: [36m[Getter][39m,
+          globalAgent: [36m[Getter/Setter][39m,
+          WebSocket: [36m[Getter][39m,
+          CloseEvent: [36m[Getter][39m,
+          MessageEvent: [36m[Getter][39m
+        },
+        [32m'https:'[39m: {
+          Agent: [36m[Function: Agent][39m,
+          globalAgent: Agent {
+            _events: [36m[Object: null prototype][39m,
+            _eventsCount: [33m2[39m,
+            _maxListeners: [90mundefined[39m,
+            options: [36m[Object: null prototype][39m,
+            defaultPort: [33m443[39m,
+            protocol: [32m'https:'[39m,
+            requests: [Object: null prototype] {},
+            sockets: [Object: null prototype] {},
+            freeSockets: [Object: null prototype] {},
+            keepAliveMsecs: [33m1000[39m,
+            keepAlive: [33mtrue[39m,
+            maxSockets: [33mInfinity[39m,
+            maxFreeSockets: [33m256[39m,
+            scheduling: [32m'lifo'[39m,
+            maxTotalSockets: [33mInfinity[39m,
+            totalSocketCount: [33m0[39m,
+            agentKeepAliveTimeoutBuffer: [33m1000[39m,
+            maxCachedSessions: [33m100[39m,
+            _sessionCache: [36m[Object][39m,
+            [32mSymbol(shapeMode)[39m: [33mfalse[39m,
+            [32mSymbol(kCapture)[39m: [33mfalse[39m
+          },
+          Server: [36m[Function: Server][39m,
+          createServer: [36m[Function: createServer][39m,
+          get: [36m[Function: get][39m,
+          request: [36m[Function: request][39m
+        }
+      },
+      pathname: [32m'/v1/secret/data/backend'[39m
+    },
+    _ended: [33mtrue[39m,
+    _ending: [33mtrue[39m,
+    _redirectCount: [33m0[39m,
+    _redirects: [],
+    _requestBodyLength: [33m0[39m,
+    _requestBodyBuffers: [],
+    _eventsCount: [33m3[39m,
+    _onNativeResponse: [36m[Function (anonymous)][39m,
+    _headerFilter: [31m/^(?:Authorization|Proxy-Authorization|Cookie)$/i[39m,
+    _currentRequest: [36m<ref *2>[39m ClientRequest {
+      _events: [Object: null prototype] {
+        response: [Function: bound onceWrapper] {
+          listener: [36m[Function (anonymous)][39m
+        },
+        error: [36m[Function: noop][39m
+      },
+      _eventsCount: [33m2[39m,
+      _maxListeners: [90mundefined[39m,
+      outputData: [],
+      outputSize: [33m0[39m,
+      writable: [33mtrue[39m,
+      destroyed: [33mtrue[39m,
+      _last: [33mtrue[39m,
+      chunkedEncoding: [33mfalse[39m,
+      shouldKeepAlive: [33mtrue[39m,
+      maxRequestsOnConnectionReached: [33mfalse[39m,
+      _defaultKeepAlive: [33mtrue[39m,
+      useChunkedEncodingByDefault: [33mfalse[39m,
+      sendDate: [33mfalse[39m,
+      _removedConnection: [33mfalse[39m,
+      _removedContLen: [33mfalse[39m,
+      _removedTE: [33mfalse[39m,
+      strictContentLength: [33mfalse[39m,
+      _contentLength: [33m0[39m,
+      _hasBody: [33mtrue[39m,
+      _trailer: [32m''[39m,
+      finished: [33mtrue[39m,
+      _headerSent: [33mtrue[39m,
+      _closed: [33mfalse[39m,
+      _header: [32m'GET /v1/secret/data/backend HTTP/1.1\r\n'[39m +
+        [32m'Accept: application/json, text/plain, */*\r\n'[39m +
+        [32m'X-Vault-Token: change_me_locally\r\n'[39m +
+        [32m'User-Agent: axios/1.20.0\r\n'[39m +
+        [32m'Accept-Encoding: gzip, compress, deflate, br\r\n'[39m +
+        [32m'Host: vault:8200\r\n'[39m +
+        [32m'Connection: keep-alive\r\n'[39m +
+        [32m'\r\n'[39m,
+      _keepAliveTimeout: [33m0[39m,
+      _onPendingData: [36m[Function: nop][39m,
+      agent: Agent {
+        _events: [Object: null prototype] {
+          free: [36m[Function (anonymous)][39m,
+          newListener: [36m[Function: maybeEnableKeylog][39m
+        },
+        _eventsCount: [33m2[39m,
+        _maxListeners: [90mundefined[39m,
+        options: [Object: null prototype] {
+          keepAlive: [33mtrue[39m,
+          scheduling: [32m'lifo'[39m,
+          timeout: [33m5000[39m,
+          proxyEnv: [90mundefined[39m,
+          noDelay: [33mtrue[39m,
+          path: [1mnull[22m
+        },
+        defaultPort: [33m80[39m,
+        protocol: [32m'http:'[39m,
+        requests: [Object: null prototype] {},
+        sockets: [Object: null prototype] { [32m'vault:8200:'[39m: [ [36m[Socket][39m ] },
+        freeSockets: [Object: null prototype] {},
+        keepAliveMsecs: [33m1000[39m,
+        keepAlive: [33mtrue[39m,
+        maxSockets: [33mInfinity[39m,
+        maxFreeSockets: [33m256[39m,
+        scheduling: [32m'lifo'[39m,
+        maxTotalSockets: [33mInfinity[39m,
+        totalSocketCount: [33m1[39m,
+        agentKeepAliveTimeoutBuffer: [33m1000[39m,
+        [32mSymbol(shapeMode)[39m: [33mfalse[39m,
+        [32mSymbol(kCapture)[39m: [33mfalse[39m
+      },
+      socketPath: [90mundefined[39m,
+      method: [32m'GET'[39m,
+      maxHeaderSize: [90mundefined[39m,
+      insecureHTTPParser: [33mfalse[39m,
+      joinDuplicateHeaders: [90mundefined[39m,
+      _ended: [33mfalse[39m,
+      res: [1mnull[22m,
+      aborted: [33mfalse[39m,
+      timeoutCb: [36m[Function: emitRequestTimeout][39m,
+      upgradeOrConnect: [33mfalse[39m,
+      parser: [1mnull[22m,
+      maxHeadersCount: [1mnull[22m,
+      reusedSocket: [33mfalse[39m,
+      host: [32m'vault'[39m,
+      protocol: [32m'http:'[39m,
+      _redirectable: [36m[Circular *1][39m,
+      [32mSymbol(shapeMode)[39m: [33mfalse[39m,
+      [32mSymbol(kCapture)[39m: [33mfalse[39m,
+      [32mSymbol(kBytesWritten)[39m: [33m0[39m,
+      [32mSymbol(kNeedDrain)[39m: [33mfalse[39m,
+      [32mSymbol(corked)[39m: [33m0[39m,
+      [32mSymbol(kChunkedBuffer)[39m: [],
+      [32mSymbol(kChunkedLength)[39m: [33m0[39m,
+      [32mSymbol(kSocket)[39m: Socket {
+        connecting: [33mfalse[39m,
+        _hadError: [33mtrue[39m,
+        _parent: [1mnull[22m,
+        _host: [32m'vault'[39m,
+        _closeAfterHandlingError: [33mfalse[39m,
+        _events: {
+          close: [
+            [36m[Function: onClose][39m,
+            [36m[Function: socketCloseListener][39m,
+            [36m[Function][39m,
+            [32mSymbol(events.emitting)[39m: [33m0[39m
+          ],
+          error: [
+            [36m[Function: socketErrorListener][39m,
+            [36m[Function: handleSocketError][39m,
+            [32mSymbol(events.emitting)[39m: [33m0[39m
+          ],
+          prefinish: [90mundefined[39m,
+          finish: [90mundefined[39m,
+          drain: [36m[Function: ondrain][39m,
+          data: [90mundefined[39m,
+          end: [36m[Function: onReadableStreamEnd][39m,
+          readable: [90mundefined[39m,
+          connect: [
+            [36m[Function][39m,
+            [36m[Function][39m,
+            [36m[Function][39m,
+            [32mSymbol(events.emitting)[39m: [33m0[39m
+          ],
+          free: [36m[Function: onFree][39m,
+          timeout: [
+            [36m[Function: onTimeout][39m,
+            [36m[Function][39m,
+            [36m[Function (anonymous)][39m,
+            [32mSymbol(events.emitting)[39m: [33m0[39m
+          ],
+          agentRemove: [36m[Function: onRemove][39m
+        },
+        _readableState: ReadableState {
+          highWaterMark: [33m65536[39m,
+          buffer: [],
+          bufferIndex: [33m0[39m,
+          length: [33m0[39m,
+          pipes: [],
+          awaitDrainWriters: [1mnull[22m,
+          [32mSymbol(kState)[39m: [33m59779574[39m,
+          [32mSymbol(kErroredValue)[39m: Error: getaddrinfo EAI_AGAIN vault
+          [90m    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)[39m {
+            errno: [33m-3001[39m,
+            code: [32m'EAI_AGAIN'[39m,
+            syscall: [32m'getaddrinfo'[39m,
+            hostname: [32m'vault'[39m
+          }
+        },
+        _writableState: WritableState {
+          highWaterMark: [33m65536[39m,
+          length: [33m231[39m,
+          corked: [33m0[39m,
+          onwrite: [36m[Function (anonymous)][39m,
+          writelen: [33m231[39m,
+          bufferedIndex: [33m0[39m,
+          pendingcb: [33m1[39m,
+          [32mSymbol(kState)[39m: [33m118260214[39m,
+          [32mSymbol(kBufferedValue)[39m: [1mnull[22m,
+          [32mSymbol(kWriteCbValue)[39m: [36m[Function: bound onFinish][39m,
+          [32mSymbol(kErroredValue)[39m: Error: getaddrinfo EAI_AGAIN vault
+          [90m    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)[39m {
+            errno: [33m-3001[39m,
+            code: [32m'EAI_AGAIN'[39m,
+            syscall: [32m'getaddrinfo'[39m,
+            hostname: [32m'vault'[39m
+          }
+        },
+        allowHalfOpen: [33mfalse[39m,
+        _maxListeners: [90mundefined[39m,
+        _eventsCount: [33m8[39m,
+        _sockname: [1mnull[22m,
+        _pendingData: [32m'GET /v1/secret/data/backend HTTP/1.1\r\n'[39m +
+          [32m'Accept: application/json, text/plain, */*\r\n'[39m +
+          [32m'X-Vault-Token: change_me_locally\r\n'[39m +
+          [32m'User-Agent: axios/1.20.0\r\n'[39m +
+          [32m'Accept-Encoding: gzip, compress, deflate, br\r\n'[39m +
+          [32m'Host: vault:8200\r\n'[39m +
+          [32m'Connection: keep-alive\r\n'[39m +
+          [32m'\r\n'[39m,
+        _pendingEncoding: [32m'latin1'[39m,
+        server: [1mnull[22m,
+        _server: [1mnull[22m,
+        timeout: [33m0[39m,
+        _httpMessage: [36m[Circular *2][39m,
+        parser: [1mnull[22m,
+        [32mSymbol(async_id_symbol)[39m: [33m10[39m,
+        [32mSymbol(kHandle)[39m: [1mnull[22m,
+        [32mSymbol(lastWriteQueueSize)[39m: [33m0[39m,
+        [32mSymbol(timeout)[39m: Timeout {
+          _idleTimeout: [33m-1[39m,
+          _idlePrev: [1mnull[22m,
+          _idleNext: [1mnull[22m,
+          _idleStart: [33m190[39m,
+          _onTimeout: [1mnull[22m,
+          _timerArgs: [90mundefined[39m,
+          _repeat: [1mnull[22m,
+          _destroyed: [33mtrue[39m,
+          [32mSymbol(refed)[39m: [33mfalse[39m,
+          [32mSymbol(kHasPrimitive)[39m: [33mfalse[39m,
+          [32mSymbol(asyncId)[39m: [33m9[39m,
+          [32mSymbol(triggerId)[39m: [33m0[39m,
+          [32mSymbol(kAsyncContextFrame)[39m: [90mundefined[39m
+        },
+        [32mSymbol(kBuffer)[39m: [1mnull[22m,
+        [32mSymbol(kBufferCb)[39m: [1mnull[22m,
+        [32mSymbol(kBufferGen)[39m: [1mnull[22m,
+        [32mSymbol(shapeMode)[39m: [33mtrue[39m,
+        [32mSymbol(kCapture)[39m: [33mfalse[39m,
+        [32mSymbol(kSetNoDelay)[39m: [33mtrue[39m,
+        [32mSymbol(kSetKeepAlive)[39m: [33mtrue[39m,
+        [32mSymbol(kSetKeepAliveInitialDelay)[39m: [33m60[39m,
+        [32mSymbol(kSetTOS)[39m: [90mundefined[39m,
+        [32mSymbol(kBytesRead)[39m: [33m0[39m,
+        [32mSymbol(kBytesWritten)[39m: [33m0[39m,
+        [32mSymbol(axios.http.socketListener)[39m: [33mtrue[39m,
+        [32mSymbol(axios.http.currentReq)[39m: [1mnull[22m
+      },
+      [32mSymbol(kOutHeaders)[39m: [Object: null prototype] {
+        accept: [ [32m'Accept'[39m, [32m'application/json, text/plain, */*'[39m ],
+        [32m'x-vault-token'[39m: [ [32m'X-Vault-Token'[39m, [32m'change_me_locally'[39m ],
+        [32m'user-agent'[39m: [ [32m'User-Agent'[39m, [32m'axios/1.20.0'[39m ],
+        [32m'accept-encoding'[39m: [ [32m'Accept-Encoding'[39m, [32m'gzip, compress, deflate, br'[39m ],
+        host: [ [32m'Host'[39m, [32m'vault:8200'[39m ]
+      },
+      [32mSymbol(errored)[39m: [1mnull[22m,
+      [32mSymbol(kHighWaterMark)[39m: [33m65536[39m,
+      [32mSymbol(kRejectNonStandardBodyWrites)[39m: [33mfalse[39m,
+      [32mSymbol(kPath)[39m: [32m'/v1/secret/data/backend'[39m,
+      [32mSymbol(kUniqueHeaders)[39m: [1mnull[22m,
+      [32mSymbol(kError)[39m: Error: getaddrinfo EAI_AGAIN vault
+      [90m    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)[39m {
+        errno: [33m-3001[39m,
+        code: [32m'EAI_AGAIN'[39m,
+        syscall: [32m'getaddrinfo'[39m,
+        hostname: [32m'vault'[39m
+      }
+    },
+    _currentUrl: [32m'http://vault:8200/v1/secret/data/backend'[39m,
+    _timeout: [1mnull[22m,
+    [32mSymbol(shapeMode)[39m: [33mtrue[39m,
+    [32mSymbol(kCapture)[39m: [33mfalse[39m
+  },
+  [cause]: Error: getaddrinfo EAI_AGAIN vault
+  [90m    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)[39m {
+    errno: [33m-3001[39m,
+    code: [32m'EAI_AGAIN'[39m,
+    syscall: [32m'getaddrinfo'[39m,
+    hostname: [32m'vault'[39m
+  }
+}
+
+Node.js v24.18.0
+[2mLoaded Prisma config from prisma.config.ts.
+[22m
+Prisma config detected, skipping environment variable loading.
+[2mPrisma schema loaded from prisma/schema.prisma[22m
+[2mDatasource "db": PostgreSQL database "placeholder", schema "public" at "localhost:5432"[22m
+
+[1m[31mError: [39m[22mP1001: Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`.
+\[1G[0K
