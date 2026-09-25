@@ -40,13 +40,13 @@ services:
     environment:
       DB_USER: ${DB_USER}
       DB_NAME: ${DB_NAME}
-      DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
+      DATABASE_URL: "postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}"
       VAULT_ADDR: http://vault:8200
       VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID}
 
     working_dir: /app
 
-    command: sh -c "npm ci && npx prisma generate && npm run start:dev 2>&1 | tee /var/log/app/backend.log"
+    command: sh -c "npm ci && npx prisma generate && npm run prisma:deploy && npm run start:dev 2>&1 | tee /var/log/app/backend.log"
 
     ports:
       - "3001:3000"
@@ -246,6 +246,10 @@ services:
       VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID}
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
     
     volumes:
       - ./vault/entrypoint.sh:/entrypoint.sh:ro
