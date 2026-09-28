@@ -10,6 +10,8 @@
 // to apply the changes to the actual db
 // new cmd:
 // docker compose exec backend sh -c '. <(npx tsx scripts/load-vault-env.ts) && npx prisma migrate deploy
+// docker compose exec backend sh -c \
+//  'eval "$(npx tsx scripts/load-vault-env.ts)" && npx prisma migrate deploy'
 
 //to visualize it in browser run docker compose exec backend npx prisma studio 
 

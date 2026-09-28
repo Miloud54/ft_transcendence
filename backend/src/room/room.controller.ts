@@ -32,4 +32,13 @@ export class RoomController {
     ) {
         return this.roomService.join(roomId, request.user.userId)
     }
+
+    @Post(':roomId/start')
+    @UseGuards(JwtAuthGuard)
+    start (
+        @Param('roomId') roomId: string,
+        @Req() request: AuthenticatedRequest,
+    ) {
+        return this.roomService.start(roomId, request.user.userId);
+    }
 }
