@@ -1,11 +1,45 @@
-import type { Metadata } from "next";
-import Link from "next/link";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Log in",
-};
+import { useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("http://localhost:3001/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(Array.isArray(data.message) ? data.message.join(", ") : data.message);
+        return;
+      }
+
+      localStorage.setItem("accessToken", data.accessToken);
+      localStorage.setItem("refreshToken", data.refreshToken);
+      router.push("/dashboard");
+    } catch {
+      setError("Could not reach the server. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <div className="w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-8 shadow-sm">
       <h1 className="text-xl font-semibold text-zinc-950">Log in</h1>
@@ -41,7 +75,7 @@ export default function LoginPage() {
         <div className="h-px flex-1 bg-zinc-200" />
       </div>
 
-      <form className="space-y-4">
+      <form className="space-y-4" onSubmit={handleSubmit}>
         <div>
           <label htmlFor="email" className="text-sm font-medium text-zinc-700">
             Email
@@ -52,6 +86,8 @@ export default function LoginPage() {
             type="email"
             required
             placeholder="name@example.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
             className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
         </div>
@@ -66,15 +102,20 @@ export default function LoginPage() {
             type="password"
             required
             minLength={8}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
             className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
         </div>
 
+        {error && <p className="text-sm text-[#d03b3b]">{error}</p>}
+
         <button
           type="submit"
-          className="w-full rounded-md bg-violet-700 py-2 text-sm font-medium text-white"
+          disabled={isSubmitting}
+          className="w-full rounded-md bg-violet-700 py-2 text-sm font-medium text-white disabled:opacity-60"
         >
-          Log in
+          {isSubmitting ? "Logging in..." : "Log in"}
         </button>
       </form>
 
