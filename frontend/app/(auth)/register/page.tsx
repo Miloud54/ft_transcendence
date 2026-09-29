@@ -33,7 +33,7 @@ export default function RegisterPage() {
 
       localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("refreshToken", data.refreshToken);
-      router.push("/dashboard");
+      router.push("/home");
     } catch {
       setError("Could not reach the server. Please try again.");
     } finally {

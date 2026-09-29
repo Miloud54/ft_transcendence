@@ -1,14 +1,16 @@
 import Link from "next/link";
-import { SidebarNav } from "@/components/sidebar-nav";
+import { MainNav } from "@/components/main-nav";
 import { Footer } from "@/components/footer";
-import { currentUser } from "@/lib/mock-data";
+import { CurrentUserProvider } from "@/lib/current-user-context";
+import { CurrentUserBadge } from "@/components/current-user-badge";
+import { AccountMenu } from "@/components/account-menu";
 
 const NAV_ITEMS = [
+  { href: "/home", label: "Home" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/games", label: "My games" },
   { href: "/friends", label: "Friends" },
   { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/settings", label: "Settings" },
 ];
 
 export default function AppLayout({
@@ -17,45 +19,27 @@ export default function AppLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="flex flex-1">
-      <aside className="flex w-64 flex-none flex-col bg-violet-700 py-6 text-white">
-        <Link href="/dashboard" className="flex items-center gap-2 px-4 font-semibold">
-          <span className="h-6 w-6 rounded bg-lime-400" />
-          Transcendix
-        </Link>
+    <CurrentUserProvider>
+      <div className="flex min-h-full flex-1 flex-col">
+        <header className="flex items-center justify-between gap-6 border-b border-zinc-200 bg-white px-6 py-3">
+          <div className="flex items-center gap-8">
+            <Link href="/home" className="flex items-center gap-2 font-semibold text-zinc-950">
+              <span className="h-6 w-6 rounded bg-lime-400" />
+              Transcendix
+            </Link>
+            <MainNav items={NAV_ITEMS} />
+          </div>
 
-        <input
-          type="search"
-          placeholder="Search..."
-          className="mx-4 mt-6 rounded-md bg-violet-600 px-3 py-2 text-sm text-white placeholder:text-violet-200 focus:outline-none"
-        />
-
-        <span className="mt-6 px-4 text-xs font-semibold uppercase tracking-wide text-violet-300">
-          Menu
-        </span>
-
-        <div className="mt-2 flex-1">
-          <SidebarNav items={NAV_ITEMS} />
-        </div>
-
-        <div className="mx-4 rounded-lg bg-violet-600 p-4 text-sm">
-          <p className="font-medium">Start a game now</p>
-          <button className="mt-3 w-full rounded-md bg-lime-400 py-2 text-sm font-semibold text-violet-900">
-            Create
-          </button>
-        </div>
-      </aside>
-
-      <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-end border-b border-zinc-200 px-8 py-4">
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <p className="text-sm font-medium text-zinc-950">{currentUser.username}</p>
-              <p className="text-xs text-zinc-500">{currentUser.email}</p>
-            </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-100 text-sm font-semibold text-violet-700">
-              {currentUser.username.charAt(0)}
-            </div>
+          <div className="flex items-center gap-4">
+            <input
+              type="search"
+              placeholder="Search..."
+              className="hidden rounded-md border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm outline-none placeholder:text-zinc-400 sm:block"
+            />
+            <AccountMenu />
+            <Link href="/dashboard">
+              <CurrentUserBadge />
+            </Link>
           </div>
         </header>
 
@@ -63,6 +47,6 @@ export default function AppLayout({
 
         <Footer />
       </div>
-    </div>
+    </CurrentUserProvider>
   );
 }

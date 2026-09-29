@@ -14,7 +14,7 @@ export function CallbackHandler() {
     if (accessToken && refreshToken) {
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("refreshToken", refreshToken);
-      router.replace("/dashboard");
+      router.replace("/home");
     } else {
       router.replace("/login");
     }
