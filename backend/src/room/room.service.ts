@@ -27,6 +27,13 @@ function toRoomResponse(room: RoomWithPlayers) {
   };
 }
 
+function toGameResponse(game: { game_id: bigint; status: GameStatus }) {
+    return {
+        id: game.game_id.toString(),
+        status: game.status.toLowerCase(),
+    };
+}
+
 @Injectable()
 export class RoomService {
     constructor(private readonly prisma: PrismaService) {}
@@ -104,12 +111,18 @@ export class RoomService {
             throw new ConflictException('Room is full');
         }
 
-        await this.prisma.roomPlayer.create({
-            data: {
-                room_id: room.room_id,
-                user_id: BigInt(userId),
-            },
-        });
+        const alreadyJoined = room.players.some(
+            (player) => player.user_id === BigInt(userId),
+        );
+
+        if (!alreadyJoined) {
+            await this.prisma.roomPlayer.create({
+                data: {
+                    room_id: room.room_id,
+                    user_id: BigInt(userId),
+                },
+            });
+        }
 
         const updatedRoom = await this.prisma.room.findUniqueOrThrow({
             where: { room_id: room.room_id },
