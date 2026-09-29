@@ -71,7 +71,8 @@ services:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 120s
   
 
   logs-init: # conteneur "jetable" : s'exécute une fois puis s'arrête
@@ -107,7 +108,8 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
     
     volumes:
       - db_data:/var/lib/postgresql
@@ -135,7 +137,8 @@ services:
       test: ["CMD-SHELL", "curl -s http://localhost:9200 || exit 1"]
       interval: 10s
       timeout: 10s
-      retries: 10
+      retries: 12
+      start_period: 180s
     
     volumes:
       - es_data:/usr/share/elasticsearch/data     # garde les données entre rédemarrages
@@ -225,7 +228,8 @@ services:
       test: ["CMD", "vault", "status"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
     
     ports:
       - "8200:8200"
