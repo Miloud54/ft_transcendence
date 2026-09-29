@@ -1,7 +1,8 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { getRoom, type Room } from "@/lib/room-api";
+import { useRouter } from "next/navigation";
+import { getRoom, startRoom, type Room } from "@/lib/room-api";
 
 export default function LobbyPage({
   params,
@@ -9,8 +10,10 @@ export default function LobbyPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
 
   useEffect(() => {
     getRoom(id)
@@ -26,6 +29,20 @@ export default function LobbyPage({
 
   if (!room) {
     return <p className="text-sm text-zinc-500">Loading room...</p>;
+  }
+
+  async function handleStart() {
+    setError(null);
+    setIsStarting(true);
+
+    try {
+      const result = await startRoom(id);
+      router.push(`/game/${result.game.id}`);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Could not start game");
+    } finally {
+      setIsStarting(false);
+    }
   }
 
   const slots = Array.from({ length: room.maxPlayers }, (_, index) => room.players[index] ?? null);
@@ -74,10 +91,16 @@ export default function LobbyPage({
       </div>
 
       <button
-        disabled={room.players.length < room.minPlayers}
+        type="button"
+        onClick={handleStart}
+        disabled={
+          isStarting ||
+          room.status !== "open" ||
+          room.players.length < room.minPlayers
+        }
         className="w-full rounded-md bg-lime-400 py-3 text-sm font-semibold text-violet-900 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-8"
       >
-        Start game
+        {isStarting ? "Starting..." : "Start game"}
       </button>
     </div>
   );

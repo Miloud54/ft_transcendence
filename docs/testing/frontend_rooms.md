@@ -126,9 +126,22 @@ Restore the token by logging in again.
 
 Requests from `http://localhost:3000` to `http://localhost:3001` should complete without a CORS error in the Console. A CORS error indicates that the backend is not running the current `enableCors` configuration or that the frontend is using a different origin.
 
-## 6. Optional manual join test
+## 6. Join a room
 
-There is not yet a join button in the frontend. The backend and frontend helper support joining, so it can be tested from the browser Console while logged in:
+1. Log in as a second user.
+2. On the dashboard, enter an existing room ID in **Room code**.
+3. Click **Join**.
+4. Confirm that the browser sends:
+
+  ```text
+  POST http://localhost:3001/rooms/<room-id>/join
+  ```
+
+5. Confirm that the browser redirects to `/lobby/<room-id>` and the second user appears in the player list.
+
+The request must include the logged-in user's Bearer token. A full room should return an error and keep the user on the dashboard.
+
+For a lower-level check, the same request can be sent from the browser Console while logged in:
 
 ```js
 fetch("http://localhost:3001/rooms/<room-id>/join", {
@@ -144,9 +157,25 @@ fetch("http://localhost:3001/rooms/<room-id>/join", {
 
 Expected result for an open room with space available: HTTP `201` and the updated room with the new player.
 
+## 7. Start a game
+
+1. Join the room with enough users to reach its minimum player count.
+2. Return to the lobby.
+3. Confirm that **Start game** is disabled while the minimum player count is not met.
+4. Once the minimum is met, click **Start game**.
+5. Confirm that the browser sends:
+
+  ```text
+  POST http://localhost:3001/rooms/<room-id>/start
+  ```
+
+6. Confirm that the response contains a room in `starting` status and a game ID.
+7. Confirm that the browser redirects to `/game/<game-id>`.
+
+Starting a room with too few players, a non-open room, or without being a room player should display the backend error.
+
 ## Current limitations
 
 - The lobby has no live polling or WebSocket updates. Refresh the page to fetch the latest player list.
-- The frontend has no join-room control yet.
-- The lobby Start button is only a visual control. The backend service has start logic, but no controller route is currently exposed for the browser to call.
+- The room list on the dashboard is still mock data; joining by an explicit room ID is the reliable path for testing.
 - The browser must use `localhost:3001` for the backend because browser requests originate outside the Docker network.

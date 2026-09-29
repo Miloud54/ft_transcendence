@@ -58,3 +58,21 @@ export function joinRoom(roomId: string) {
     method: "POST",
   });
 }
+
+export type StartRoomResponse = {
+  room: {
+    id: string;
+    status: string;
+  };
+  game: {
+    id: string;
+    status: string;
+  };
+};
+
+export function startRoom(roomId: string) {
+  return roomRequest<StartRoomResponse>(
+    `/rooms/${encodeURIComponent(roomId)}/start`,
+    { method: "POST" },
+  );
+}

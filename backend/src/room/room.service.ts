@@ -92,6 +92,14 @@ export class RoomService {
             throw new ConflictException('Room is not open');
         }
 
+        const alreadyJoined = room.players.some(
+            (player) => player.user_id === BigInt(userId),
+        );
+
+        if (alreadyJoined) {
+            return this.find(roomId);
+        }
+
         if (room.players.length >= room.max_players) {
             throw new ConflictException('Room is full');
         }
@@ -144,19 +152,28 @@ export class RoomService {
         }
 
         return this.prisma.$transaction(async (transaction) => {
-            const updatedRoom = await transaction.room.update({
-                where: { room_id: room.room_id },
-                data: { status: RoomStatus.STARTING },
-            });
+        const updatedRoom = await transaction.room.update({
+            where: { room_id: room.room_id },
+            data: { status: RoomStatus.STARTING },
+        });
 
-            const game = await transaction.game.create({
-                data: {
-                    room_id: room.room_id,
-                    status: GameStatus.COUNTDOWN,
-                },
-            });
+        const game = await transaction.game.create({
+            data: {
+            room_id: room.room_id,
+            status: GameStatus.COUNTDOWN,
+            },
+        });
 
-            return { room: updatedRoom, game };
+        return {
+            room: {
+            id: updatedRoom.room_id.toString(),
+            status: updatedRoom.status.toLowerCase(),
+            },
+            game: {
+            id: game.game_id.toString(),
+            status: game.status.toLowerCase(),
+            },
+        };
         });
     }
 }
