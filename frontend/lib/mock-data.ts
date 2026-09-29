@@ -136,3 +136,15 @@ export const mockMatchHistory: MockMatch[] = [
   { id: "g2", articleTitle: "Napoleon Bonaparte", result: "loss", playedAt: "2026-08-25", opponents: ["Bru"] },
   { id: "g3", articleTitle: "Photosynthesis", result: "win", playedAt: "2026-08-22", opponents: ["Odile", "Maria", "Bru", "Zoé"] },
 ];
+
+export type MockOpenRoom = {
+  id: string;
+  hostUsername: string;
+  playerCount: number;
+  maxPlayers: number;
+};
+
+export const mockOpenRooms: MockOpenRoom[] = [
+  { id: "1", hostUsername: "Odile", playerCount: 2, maxPlayers: 6 },
+  { id: "2", hostUsername: "Maria", playerCount: 4, maxPlayers: 6 },
+];
