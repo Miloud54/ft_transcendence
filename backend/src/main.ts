@@ -10,6 +10,7 @@ async function bootstrap() {
   process.env.JWT_SECRET = secrets.jwt_secret;
 
   const app = await NestFactory.create(AppModule);
+  app.enableCors({ origin: 'http://localhost:3000' });
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
   );

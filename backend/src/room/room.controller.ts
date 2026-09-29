@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards, Req, Param, } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards, Req, Param, } from '@nestjs/common';
 import { RoomService } from './room.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CreateRoomDto } from './create.room.dto';
@@ -14,6 +14,12 @@ type AuthenticatedRequest = Request & {
 @Controller('rooms')
 export class RoomController {
     constructor(private readonly roomService: RoomService) {}
+
+    @Get(':roomId')
+    @UseGuards(JwtAuthGuard)
+    get(@Param('roomId') roomId: string) {
+        return this.roomService.find(roomId);
+    }
 
     @Post()
     @UseGuards(JwtAuthGuard)

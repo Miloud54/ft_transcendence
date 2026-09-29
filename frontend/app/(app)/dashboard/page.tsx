@@ -3,6 +3,7 @@ import { mockStats } from "@/lib/mock-data";
 import { StatTile } from "@/components/stat-tile";
 import { LineChart } from "@/components/charts/line-chart";
 import { DonutChart } from "@/components/charts/donut-chart";
+import { CreateRoomForm } from "@/components/create-room-form";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -18,6 +19,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold text-zinc-950">My dashboard</h1>
+
+      <CreateRoomForm />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <StatTile label="Games played" value={mockStats.gamesPlayed} trend={mockStats.gamesPlayedTrend} />

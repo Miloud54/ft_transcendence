@@ -31,6 +31,25 @@ function toRoomResponse(room: RoomWithPlayers) {
 export class RoomService {
     constructor(private readonly prisma: PrismaService) {}
 
+    async find(roomId: string) {
+        const room = await this.prisma.room.findUnique({
+            where: { room_id: BigInt(roomId) },
+            include: {
+                players: {
+                    include: {
+                        users: true,
+                    },
+                },
+            },
+        });
+
+        if (!room) {
+            throw new NotFoundException('Room not found');
+        }
+
+        return toRoomResponse(room);
+    }
+
     async create(userId: string, dto: CreateRoomDto) {
         if (dto.minPlayers > dto.maxPlayers) {
             throw new BadRequestException('minPlayers cannot be greater than maxPlayers',);
