@@ -3,6 +3,10 @@ import vault from 'node-vault';
 interface VaultSecretData {
     db_password: string;
     jwt_secret: string;
+    google_client_id: string;
+    google_client_secret: string;
+    discord_client_id: string;
+    discord_client_secret: string;
   }
   
   interface VaultKvV2Response {

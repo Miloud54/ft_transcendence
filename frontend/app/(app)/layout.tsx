@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SidebarNav } from "@/components/sidebar-nav";
+import { Footer } from "@/components/footer";
 import { currentUser } from "@/lib/mock-data";
 
 const NAV_ITEMS = [
@@ -59,6 +60,8 @@ export default function AppLayout({
         </header>
 
         <main className="flex-1 px-8 py-8">{children}</main>
+
+        <Footer />
       </div>
     </div>
   );
