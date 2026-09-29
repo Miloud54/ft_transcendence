@@ -1,0 +1,45 @@
+#file added on 29/29 by bru 
+#the other frontend/Dockerfile is in dev mode
+#we keep it for now so that the dev mode keeps on working for everyone
+
+# Step 1: install dependencies
+FROM node:24.18.0-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+
+# Step 2: build the site
+FROM node:24.18.0-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+# Step 3: the final LIGHT image
+FROM node:24.18.0-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+
+# Good practice: not running as root
+USER node
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]
+
+# Explanations:
+
+# 3 steps: the two first steps hold the heavy tools (npm, compilation, source code)
+# Only the third is kept. Thus, the final image only keeps the site ready to be launched.
+
+# USER node : the container doesn't launch in root, safer.
+
+#HOSTNAME=0.0.0.0 : necessary for the server not to only listen in its container
+# Otherwise, the WAF couldn't reach it !
