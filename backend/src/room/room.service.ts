@@ -111,18 +111,12 @@ export class RoomService {
             throw new ConflictException('Room is full');
         }
 
-        const alreadyJoined = room.players.some(
-            (player) => player.user_id === BigInt(userId),
-        );
-
-        if (!alreadyJoined) {
-            await this.prisma.roomPlayer.create({
-                data: {
-                    room_id: room.room_id,
-                    user_id: BigInt(userId),
-                },
-            });
-        }
+        await this.prisma.roomPlayer.create({
+            data: {
+                room_id: room.room_id,
+                user_id: BigInt(userId),
+            },
+        });
 
         const updatedRoom = await this.prisma.room.findUniqueOrThrow({
             where: { room_id: room.room_id },

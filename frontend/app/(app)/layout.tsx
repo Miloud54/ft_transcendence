@@ -4,6 +4,7 @@ import { Footer } from "@/components/footer";
 import { CurrentUserProvider } from "@/lib/current-user-context";
 import { CurrentUserBadge } from "@/components/current-user-badge";
 import { AccountMenu } from "@/components/account-menu";
+import { RoomChat } from "@/components/room-chat";
 
 const NAV_ITEMS = [
   { href: "/home", label: "Home" },
@@ -46,6 +47,7 @@ export default function AppLayout({
         <main className="flex-1 px-8 py-8">{children}</main>
 
         <Footer />
+        <RoomChat />
       </div>
     </CurrentUserProvider>
   );

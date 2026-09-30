@@ -117,8 +117,12 @@ export class AuthService {
   async loginWithOAuth(profile: OAuthProfile) {
     let user =
       profile.provider === 'google'
-        ? await this.prisma.user.findUnique({ where: { googleId: profile.providerId } })
-        : await this.prisma.user.findUnique({ where: { discordId: profile.providerId } });
+        ? await this.prisma.user.findUnique({
+            where: { googleId: profile.providerId },
+          })
+        : await this.prisma.user.findUnique({
+            where: { discordId: profile.providerId },
+          });
 
     if (!user && profile.email) {
       const existingByEmail = await this.prisma.user.findUnique({
@@ -146,7 +150,9 @@ export class AuthService {
         );
       }
 
-      const username = await this.generateUniqueUsername(profile.displayName ?? profile.provider);
+      const username = await this.generateUniqueUsername(
+        profile.displayName ?? profile.provider,
+      );
 
       user =
         profile.provider === 'google'
@@ -180,7 +186,8 @@ export class AuthService {
   }
 
   private async generateUniqueUsername(base: string) {
-    const sanitized = base.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) || 'player';
+    const sanitized =
+      base.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) || 'player';
     let username = sanitized;
     let suffix = 0;
 
