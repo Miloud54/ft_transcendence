@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { mockStats } from "@/lib/mock-data";
 import { StatTile } from "@/components/stat-tile";
 import { LineChart } from "@/components/charts/line-chart";
@@ -21,6 +22,11 @@ const TEMPERATURE_BANDS = [
   { label: "Warm", value: mockStats.averageScoreByDifficulty[1].value, color: "linear-gradient(to right, #c8ff16, #5941ff)" },
   { label: "Hot", value: mockStats.averageScoreByDifficulty[2].value, color: "#5941ff" },
 ];
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0 },
+};
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -49,14 +55,20 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
+      className="space-y-6"
+    >
+      <motion.div variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }}>
         <h1 className="text-2xl font-semibold text-zinc-950">Dashboard</h1>
         <p className="text-sm text-zinc-500">Your profile and stats on Transcendix.</p>
-      </div>
+      </motion.div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div
+      <motion.div variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="grid gap-4 lg:grid-cols-3">
+        <motion.div
+          whileHover={{ y: -4 }}
           className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
           style={{ borderTopColor: "#5941ff" }}
         >
@@ -87,13 +99,16 @@ export default function ProfilePage() {
               <dd className="font-medium text-zinc-950">{profile.status}</dd>
             </div>
           </dl>
-        </div>
+        </motion.div>
 
         <StatTile label="Games played" value={mockStats.gamesPlayed} trend={mockStats.gamesPlayedTrend} />
         <StatTile label="Wins" value={mockStats.wins} trend={mockStats.winsTrend} accent="#c8ff16" />
-      </div>
+      </motion.div>
 
-      <div
+      <motion.div
+        variants={fadeUp}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        whileHover={{ y: -4 }}
         className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
         style={{ borderTopColor: "#5941ff" }}
       >
@@ -111,10 +126,11 @@ export default function ProfilePage() {
             </div>
           ))}
         </div>
-      </div>
+      </motion.div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div
+      <motion.div variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="grid gap-4 lg:grid-cols-2">
+        <motion.div
+          whileHover={{ y: -4 }}
           className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
           style={{ borderTopColor: "#5941ff" }}
         >
@@ -123,9 +139,10 @@ export default function ProfilePage() {
           <div className="mt-4">
             <LineChart data={mockStats.progression} />
           </div>
-        </div>
+        </motion.div>
 
-        <div
+        <motion.div
+          whileHover={{ y: -4 }}
           className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
           style={{ borderTopColor: "#c8ff16" }}
         >
@@ -138,8 +155,8 @@ export default function ProfilePage() {
               ]}
             />
           </div>
-        </div>
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </motion.div>
   );
 }

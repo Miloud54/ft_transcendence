@@ -1,3 +1,7 @@
+"use client";
+
+import { motion } from "framer-motion";
+
 type StatTileProps = {
   label: string;
   value: string | number;
@@ -7,7 +11,8 @@ type StatTileProps = {
 
 export function StatTile({ label, value, trend, accent = "#5941ff" }: StatTileProps) {
   return (
-    <div
+    <motion.div
+      whileHover={{ y: -4 }}
       className="rounded-xl border border-zinc-200 border-t-4 bg-white p-5"
       style={{ borderTopColor: accent }}
     >
@@ -16,6 +21,6 @@ export function StatTile({ label, value, trend, accent = "#5941ff" }: StatTilePr
         <span className="text-2xl font-semibold tabular-nums text-zinc-950">{value}</span>
         {trend && <span className="text-xs font-medium text-[#0ca30c]">{trend}</span>}
       </div>
-    </div>
+    </motion.div>
   );
 }
