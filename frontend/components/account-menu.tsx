@@ -17,7 +17,6 @@ function seedFromAvatarUrl(url: string) {
 
 export function AccountMenu() {
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [username, setUsername] = useState("");
   const [seedIndex, setSeedIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -86,9 +85,6 @@ const { user, setUser } = useCurrentUser();
       </button>
 
       <Modal isOpen={isOpen} onClose={handleClose} title="Account settings">
-        {isLoading ? (
-          <p className="text-sm text-zinc-500">Loading...</p>
-        ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <p className="text-sm font-medium text-zinc-700">Avatar</p>
@@ -143,7 +139,6 @@ const { user, setUser } = useCurrentUser();
               {isSubmitting ? "Saving..." : "Save changes"}
             </button>
           </form>
-        )}
       </Modal>
     </>
   );
