@@ -183,6 +183,7 @@ services:
 
     volumes:
       - ./logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:Z
+      - ./logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:Z
       - app_logs:/var/log/app:ro
 
     networks:
