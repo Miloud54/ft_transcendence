@@ -3,6 +3,7 @@
 import { useCallback, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/modal";
+import { PasswordInput } from "@/components/password-input";
 import { useCurrentUser } from "@/lib/current-user-context";
 
 const AVATAR_SEEDS = ["Nova", "Comet", "Pixel", "Blaze", "Echo", "Juno", "Astra", "Rex", "Luna", "Zephyr"];
@@ -23,6 +24,14 @@ export function AccountMenu() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
   const handleClose = useCallback(() => setIsOpen(false), []);
 
   const { user, setUser } = useCurrentUser();
@@ -81,6 +90,47 @@ export function AccountMenu() {
       setError("Could not reach the server. Please try again.");
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handlePasswordSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+
+    setIsChangingPassword(true);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch("http://localhost:3001/users/me/password", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setPasswordError(Array.isArray(data.message) ? data.message.join(", ") : data.message);
+        return;
+      }
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setPasswordSuccess(true);
+    } catch {
+      setPasswordError("Could not reach the server. Please try again.");
+    } finally {
+      setIsChangingPassword(false);
     }
   }
 
@@ -150,10 +200,66 @@ export function AccountMenu() {
           </button>
         </form>
 
+        <form onSubmit={handlePasswordSubmit} className="mt-6 space-y-4 border-t border-zinc-200 pt-6">
+          <p className="text-sm font-medium text-zinc-700">Change password</p>
+
+          <div>
+            <label htmlFor="current-password" className="text-sm font-medium text-zinc-700">
+              Current password
+            </label>
+            <PasswordInput
+              id="current-password"
+              name="currentPassword"
+              required
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="new-password" className="text-sm font-medium text-zinc-700">
+              New password
+            </label>
+            <PasswordInput
+              id="new-password"
+              name="newPassword"
+              required
+              minLength={8}
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="confirm-new-password" className="text-sm font-medium text-zinc-700">
+              Confirm new password
+            </label>
+            <PasswordInput
+              id="confirm-new-password"
+              name="confirmNewPassword"
+              required
+              minLength={8}
+              value={confirmNewPassword}
+              onChange={(event) => setConfirmNewPassword(event.target.value)}
+            />
+          </div>
+
+          {passwordError && <p className="text-sm text-[#d03b3b]">{passwordError}</p>}
+          {passwordSuccess && <p className="text-sm text-[#0ca30c]">Password updated.</p>}
+
+          <button
+            type="submit"
+            disabled={isChangingPassword}
+            className="w-full rounded-md bg-violet-700 py-2 text-sm font-medium text-white disabled:opacity-60"
+          >
+            {isChangingPassword ? "Updating..." : "Update password"}
+          </button>
+        </form>
+
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full rounded-md border border-zinc-300 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
+          className="mt-6 w-full rounded-md border border-zinc-300 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
         >
           Log out
         </button>

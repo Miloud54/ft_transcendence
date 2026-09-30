@@ -10,12 +10,19 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -124,6 +131,21 @@ export default function RegisterPage() {
             onChange={(event) => setPassword(event.target.value)}
           />
         </div>
+
+        <div>
+          <label htmlFor="confirm-password" className="text-sm font-medium text-zinc-700">
+            Confirm password
+          </label>
+          <PasswordInput
+            id="confirm-password"
+            name="confirmPassword"
+            required
+            minLength={8}
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+          />
+        </div>
+
 
         {error && <p className="text-sm text-[#d03b3b]">{error}</p>}
 

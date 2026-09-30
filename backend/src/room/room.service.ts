@@ -115,6 +115,12 @@ export class RoomService {
             throw new ConflictException('Room is full');
         }
 
+        await this.prisma.roomPlayer.create({
+            data: {
+                room_id: room.room_id,
+                user_id: BigInt(userId),
+            },
+        });
         // const alreadyJoined = room.players.some(
         //     (player) => player.user_id === BigInt(userId),
         // );
