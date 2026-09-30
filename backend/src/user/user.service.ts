@@ -1,7 +1,16 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserStatus } from '../../generated/prisma';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+
+const SALT_ROUNDS = 10;
 
 type UserRecord = {
   user_id: bigint;
@@ -64,5 +73,35 @@ export class UserService {
     });
 
     return toPublicUser(user);
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { user_id: BigInt(userId) },
+    });
+
+    if (!user || !user.password) {
+      throw new UnauthorizedException(
+        'Password change is not available for this account',
+      );
+    }
+
+    const passwordMatches = await bcrypt.compare(
+      dto.currentPassword,
+      user.password,
+    );
+
+    if (!passwordMatches) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.newPassword, SALT_ROUNDS);
+
+    await this.prisma.user.update({
+      where: { user_id: BigInt(userId) },
+      data: { password: hashedPassword },
+    });
+
+    return { message: 'Password updated' };
   }
 }

@@ -2,12 +2,36 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { useCurrentUser } from "@/lib/current-user-context";
+import type { RoomPlayer } from "@/lib/room-api";
+import { RoomChat } from "@/components/room-chat";
 
-const INITIAL_ATTEMPTS = [
-  { username: "You", word: "tower", proximity: 1000, color: "bg-lime-400" },
-  { username: "Odile", word: "metallic", proximity: 842, color: "bg-violet-500" },
-  { username: "Maria", word: "iron", proximity: 615, color: "bg-violet-300" },
+const FALLBACK_TEAMMATES = [
+  { username: "Odile", avatarUrl: null as string | null, color: "bg-violet-500" },
+  { username: "Maria", avatarUrl: null as string | null, color: "bg-violet-300" },
 ];
+
+function buildInitialAttempts(players: RoomPlayer[], you: RoomPlayer | undefined) {
+  const teammates = players.filter((player) => player.id !== you?.id);
+
+  return [
+    { username: "You", avatarUrl: you?.avatarUrl ?? null, word: "tower", proximity: 1000, color: "bg-lime-400" },
+    {
+      username: teammates[0]?.username ?? FALLBACK_TEAMMATES[0].username,
+      avatarUrl: teammates[0]?.avatarUrl ?? FALLBACK_TEAMMATES[0].avatarUrl,
+      word: "metallic",
+      proximity: 842,
+      color: FALLBACK_TEAMMATES[0].color,
+    },
+    {
+      username: teammates[1]?.username ?? FALLBACK_TEAMMATES[1].username,
+      avatarUrl: teammates[1]?.avatarUrl ?? FALLBACK_TEAMMATES[1].avatarUrl,
+      word: "iron",
+      proximity: 615,
+      color: FALLBACK_TEAMMATES[1].color,
+    },
+  ];
+}
 
 const ARTICLE_PARAGRAPHS: ArticleWord[][] = [
   [
@@ -106,14 +130,21 @@ function ArticleText({ paragraph }: { paragraph: ArticleWord[] }) {
   );
 }
 
-export function GameBoard({ gameId }: { gameId: string }) {
+export function GameBoard({ gameId, players }: { gameId: string; players: RoomPlayer[] }) {
+  const { user } = useCurrentUser();
+  const you = players.find((player) => player.id === user?.id);
+
   const [guess, setGuess] = useState("");
-  const [attempts, setAttempts] = useState(INITIAL_ATTEMPTS);
+  const [attempts, setAttempts] = useState(() => buildInitialAttempts(players, you));
   const [discoveredCount, setDiscoveredCount] = useState(3);
   const [isSolved, setIsSolved] = useState(false);
   const [notice, setNotice] = useState("Find the word closest to the secret article.");
-  const [bestScore, setBestScore] = useState(
-    Math.max(...INITIAL_ATTEMPTS.filter((attempt) => attempt.username === "You").map((attempt) => attempt.proximity)),
+  const [bestScore, setBestScore] = useState(() =>
+    Math.max(
+      ...buildInitialAttempts(players, you)
+        .filter((attempt) => attempt.username === "You")
+        .map((attempt) => attempt.proximity),
+    ),
   );
   const [attemptCount, setAttemptCount] = useState(0);
 
@@ -130,7 +161,7 @@ export function GameBoard({ gameId }: { gameId: string }) {
     const isCorrect = word.toLowerCase() === "eiffel" || word.toLowerCase() === "eiffel tower";
 
     setAttempts((currentAttempts) => [
-      { username: "You", word, proximity, color: "bg-lime-400" },
+      { username: "You", avatarUrl: you?.avatarUrl ?? null, word, proximity, color: "bg-lime-400" },
       ...currentAttempts.filter((attempt) => attempt.username !== "You"),
     ]);
     setBestScore((currentBest: number) => Math.max(currentBest, proximity));
@@ -257,7 +288,11 @@ export function GameBoard({ gameId }: { gameId: string }) {
             <div className="mt-4 space-y-3">
               {attempts.map((attempt, index) => (
                 <div key={`${attempt.username}-${attempt.word}-${index}`} className="flex items-center gap-3">
-                  <span className={`flex h-8 w-8 items-center justify-center rounded-full ${attempt.color} text-xs font-bold text-zinc-900`}>{attempt.username.charAt(0)}</span>
+                  {attempt.avatarUrl ? (
+                    <img src={attempt.avatarUrl} alt={attempt.username} className="h-8 w-8 rounded-full bg-zinc-100" />
+                  ) : (
+                    <span className={`flex h-8 w-8 items-center justify-center rounded-full ${attempt.color} text-xs font-bold text-zinc-900`}>{attempt.username.charAt(0)}</span>
+                  )}
                   <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-zinc-800">{attempt.username}</p><p className="truncate text-xs text-zinc-400">{attempt.word}</p></div>
                   <span className="font-mono text-sm font-semibold text-zinc-700">{attempt.proximity}</span>
                 </div>
