@@ -8,18 +8,23 @@ export default function MarketingLayout({
 }>) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex items-center justify-between border-b border-zinc-200 px-6 py-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
+      <header className="flex items-center justify-between bg-violet-700 px-6 py-3">
+        <Link href="/" className="flex items-center gap-2 font-semibold text-white">
           <span className="h-6 w-6 rounded bg-lime-400" />
           Transcendix
         </Link>
-        <nav className="flex items-center gap-6 text-sm text-zinc-600">
-          <Link href="/how-to-play">How to play</Link>
-          <Link href="/leaderboard">Leaderboard</Link>
-          <Link href="/login" className="font-medium text-zinc-950">
-            Account
+
+        <div className="flex items-center gap-3">
+          <Link href="/login" className="text-sm font-medium text-violet-100 hover:text-white">
+            Log in
           </Link>
-        </nav>
+          <Link
+            href="/register"
+            className="rounded-md bg-white px-4 py-2 text-sm font-medium text-zinc-950 hover:bg-violet-50"
+          >
+            Sign up
+          </Link>
+        </div>
       </header>
 
       <main className="flex flex-1 flex-col">{children}</main>

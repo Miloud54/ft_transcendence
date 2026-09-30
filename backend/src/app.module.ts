@@ -8,6 +8,7 @@ import { RoomModule } from './room/room.module';
 import { GameModule } from './game/game.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { AuthModule } from './auth/auth.module';
     RoomModule,
     GameModule,
     AuthModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

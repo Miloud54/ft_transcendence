@@ -1,89 +1,102 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { mockStats, mockOpenRooms } from "@/lib/mock-data";
+"use client";
+
+import { useEffect, useState } from "react";
+import { mockStats } from "@/lib/mock-data";
 import { StatTile } from "@/components/stat-tile";
 import { LineChart } from "@/components/charts/line-chart";
 import { DonutChart } from "@/components/charts/donut-chart";
-import { CreateRoomForm } from "@/components/create-room-form";
-import { JoinRoomForm } from "@/components/join-room-form";
 
-export const metadata: Metadata = {
-  title: "Dashboard",
+type Profile = {
+  id: string;
+  username: string;
+  email: string;
+  avatar: string;
+  xp: number;
+  lvl: number;
+  status: string;
 };
 
 const TEMPERATURE_BANDS = [
-  { label: "Cold", value: mockStats.averageScoreByDifficulty[0].value, color: "#2a78d6" },
-  { label: "Warm", value: mockStats.averageScoreByDifficulty[1].value, color: "#a1a1aa" },
-  { label: "Hot", value: mockStats.averageScoreByDifficulty[2].value, color: "#e34948" },
+  { label: "Cold", value: mockStats.averageScoreByDifficulty[0].value, color: "#a3e635" },
+  { label: "Warm", value: mockStats.averageScoreByDifficulty[1].value, color: "linear-gradient(to right, #a3e635, #6d28d9)" },
+  { label: "Hot", value: mockStats.averageScoreByDifficulty[2].value, color: "#6d28d9" },
 ];
 
-export default function DashboardPage() {
+export default function ProfilePage() {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+
+    fetch("http://localhost:3001/users/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Could not load your profile.");
+        return response.json();
+      })
+      .then(setProfile)
+      .catch((err: Error) => setError(err.message));
+  }, []);
+
+  if (error) {
+    return <p className="text-sm text-[#d03b3b]">{error}</p>;
+  }
+
+  if (!profile) {
+    return <p className="text-sm text-zinc-500">Loading your dashboard...</p>;
+  }
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-950">My dashboard</h1>
-        <p className="text-sm text-zinc-500">Create a game or join one to get started.</p>
+        <h1 className="text-2xl font-semibold text-zinc-950">Dashboard</h1>
+        <p className="text-sm text-zinc-500">Your profile and stats on Transcendix.</p>
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-violet-800 bg-gradient-to-br from-violet-700 to-violet-900 p-6 text-white sm:p-8">
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div className="flex flex-col justify-between rounded-xl bg-white/10 p-5">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div
+          className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
+          style={{ borderTopColor: "#6d28d9" }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-violet-600">Profile</p>
+          <div className="mt-3 flex items-center gap-4">
+            <img
+              src={profile.avatar}
+              alt={profile.username}
+              className="h-16 w-16 rounded-full bg-zinc-100"
+            />
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-violet-200">New game</p>
-              <p className="mt-1 text-lg font-semibold">Create your own room</p>
-              <p className="mt-1 text-sm text-violet-200">Choose the number of players and invite your friends.</p>
+              <p className="text-lg font-semibold text-zinc-950">{profile.username}</p>
+              <p className="text-sm text-zinc-500">{profile.email}</p>
             </div>
-            <Link
-              href="/lobby/1"
-              className="mt-4 inline-flex items-center justify-center rounded-md bg-lime-400 px-5 py-2.5 text-sm font-semibold text-violet-950 hover:bg-lime-300"
-            >
-              Create a game
-            </Link>
           </div>
 
-          <div className="flex flex-col justify-between rounded-xl bg-white/10 p-5">
+          <dl className="mt-6 grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-violet-200">Join</p>
-              <p className="mt-1 text-lg font-semibold">Got a room code?</p>
-              <p className="mt-1 text-sm text-violet-200">Enter it to jump straight into the room.</p>
+              <dt className="text-zinc-400">Level</dt>
+              <dd className="font-medium text-zinc-950">{profile.lvl}</dd>
             </div>
-            <div className="mt-4">
-              <JoinRoomForm />
+            <div>
+              <dt className="text-zinc-400">XP</dt>
+              <dd className="font-medium text-zinc-950">{profile.xp}</dd>
             </div>
-          </div>
+            <div>
+              <dt className="text-zinc-400">Status</dt>
+              <dd className="font-medium text-zinc-950">{profile.status}</dd>
+            </div>
+          </dl>
         </div>
 
-        <div className="mt-6 border-t border-white/15 pt-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-violet-200">Open games</p>
-          <div className="mt-3 space-y-2">
-            {mockOpenRooms.map((room) => (
-              <div
-                key={room.id}
-                className="flex items-center justify-between rounded-lg bg-white/10 px-4 py-2.5"
-              >
-                <span className="text-sm">
-                  <strong>{room.hostUsername}</strong>&apos;s room · {room.playerCount}/{room.maxPlayers} players
-                </span>
-                <Link
-                  href={`/lobby/${room.id}`}
-                  className="rounded-md bg-white/15 px-3 py-1.5 text-xs font-semibold hover:bg-white/25"
-                >
-                  Join
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <CreateRoomForm />
-
-      <div className="grid gap-4 sm:grid-cols-2">
         <StatTile label="Games played" value={mockStats.gamesPlayed} trend={mockStats.gamesPlayedTrend} />
-        <StatTile label="Wins" value={mockStats.wins} trend={mockStats.winsTrend} />
+        <StatTile label="Wins" value={mockStats.wins} trend={mockStats.winsTrend} accent="#a3e635" />
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-6">
+      <div
+        className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
+        style={{ borderTopColor: "#6d28d9" }}
+      >
         <h2 className="text-sm font-medium text-zinc-700">Average attempt temperature</h2>
         <div className="mt-4 space-y-3">
           {TEMPERATURE_BANDS.map((band) => (
@@ -92,7 +105,7 @@ export default function DashboardPage() {
               <div className="h-2 flex-1 rounded-full bg-zinc-100">
                 <div
                   className="h-2 rounded-full"
-                  style={{ width: `${band.value * 100}%`, backgroundColor: band.color }}
+                  style={{ width: `${band.value * 100}%`, background: band.color }}
                 />
               </div>
             </div>
@@ -101,21 +114,27 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-zinc-200 bg-white p-6">
-          <h2 className="text-sm font-medium text-zinc-700">Progression dans le temps</h2>
-          <p className="text-xs text-zinc-400">Parties jouées par mois</p>
+        <div
+          className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
+          style={{ borderTopColor: "#6d28d9" }}
+        >
+          <h2 className="text-sm font-medium text-zinc-700">Progression over time</h2>
+          <p className="text-xs text-zinc-400">Games played per month</p>
           <div className="mt-4">
             <LineChart data={mockStats.progression} />
           </div>
         </div>
 
-        <div className="rounded-xl border border-zinc-200 bg-white p-6">
-          <h2 className="text-sm font-medium text-zinc-700">Répartition</h2>
+        <div
+          className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
+          style={{ borderTopColor: "#a3e635" }}
+        >
+          <h2 className="text-sm font-medium text-zinc-700">Breakdown</h2>
           <div className="mt-4">
             <DonutChart
               data={[
-                { label: "Victoires", value: mockStats.distribution.wins, color: "#65a30d" },
-                { label: "Défaites", value: mockStats.distribution.losses, color: "#6d28d9" },
+                { label: "Wins", value: mockStats.distribution.wins, color: "#a3e635" },
+                { label: "Losses", value: mockStats.distribution.losses, color: "#6d28d9" },
               ]}
             />
           </div>
