@@ -9,7 +9,7 @@ type StatTileProps = {
   accent?: string;
 };
 
-export function StatTile({ label, value, trend, accent = "#5941ff" }: StatTileProps) {
+export function StatTile({ label, value, trend, accent = "#4d37fb" }: StatTileProps) {
   return (
     <motion.div
       whileHover={{ y: -4 }}

@@ -5,7 +5,6 @@ import { CurrentUserProvider } from "@/lib/current-user-context";
 import { CurrentUserBadge } from "@/components/current-user-badge";
 import { AccountMenu } from "@/components/account-menu";
 import { RoomChat } from "@/components/room-chat";
-import Image from "next/image";
 
 const NAV_ITEMS = [
   { href: "/home", label: "Home" },
@@ -23,10 +22,10 @@ export default function AppLayout({
   return (
     <CurrentUserProvider>
       <div className="flex min-h-full flex-1 flex-col">
-        <header className="flex items-center justify-between gap-6 border-b border-zinc-200 bg-white px-6 py-2">
+        <header className="flex items-center justify-between gap-6 bg-violet-700 px-6 py-2">
           <div className="flex items-center gap-8">
             <Link href="/home" className="flex items-center" aria-label="Transcendix">
-              <video autoPlay loop muted playsInline className="h-16 w-auto" src="/logo.mp4" />
+              <video autoPlay loop muted playsInline className="h-16 w-auto" src="/logo-violet.mp4" />
             </Link>
             <MainNav items={NAV_ITEMS} />
           </div>
@@ -35,7 +34,7 @@ export default function AppLayout({
             <input
               type="search"
               placeholder="Search..."
-              className="hidden rounded-md border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm outline-none placeholder:text-zinc-400 sm:block"
+              className="hidden rounded-md border border-white/20 bg-white/10 px-3 py-1.5 text-sm text-white outline-none placeholder:text-violet-200 sm:block"
             />
             <AccountMenu />
             <Link href="/dashboard">
