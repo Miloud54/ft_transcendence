@@ -1,3 +1,6 @@
 node_modules
 .next
 .git
+.env //this line and the 2 following added by bru for docker not to copy the useless or heavy files into the image
+.env.*
+Dockerfile*

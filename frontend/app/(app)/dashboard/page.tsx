@@ -5,6 +5,8 @@ import { mockStats } from "@/lib/mock-data";
 import { StatTile } from "@/components/stat-tile";
 import { LineChart } from "@/components/charts/line-chart";
 import { DonutChart } from "@/components/charts/donut-chart";
+import { CreateRoomForm } from "@/components/create-room-form";
+import { JoinRoomForm } from "@/components/join-room-form";
 
 type Profile = {
   id: string;
@@ -85,6 +87,9 @@ export default function ProfilePage() {
           </dl>
         </div>
 
+      <CreateRoomForm />
+        
+      <div className="grid gap-4 sm:grid-cols-2">
         <StatTile label="Games played" value={mockStats.gamesPlayed} trend={mockStats.gamesPlayedTrend} />
         <StatTile label="Wins" value={mockStats.wins} trend={mockStats.winsTrend} />
       </div>
