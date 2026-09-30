@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Footer } from "@/components/footer";
 
 export default function AuthLayout({
@@ -9,9 +8,12 @@ export default function AuthLayout({
 }>) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex items-center justify-center bg-violet-700 px-6 py-3">
-        <Link href="/" className="flex items-center">
-          <Image src="/logo-violet.png" alt="Transcendix" width={1526} height={582} className="h-16 w-auto" priority />
+      <header
+        className="flex items-center justify-center px-6 py-3"
+        style={{ backgroundColor: "#4d37fb" }}
+      >
+        <Link href="/" className="flex items-center" aria-label="Transcendix">
+          <video autoPlay loop muted playsInline className="h-16 w-auto" src="/logo-violet.mp4" />
         </Link>
       </header>
 

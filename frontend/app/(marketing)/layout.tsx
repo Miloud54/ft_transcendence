@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Footer } from "@/components/footer";
 
 export default function MarketingLayout({
@@ -9,9 +8,12 @@ export default function MarketingLayout({
 }>) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex items-center justify-between bg-violet-700 px-6 py-2">
-        <Link href="/" className="flex items-center">
-          <Image src="/logo-violet.png" alt="Transcendix" width={1526} height={582} className="h-16 w-auto" priority />
+      <header
+        className="flex items-center justify-between px-6 py-2"
+        style={{ backgroundColor: "#4d37fb" }}
+      >
+        <Link href="/" className="flex items-center" aria-label="Transcendix">
+          <video autoPlay loop muted playsInline className="h-16 w-auto" src="/logo-violet.mp4" />
         </Link>
 
         <div className="flex items-center gap-3">
