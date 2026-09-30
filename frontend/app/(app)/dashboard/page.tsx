@@ -19,8 +19,8 @@ type Profile = {
 
 const TEMPERATURE_BANDS = [
   { label: "Cold", value: mockStats.averageScoreByDifficulty[0].value, color: "#c8ff16" },
-  { label: "Warm", value: mockStats.averageScoreByDifficulty[1].value, color: "linear-gradient(to right, #c8ff16, #5941ff)" },
-  { label: "Hot", value: mockStats.averageScoreByDifficulty[2].value, color: "#5941ff" },
+  { label: "Warm", value: mockStats.averageScoreByDifficulty[1].value, color: "linear-gradient(to right, #c8ff16, #4d37fb)" },
+  { label: "Hot", value: mockStats.averageScoreByDifficulty[2].value, color: "#4d37fb" },
 ];
 
 const fadeUp = {
@@ -70,7 +70,7 @@ export default function ProfilePage() {
         <motion.div
           whileHover={{ y: -4 }}
           className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
-          style={{ borderTopColor: "#5941ff" }}
+          style={{ borderTopColor: "#4d37fb" }}
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-violet-600">Profile</p>
           <div className="mt-3 flex items-center gap-4">
@@ -110,7 +110,7 @@ export default function ProfilePage() {
         transition={{ duration: 0.4, ease: "easeOut" }}
         whileHover={{ y: -4 }}
         className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
-        style={{ borderTopColor: "#5941ff" }}
+        style={{ borderTopColor: "#4d37fb" }}
       >
         <h2 className="text-sm font-medium text-zinc-700">Average attempt temperature</h2>
         <div className="mt-4 space-y-3">
@@ -132,7 +132,7 @@ export default function ProfilePage() {
         <motion.div
           whileHover={{ y: -4 }}
           className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
-          style={{ borderTopColor: "#5941ff" }}
+          style={{ borderTopColor: "#4d37fb" }}
         >
           <h2 className="text-sm font-medium text-zinc-700">Progression over time</h2>
           <p className="text-xs text-zinc-400">Games played per month</p>
@@ -151,7 +151,7 @@ export default function ProfilePage() {
             <DonutChart
               data={[
                 { label: "Wins", value: mockStats.distribution.wins, color: "#c8ff16" },
-                { label: "Losses", value: mockStats.distribution.losses, color: "#5941ff" },
+                { label: "Losses", value: mockStats.distribution.losses, color: "#4d37fb" },
               ]}
             />
           </div>

@@ -8,10 +8,7 @@ export default function MarketingLayout({
 }>) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header
-        className="flex items-center justify-between px-6 py-2"
-        style={{ backgroundColor: "#4d37fb" }}
-      >
+      <header className="flex items-center justify-between bg-violet-700 px-6 py-2">
         <Link href="/" className="flex items-center" aria-label="Transcendix">
           <video autoPlay loop muted playsInline className="h-16 w-auto" src="/logo-violet.mp4" />
         </Link>

@@ -6,17 +6,17 @@
 }
 
 @theme {
-  --color-violet-50: color-mix(in srgb, #5941ff 5%, white);
-  --color-violet-100: color-mix(in srgb, #5941ff 10%, white);
-  --color-violet-200: color-mix(in srgb, #5941ff 25%, white);
-  --color-violet-300: color-mix(in srgb, #5941ff 40%, white);
-  --color-violet-400: color-mix(in srgb, #5941ff 60%, white);
-  --color-violet-500: color-mix(in srgb, #5941ff 80%, white);
-  --color-violet-600: color-mix(in srgb, #5941ff 90%, white);
-  --color-violet-700: #5941ff;
-  --color-violet-800: color-mix(in srgb, #5941ff 85%, black);
-  --color-violet-900: color-mix(in srgb, #5941ff 65%, black);
-  --color-violet-950: color-mix(in srgb, #5941ff 45%, black);
+  --color-violet-50: color-mix(in srgb, #4d37fb 5%, white);
+  --color-violet-100: color-mix(in srgb, #4d37fb 10%, white);
+  --color-violet-200: color-mix(in srgb, #4d37fb 25%, white);
+  --color-violet-300: color-mix(in srgb, #4d37fb 40%, white);
+  --color-violet-400: color-mix(in srgb, #4d37fb 60%, white);
+  --color-violet-500: color-mix(in srgb, #4d37fb 80%, white);
+  --color-violet-600: color-mix(in srgb, #4d37fb 90%, white);
+  --color-violet-700: #4d37fb;
+  --color-violet-800: color-mix(in srgb, #4d37fb 85%, black);
+  --color-violet-900: color-mix(in srgb, #4d37fb 65%, black);
+  --color-violet-950: color-mix(in srgb, #4d37fb 45%, black);
 
   --color-lime-50: color-mix(in srgb, #c8ff16 8%, white);
   --color-lime-100: color-mix(in srgb, #c8ff16 18%, white);

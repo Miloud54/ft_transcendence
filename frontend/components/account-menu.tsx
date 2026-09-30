@@ -139,7 +139,7 @@ export function AccountMenu() {
       <button
         onClick={() => setIsOpen(true)}
         aria-label="Account settings"
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-violet-200 text-zinc-500 hover:bg-zinc-50"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30 text-white hover:bg-white/10"
       >
         ⚙
       </button>

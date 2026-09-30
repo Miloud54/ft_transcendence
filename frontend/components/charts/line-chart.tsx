@@ -2,7 +2,7 @@
 
 import { useState, type MouseEvent } from "react";
 
-const COLOR = "#5941ff";
+const COLOR = "#4d37fb";
 const WIDTH = 480;
 const HEIGHT = 160;
 const PADDING = 16;
