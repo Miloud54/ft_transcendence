@@ -15,7 +15,7 @@ export type CurrentUser = {
 type CurrentUserContextValue = {
   user: CurrentUser | null;
   isLoading: boolean;
-  setUser: (user: CurrentUser) => void;
+  setUser: (user: CurrentUser | null) => void;
 };
 
 const CurrentUserContext = createContext<CurrentUserContextValue | null>(null);
