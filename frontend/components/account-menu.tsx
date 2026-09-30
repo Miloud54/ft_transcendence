@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useState, type FormEvent } from "react";
 import { Modal } from "@/components/modal";
 import { useCurrentUser } from "@/lib/current-user-context";
 
@@ -27,14 +27,16 @@ export function AccountMenu() {
 
 const { user, setUser } = useCurrentUser();
 
-    useEffect(() => {
-        if (!isOpen || !user) return;
-        setUsername(user.username);
-        const currentSeed = seedFromAvatarUrl(user.avatar);
-        const index = currentSeed ? AVATAR_SEEDS.indexOf(currentSeed) : -1;
-        setSeedIndex(index >= 0 ? index : 0);
-    }, [isOpen, user]);
-
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
+    if (isOpen && user) {
+      setUsername(user.username);
+      const currentSeed = seedFromAvatarUrl(user.avatar);
+      const index = currentSeed ? AVATAR_SEEDS.indexOf(currentSeed) : -1;
+      setSeedIndex(index >= 0 ? index : 0);
+    }
+  }
 
   function cycleAvatar(direction: 1 | -1) {
     setSeedIndex((current) => (current + direction + AVATAR_SEEDS.length) % AVATAR_SEEDS.length);
