@@ -2,6 +2,32 @@
 
 **(15/09/2026)**
 
+## Mise à jour (30/09/2026)
+
+Modification du fichier `waf/default.conf.template` :
+
+**1. Redirection HTTP → HTTPS forcée**
+Avant, les blocs HTTP (`${PORT}`) et HTTPS (`${SSL_PORT}`) fonctionnaient de façon indépendante — on pouvait encore naviguer en HTTP simple, non chiffré. Le bloc HTTP ne fait maintenant plus qu'une seule chose : rediriger (`301`) toute requête vers HTTPS, avant même d'atteindre le frontend ou le backend.
+
+**2. Headers de sécurité** (bloc HTTPS)
+```nginx
+add_header Strict-Transport-Security "max-age=31536000" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "DENY" always;
+server_tokens off;
+```
+- `HSTS` renforce la redirection HTTPS (le navigateur ne retente plus jamais en HTTP)
+- `X-Content-Type-Options` empêche le navigateur de deviner un type de fichier dangereux
+- `X-Frame-Options` empêche que le site soit affiché caché dans un iframe (clickjacking)
+- `server_tokens off` cache la version de Nginx dans les réponses, pour ne pas donner d'indice gratuit à un attaquant
+
+**3. `proxy_read_timeout 3600s`** (les deux `location` du bloc HTTPS)
+Prépare le terrain pour les futurs WebSockets : par défaut, Nginx coupe une connexion silencieuse au bout de 60s — trop court pour une connexion temps réel qui reste ouverte sans rien envoyer un moment. Pas utilisé aujourd'hui (aucun WebSocket dans le projet pour l'instant), mais prêt pour quand ce sera le cas.
+
+**Testé** : redirection `301` confirmée (`curl -I http://localhost:8080`), headers de sécurité présents dans les réponses HTTPS (`curl -I -k https://localhost:8443/`), routage frontend/backend toujours fonctionnel après les changements.
+
+---
+
 ## Ce qui tourne maintenant
 
 Un nouveau service dans `docker-compose.yml` :
@@ -32,15 +58,6 @@ Le WAF est la nouvelle porte d'entrée publique du projet. Il fait deux choses :
 - Les ports directs `frontend:3000` et `backend:3001` restent ouverts en parallèle pour l'instant (phase transitoire, le temps de tout valider) — donc le WAF n'est **pas encore** le seul point d'entrée possible
 
 ---
-
-## Prochaines étapes (WAF / Cybersecurity)
-
-- [x]  Tester une vraie détection d'attaque (SQLi) et vérifier que ModSecurity la logue — fait, règle `942100` déclenchée
-- [x]  Passer `MODSEC_RULE_ENGINE` de `DetectionOnly` à `On` (blocage actif) — fait, `403` confirmé sur la même attaque
-- [ ]  Retirer les ports directs `3000`/`3001` une fois le WAF validé, pour qu'il devienne le seul point d'entrée public — c'est ce qui rendra l'exigence HTTPS du sujet (page 9 : *"Any connection to the backend... must use HTTPS"*) réellement respectée, pas juste partiellement
-- [ ]  Nettoyer le bruit de logs `GET /healthz 404` (healthcheck intégré à l'image, tape une route qu'on n'a pas définie dans notre config custom)
-- [ ]  Vault (gestion des secrets, ex: `DB_PASSWORD` actuellement en clair dans `.env`) — deuxième moitié du module Cybersecurity du sujet, qui regroupe WAF + Vault en **un seul module Major (2 points)**
-- [ ]  Clarifier avec l'équipe le périmètre exact de la tâche "Reverse Proxy (Nginx)" listée ailleurs sur le board, pour éviter un doublon avec ce WAF
 
 ---
 
