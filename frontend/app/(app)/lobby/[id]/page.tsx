@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getRoom, startRoom, type Room } from "@/lib/room-api";
+import { RoomChat } from "@/components/room-chat";
 
 export default function LobbyPage({
   params,
@@ -37,7 +38,7 @@ export default function LobbyPage({
 
     try {
       const result = await startRoom(id);
-      router.push(`/game/${result.game.id}`);
+      router.push(`/game/${result.game.id}?room=${id}`);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Could not start game");
     } finally {
@@ -83,11 +84,6 @@ export default function LobbyPage({
             </div>
           )
         )}
-      </div>
-
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
-        <p className="text-sm font-medium text-zinc-700">Lobby chat</p>
-        <div className="mt-3 h-24 rounded-md bg-zinc-50" />
       </div>
 
       <button

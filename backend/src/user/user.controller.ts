@@ -2,8 +2,8 @@ import { Body, Controller, Get, Patch, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import type { Request } from 'express';
-
 @UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UserController {
@@ -19,5 +19,11 @@ export class UserController {
   updateMe(@Req() req: Request, @Body() dto: UpdateUserDto) {
     const { userId } = req.user as { userId: string };
     return this.userService.update(userId, dto);
+  }
+
+  @Patch('me/password')
+  changePassword(@Req() req: Request, @Body() dto: ChangePasswordDto) {
+    const { userId } = req.user as { userId: string };
+    return this.userService.changePassword(userId, dto);
   }
 }
