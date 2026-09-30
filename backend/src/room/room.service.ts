@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateRoomDto } from './create.room.dto';
 import { GameStatus, Prisma, RoomStatus } from 'generated/prisma';
+import { GameService } from 'src/game/game.service';
 
 type RoomWithPlayers = Prisma.RoomGetPayload<{
   include: {
@@ -36,7 +37,10 @@ function toGameResponse(game: { game_id: bigint; status: GameStatus }) {
 
 @Injectable()
 export class RoomService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly gameService: GameService,
+    ) {}
 
     async find(roomId: string) {
         const room = await this.prisma.room.findUnique({
@@ -117,6 +121,18 @@ export class RoomService {
                 user_id: BigInt(userId),
             },
         });
+        // const alreadyJoined = room.players.some(
+        //     (player) => player.user_id === BigInt(userId),
+        // );
+
+        if (!alreadyJoined) {
+            await this.prisma.roomPlayer.create({
+                data: {
+                    room_id: room.room_id,
+                    user_id: BigInt(userId),
+                },
+            });
+        }
 
         const updatedRoom = await this.prisma.room.findUniqueOrThrow({
             where: { room_id: room.room_id },
@@ -158,7 +174,32 @@ export class RoomService {
             throw new ConflictException('Invalid number of players');
         }
 
-        return this.prisma.$transaction(async (transaction) => {
+        // return this.prisma.$transaction(async (transaction) => {
+        // const updatedRoom = await transaction.room.update({
+        //     where: { room_id: room.room_id },
+        //     data: { status: RoomStatus.STARTING },
+        // });
+
+        // const game = await transaction.game.create({
+        //     data: {
+        //     room_id: room.room_id,
+        //     status: GameStatus.COUNTDOWN,
+        //     },
+        // });
+
+        // return {
+        //     room: {
+        //     id: updatedRoom.room_id.toString(),
+        //     status: updatedRoom.status.toLowerCase(),
+        //     },
+        //     game: {
+        //     id: game.game_id.toString(),
+        //     status: game.status.toLowerCase(),
+        //     },
+        // };
+        // });
+
+    const result = await this.prisma.$transaction(async (transaction) => {
         const updatedRoom = await transaction.room.update({
             where: { room_id: room.room_id },
             data: { status: RoomStatus.STARTING },
@@ -166,22 +207,27 @@ export class RoomService {
 
         const game = await transaction.game.create({
             data: {
-            room_id: room.room_id,
-            status: GameStatus.COUNTDOWN,
+                room_id: room.room_id,
+                status: GameStatus.COUNTDOWN,
             },
         });
 
         return {
             room: {
-            id: updatedRoom.room_id.toString(),
-            status: updatedRoom.status.toLowerCase(),
+                id: updatedRoom.room_id.toString(),
+                status: updatedRoom.status.toLowerCase(),
             },
             game: {
-            id: game.game_id.toString(),
-            status: game.status.toLowerCase(),
+                id: game.game_id.toString(),
+                status: game.status.toLowerCase(),
             },
         };
-        });
+    });
+
+    await this.gameService.startCountdown(result.game.id);
+
+    return result;
+
     }
 }
 
