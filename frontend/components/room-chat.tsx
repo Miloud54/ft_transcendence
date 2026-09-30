@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { usePathname } from "next/navigation";
 import { useCurrentUser } from "@/lib/current-user-context";
 
 type ChatMessage = {
@@ -11,6 +12,7 @@ type ChatMessage = {
 
 export function RoomChat() {
   const { user } = useCurrentUser();
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -36,6 +38,12 @@ export function RoomChat() {
 
     addMessage({ username: user.username, avatar: user.avatar, text });
     setDraft("");
+  }
+
+  const isRoomContext = pathname.startsWith("/lobby") || pathname.startsWith("/game");
+
+  if (!isRoomContext) {
+    return null;
   }
 
   if (!isOpen) {
