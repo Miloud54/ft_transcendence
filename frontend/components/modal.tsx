@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
 type ModalProps = {
@@ -10,13 +10,15 @@ type ModalProps = {
   children: React.ReactNode;
 };
 
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
-  const [mounted, setMounted] = useState(false);
-  const dialogRef = useRef<HTMLDivElement>(null);
+const emptySuscribe = () => () => {};
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+function useIsClient() {
+    return useSyncExternalStore(emptySuscribe, () => true, () => false);
+}
+
+export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+  const isClient = useIsClient();
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -31,7 +33,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!mounted || !isOpen) return null;
+  if (!isClient || !isOpen) return null;
 
   return createPortal(
     <div
