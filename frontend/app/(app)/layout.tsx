@@ -5,6 +5,7 @@ import { CurrentUserProvider } from "@/lib/current-user-context";
 import { CurrentUserBadge } from "@/components/current-user-badge";
 import { AccountMenu } from "@/components/account-menu";
 import { RoomChat } from "@/components/room-chat";
+import Image from "next/image";
 
 const NAV_ITEMS = [
   { href: "/home", label: "Home" },
@@ -22,11 +23,10 @@ export default function AppLayout({
   return (
     <CurrentUserProvider>
       <div className="flex min-h-full flex-1 flex-col">
-        <header className="flex items-center justify-between gap-6 border-b border-zinc-200 bg-white px-6 py-3">
+        <header className="flex items-center justify-between gap-6 border-b border-zinc-200 bg-white px-6 py-2">
           <div className="flex items-center gap-8">
-            <Link href="/home" className="flex items-center gap-2 font-semibold text-zinc-950">
-              <span className="h-6 w-6 rounded bg-lime-400" />
-              Transcendix
+            <Link href="/home" className="flex items-center">
+              <Image src="/logo.png" alt="Transcendix" width={1526} height={582} className="h-16 w-auto" priority />
             </Link>
             <MainNav items={NAV_ITEMS} />
           </div>
