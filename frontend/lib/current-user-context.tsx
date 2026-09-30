@@ -24,14 +24,18 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+    useEffect(() => {
     const token = localStorage.getItem("accessToken");
 
     fetch("http://localhost:3001/users/me", {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) throw new Error("Could not load current user.");
+        return response.json();
+      })
       .then(setUser)
+      .catch(() => setUser(null))
       .finally(() => setIsLoading(false));
   }, []);
 

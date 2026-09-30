@@ -114,15 +114,13 @@ export default function RegisterPage() {
           <label htmlFor="password" className="text-sm font-medium text-zinc-700">
             Password
           </label>
-          <input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             required
             minLength={8}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
         </div>
 

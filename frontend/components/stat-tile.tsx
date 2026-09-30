@@ -2,11 +2,15 @@ type StatTileProps = {
   label: string;
   value: string | number;
   trend?: string;
+  accent?: string;
 };
 
-export function StatTile({ label, value, trend }: StatTileProps) {
+export function StatTile({ label, value, trend, accent = "#6d28d9" }: StatTileProps) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-5">
+    <div
+      className="rounded-xl border border-zinc-200 border-t-4 bg-white p-5"
+      style={{ borderTopColor: accent }}
+    >
       <p className="text-sm text-zinc-500">{label}</p>
       <div className="mt-2 flex items-baseline gap-2">
         <span className="text-2xl font-semibold tabular-nums text-zinc-950">{value}</span>

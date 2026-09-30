@@ -5,8 +5,6 @@ import { mockStats } from "@/lib/mock-data";
 import { StatTile } from "@/components/stat-tile";
 import { LineChart } from "@/components/charts/line-chart";
 import { DonutChart } from "@/components/charts/donut-chart";
-import { CreateRoomForm } from "@/components/create-room-form";
-import { JoinRoomForm } from "@/components/join-room-form";
 
 type Profile = {
   id: string;
@@ -19,9 +17,9 @@ type Profile = {
 };
 
 const TEMPERATURE_BANDS = [
-  { label: "Cold", value: mockStats.averageScoreByDifficulty[0].value, color: "#2a78d6" },
-  { label: "Warm", value: mockStats.averageScoreByDifficulty[1].value, color: "#a1a1aa" },
-  { label: "Hot", value: mockStats.averageScoreByDifficulty[2].value, color: "#e34948" },
+  { label: "Cold", value: mockStats.averageScoreByDifficulty[0].value, color: "#a3e635" },
+  { label: "Warm", value: mockStats.averageScoreByDifficulty[1].value, color: "linear-gradient(to right, #a3e635, #6d28d9)" },
+  { label: "Hot", value: mockStats.averageScoreByDifficulty[2].value, color: "#6d28d9" },
 ];
 
 export default function ProfilePage() {
@@ -58,8 +56,12 @@ export default function ProfilePage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-zinc-200 bg-white p-6">
-          <div className="flex items-center gap-4">
+        <div
+          className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
+          style={{ borderTopColor: "#6d28d9" }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-violet-600">Profile</p>
+          <div className="mt-3 flex items-center gap-4">
             <img
               src={profile.avatar}
               alt={profile.username}
@@ -87,14 +89,14 @@ export default function ProfilePage() {
           </dl>
         </div>
 
-      <CreateRoomForm />
-        
-      <div className="grid gap-4 sm:grid-cols-2">
         <StatTile label="Games played" value={mockStats.gamesPlayed} trend={mockStats.gamesPlayedTrend} />
-        <StatTile label="Wins" value={mockStats.wins} trend={mockStats.winsTrend} />
+        <StatTile label="Wins" value={mockStats.wins} trend={mockStats.winsTrend} accent="#a3e635" />
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-6">
+      <div
+        className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
+        style={{ borderTopColor: "#6d28d9" }}
+      >
         <h2 className="text-sm font-medium text-zinc-700">Average attempt temperature</h2>
         <div className="mt-4 space-y-3">
           {TEMPERATURE_BANDS.map((band) => (
@@ -103,7 +105,7 @@ export default function ProfilePage() {
               <div className="h-2 flex-1 rounded-full bg-zinc-100">
                 <div
                   className="h-2 rounded-full"
-                  style={{ width: `${band.value * 100}%`, backgroundColor: band.color }}
+                  style={{ width: `${band.value * 100}%`, background: band.color }}
                 />
               </div>
             </div>
@@ -112,7 +114,10 @@ export default function ProfilePage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-zinc-200 bg-white p-6">
+        <div
+          className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
+          style={{ borderTopColor: "#6d28d9" }}
+        >
           <h2 className="text-sm font-medium text-zinc-700">Progression over time</h2>
           <p className="text-xs text-zinc-400">Games played per month</p>
           <div className="mt-4">
@@ -120,12 +125,15 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-zinc-200 bg-white p-6">
+        <div
+          className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
+          style={{ borderTopColor: "#a3e635" }}
+        >
           <h2 className="text-sm font-medium text-zinc-700">Breakdown</h2>
           <div className="mt-4">
             <DonutChart
               data={[
-                { label: "Wins", value: mockStats.distribution.wins, color: "#65a30d" },
+                { label: "Wins", value: mockStats.distribution.wins, color: "#a3e635" },
                 { label: "Losses", value: mockStats.distribution.losses, color: "#6d28d9" },
               ]}
             />

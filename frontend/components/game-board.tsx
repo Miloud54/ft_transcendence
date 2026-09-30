@@ -6,7 +6,7 @@ import { FormEvent, useState } from "react";
 const INITIAL_ATTEMPTS = [
   { username: "You", word: "tower", proximity: 1000, color: "bg-lime-400" },
   { username: "Odile", word: "metallic", proximity: 842, color: "bg-violet-500" },
-  { username: "Maria", word: "iron", proximity: 615, color: "bg-rose-400" },
+  { username: "Maria", word: "iron", proximity: 615, color: "bg-violet-300" },
 ];
 
 const ARTICLE_PARAGRAPHS: ArticleWord[][] = [
@@ -239,7 +239,7 @@ export function GameBoard({ gameId }: { gameId: string }) {
               <h2 className="font-semibold text-zinc-950">Temperature</h2>
               <span className="text-xs text-zinc-400">proximity</span>
             </div>
-            <div className="mt-5 h-3 overflow-hidden rounded-full bg-gradient-to-r from-sky-400 via-amber-300 to-rose-500">
+            <div className="mt-5 h-3 overflow-hidden rounded-full bg-gradient-to-r from-lime-400 to-violet-700">
               <div className="h-full w-[68%] border-r-2 border-white" />
             </div>
             <div className="mt-2 flex justify-between text-[11px] text-zinc-400"><span>Cold</span><span>Scorching</span></div>
