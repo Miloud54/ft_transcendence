@@ -17,9 +17,9 @@ type Profile = {
 };
 
 const TEMPERATURE_BANDS = [
-  { label: "Cold", value: mockStats.averageScoreByDifficulty[0].value, color: "#a3e635" },
-  { label: "Warm", value: mockStats.averageScoreByDifficulty[1].value, color: "linear-gradient(to right, #a3e635, #6d28d9)" },
-  { label: "Hot", value: mockStats.averageScoreByDifficulty[2].value, color: "#6d28d9" },
+  { label: "Cold", value: mockStats.averageScoreByDifficulty[0].value, color: "#c8ff16" },
+  { label: "Warm", value: mockStats.averageScoreByDifficulty[1].value, color: "linear-gradient(to right, #c8ff16, #5941ff)" },
+  { label: "Hot", value: mockStats.averageScoreByDifficulty[2].value, color: "#5941ff" },
 ];
 
 export default function ProfilePage() {
@@ -58,7 +58,7 @@ export default function ProfilePage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <div
           className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
-          style={{ borderTopColor: "#6d28d9" }}
+          style={{ borderTopColor: "#5941ff" }}
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-violet-600">Profile</p>
           <div className="mt-3 flex items-center gap-4">
@@ -90,12 +90,12 @@ export default function ProfilePage() {
         </div>
 
         <StatTile label="Games played" value={mockStats.gamesPlayed} trend={mockStats.gamesPlayedTrend} />
-        <StatTile label="Wins" value={mockStats.wins} trend={mockStats.winsTrend} accent="#a3e635" />
+        <StatTile label="Wins" value={mockStats.wins} trend={mockStats.winsTrend} accent="#c8ff16" />
       </div>
 
       <div
         className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
-        style={{ borderTopColor: "#6d28d9" }}
+        style={{ borderTopColor: "#5941ff" }}
       >
         <h2 className="text-sm font-medium text-zinc-700">Average attempt temperature</h2>
         <div className="mt-4 space-y-3">
@@ -116,7 +116,7 @@ export default function ProfilePage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <div
           className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
-          style={{ borderTopColor: "#6d28d9" }}
+          style={{ borderTopColor: "#5941ff" }}
         >
           <h2 className="text-sm font-medium text-zinc-700">Progression over time</h2>
           <p className="text-xs text-zinc-400">Games played per month</p>
@@ -127,14 +127,14 @@ export default function ProfilePage() {
 
         <div
           className="rounded-xl border border-zinc-200 border-t-4 bg-white p-6"
-          style={{ borderTopColor: "#a3e635" }}
+          style={{ borderTopColor: "#c8ff16" }}
         >
           <h2 className="text-sm font-medium text-zinc-700">Breakdown</h2>
           <div className="mt-4">
             <DonutChart
               data={[
-                { label: "Wins", value: mockStats.distribution.wins, color: "#a3e635" },
-                { label: "Losses", value: mockStats.distribution.losses, color: "#6d28d9" },
+                { label: "Wins", value: mockStats.distribution.wins, color: "#c8ff16" },
+                { label: "Losses", value: mockStats.distribution.losses, color: "#5941ff" },
               ]}
             />
           </div>

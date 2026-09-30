@@ -1,0 +1,2 @@
+xpack.monitoring.elasticsearch.username: "logstash_writer"
+xpack.monitoring.elasticsearch.password: "${LOGSTASH_PASSWORD}"

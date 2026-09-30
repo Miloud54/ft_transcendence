@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Footer } from "@/components/footer";
 
 export default function MarketingLayout({
@@ -8,10 +9,9 @@ export default function MarketingLayout({
 }>) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex items-center justify-between bg-violet-700 px-6 py-3">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-white">
-          <span className="h-6 w-6 rounded bg-lime-400" />
-          Transcendix
+      <header className="flex items-center justify-between bg-violet-700 px-6 py-2">
+        <Link href="/" className="flex items-center">
+          <Image src="/logo-violet.png" alt="Transcendix" width={1526} height={582} className="h-16 w-auto" priority />
         </Link>
 
         <div className="flex items-center gap-3">

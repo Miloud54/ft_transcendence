@@ -5,7 +5,7 @@ type StatTileProps = {
   accent?: string;
 };
 
-export function StatTile({ label, value, trend, accent = "#6d28d9" }: StatTileProps) {
+export function StatTile({ label, value, trend, accent = "#5941ff" }: StatTileProps) {
   return (
     <div
       className="rounded-xl border border-zinc-200 border-t-4 bg-white p-5"
