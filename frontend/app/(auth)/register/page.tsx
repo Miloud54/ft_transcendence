@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { PasswordInput } from "@/components/password-input";
 
 export default function RegisterPage() {
   const router = useRouter();

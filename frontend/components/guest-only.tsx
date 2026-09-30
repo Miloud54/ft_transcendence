@@ -1,20 +1,31 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+
+function subscribe() {
+  return () => {};
+}
+
+function getSnapshot() {
+  return localStorage.getItem("accessToken") !== null;
+}
+
+function getServerSnapshot() {
+  return false;
+}
 
 export function GuestOnly({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const [shouldRedirect, setShouldRedirect] = useState(false);
+  const isLoggedIn = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   useEffect(() => {
-    if (localStorage.getItem("accessToken")) {
-      setShouldRedirect(true);
+    if (isLoggedIn) {
       router.replace("/home");
     }
-  }, [router]);
+  }, [isLoggedIn, router]);
 
-  if (shouldRedirect) {
+  if (isLoggedIn) {
     return null;
   }
 
