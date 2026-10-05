@@ -1,41 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { connectToRoom, type RoomMessage } from "@/lib/room-socket";
 
 export function RoomChat() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
-  const [roomId, setRoomId] = useState<string | null>(() => {
-    if (pathname.startsWith("/lobby/")) {
-      return pathname.split("/")[2] ?? null;
-    }
-
-    if (pathname.startsWith("/game/")) {
-      return typeof window === "undefined"
-        ? null
-        : new URLSearchParams(window.location.search).get("room");
-    }
-
-    return null;
-  });
-
-  useEffect(() => {
-    let nextRoomId: string | null = null;
-
-    if (pathname.startsWith("/game/")) {
-      nextRoomId = new URLSearchParams(window.location.search).get("room");
-    } else if (pathname.startsWith("/lobby/")) {
-      nextRoomId = pathname.split("/")[2] ?? null;
-    }
-
-    setRoomId((currentRoomId) =>
-      nextRoomId === null && pathname.startsWith("/game/")
-        ? currentRoomId
-        : nextRoomId,
-    );
-  }, [pathname]);
+  const roomId = pathname.startsWith("/lobby/")
+    ? pathname.split("/")[2] ?? null
+    : pathname.startsWith("/game/")
+      ? searchParams.get("room")
+      : null;
 
   const [isFooterVisible, setIsFooterVisible] = useState(false);
 
@@ -64,10 +41,14 @@ export function RoomChat() {
   }, [isOpen]);
 
   useEffect(() => {
-    setMessages([]);
-    setUnreadCount(0);
-    setDraft("");
-    setConnectionError(null);
+    const timeoutId = window.setTimeout(() => {
+      setMessages([]);
+      setUnreadCount(0);
+      setDraft("");
+      setConnectionError(null);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [roomId]);
 
   useEffect(() => {

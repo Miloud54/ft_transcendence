@@ -2,23 +2,22 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PasswordInput } from "@/components/password-input";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => searchParams.get("error"));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const message = new URLSearchParams(window.location.search).get("error");
-    if (message) {
-      setError(message);
+    if (searchParams.get("error")) {
       window.history.replaceState({}, "", window.location.pathname);
     }
-  }, []);
+  }, [searchParams]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
