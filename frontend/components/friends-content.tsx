@@ -18,7 +18,7 @@ export function FriendsContent() {
     >
       <motion.div variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }}>
         <h1 className="text-2xl font-semibold text-zinc-950">Friends</h1>
-        <p className="text-sm text-zinc-500">People you've played with.</p>
+        <p className="text-sm text-zinc-500">People you&apos;ve played with.</p>
       </motion.div>
 
       <motion.div
