@@ -61,6 +61,43 @@ export class RoomService {
         return toRoomResponse(room);
     }
 
+    async assertMember(roomId: string, userId: string) {
+        const membership = await this.prisma.roomPlayer.findUnique({
+            where: {
+                room_id_user_id: {
+                    room_id: BigInt(roomId),
+                    user_id: BigInt(userId),
+                },
+            },
+        });
+
+        if (!membership) {
+            throw new ForbiddenException('User is not a member of this room');
+        }
+    }
+
+    async createChatMessage(roomId: string, userId: string, text: string) {
+        await this.assertMember(roomId, userId);
+
+        const user = await this.prisma.user.findUnique({
+            where: { user_id: BigInt(userId) },
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        return {
+            id: `${Date.now()}-${userId}`,
+            roomId,
+            userId,
+            username: user.username,
+            avatar: user.avatar,
+            text,
+            createdAt: new Date().toISOString(),
+        };
+    }
+
     async create(userId: string, dto: CreateRoomDto) {
         if (dto.minPlayers > dto.maxPlayers) {
             throw new BadRequestException('minPlayers cannot be greater than maxPlayers',);
@@ -114,16 +151,6 @@ export class RoomService {
         if (room.players.length >= room.max_players) {
             throw new ConflictException('Room is full');
         }
-
-        await this.prisma.roomPlayer.create({
-            data: {
-                room_id: room.room_id,
-                user_id: BigInt(userId),
-            },
-        });
-        // const alreadyJoined = room.players.some(
-        //     (player) => player.user_id === BigInt(userId),
-        // );
 
         if (!alreadyJoined) {
             await this.prisma.roomPlayer.create({
