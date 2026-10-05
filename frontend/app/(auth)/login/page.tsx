@@ -9,13 +9,15 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("error");
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const message = new URLSearchParams(window.location.search).get("error");
     if (message) {
-      setError(message);
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);

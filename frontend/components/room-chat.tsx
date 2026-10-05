@@ -6,37 +6,18 @@ import { connectToRoom, type RoomMessage } from "@/lib/room-socket";
 
 export function RoomChat() {
   const pathname = usePathname();
+  const roomId = pathname.startsWith("/lobby/")
+    ? pathname.split("/")[2] ?? null
+    : pathname.startsWith("/game/") && typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("room")
+      : null;
+
+  return <RoomChatContent key={roomId ?? "no-room"} roomId={roomId} />;
+}
+
+function RoomChatContent({ roomId }: { roomId: string | null }) {
+  const pathname = usePathname();
   const router = useRouter();
-  const [roomId, setRoomId] = useState<string | null>(() => {
-    if (pathname.startsWith("/lobby/")) {
-      return pathname.split("/")[2] ?? null;
-    }
-
-    if (pathname.startsWith("/game/")) {
-      return typeof window === "undefined"
-        ? null
-        : new URLSearchParams(window.location.search).get("room");
-    }
-
-    return null;
-  });
-
-  useEffect(() => {
-    let nextRoomId: string | null = null;
-
-    if (pathname.startsWith("/game/")) {
-      nextRoomId = new URLSearchParams(window.location.search).get("room");
-    } else if (pathname.startsWith("/lobby/")) {
-      nextRoomId = pathname.split("/")[2] ?? null;
-    }
-
-    setRoomId((currentRoomId) =>
-      nextRoomId === null && pathname.startsWith("/game/")
-        ? currentRoomId
-        : nextRoomId,
-    );
-  }, [pathname]);
-
   const [isFooterVisible, setIsFooterVisible] = useState(false);
 
   useEffect(() => {
@@ -62,13 +43,6 @@ export function RoomChat() {
   useEffect(() => {
     isOpenRef.current = isOpen;
   }, [isOpen]);
-
-  useEffect(() => {
-    setMessages([]);
-    setUnreadCount(0);
-    setDraft("");
-    setConnectionError(null);
-  }, [roomId]);
 
   useEffect(() => {
     if (!roomId) return;
