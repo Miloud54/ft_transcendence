@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { usePathname } from "next/navigation";
 import { useCurrentUser } from "@/lib/current-user-context";
 
@@ -13,6 +13,21 @@ type ChatMessage = {
 export function RoomChat() {
   const { user } = useCurrentUser();
   const pathname = usePathname();
+
+  const [isFooterVisible, setIsFooterVisible] = useState(false);
+
+  useEffect(() => {
+    const footer = document.getElementById("site-footer");
+    if (!footer) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsFooterVisible(entry.isIntersecting);
+    });
+
+    observer.observe(footer);
+    return () => observer.disconnect();
+  }, []);
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -40,7 +55,8 @@ export function RoomChat() {
     setDraft("");
   }
 
-  const isRoomContext = pathname.startsWith("/lobby") || pathname.startsWith("/game");
+  const isRoomContext = pathname.startsWith("/lobby/") || pathname.startsWith("/game/");
+  const bottomOffset = isFooterVisible ? "bottom-20" : "bottom-4";
 
   if (!isRoomContext) {
     return null;
@@ -52,7 +68,7 @@ export function RoomChat() {
         type="button"
         onClick={handleOpen}
         aria-label="Open room chat"
-        className="fixed bottom-4 right-4 flex h-14 w-14 items-center justify-center rounded-full bg-violet-700 text-white shadow-lg hover:bg-violet-800"
+        className={`fixed ${bottomOffset} right-4 flex h-14 w-14 items-center justify-center rounded-full bg-violet-700 text-white shadow-lg hover:bg-violet-800`}
       >
         <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z" />
@@ -67,7 +83,7 @@ export function RoomChat() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 flex h-96 w-80 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl">
+    <div className={`fixed ${bottomOffset} right-4 flex h-96 w-80 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl`}>
       <div className="flex items-center justify-between bg-violet-700 px-4 py-3">
         <p className="text-sm font-semibold text-white">Room chat</p>
         <button type="button" onClick={() => setIsOpen(false)} aria-label="Close room chat" className="text-violet-200 hover:text-white">

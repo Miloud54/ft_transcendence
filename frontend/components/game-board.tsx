@@ -4,7 +4,6 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useCurrentUser } from "@/lib/current-user-context";
 import type { RoomPlayer } from "@/lib/room-api";
-import { RoomChat } from "@/components/room-chat";
 
 const FALLBACK_TEAMMATES = [
   { username: "Odile", avatarUrl: null as string | null, color: "bg-violet-500" },

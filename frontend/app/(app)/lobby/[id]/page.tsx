@@ -3,7 +3,6 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getRoom, startRoom, type Room } from "@/lib/room-api";
-import { RoomChat } from "@/components/room-chat";
 
 export default function LobbyPage({
   params,
