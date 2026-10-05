@@ -1,18 +1,23 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { usePathname } from "next/navigation";
-import { useCurrentUser } from "@/lib/current-user-context";
-
-type ChatMessage = {
-  username: string;
-  avatar: string;
-  text: string;
-};
+import { connectToRoom, type RoomMessage } from "@/lib/room-socket";
 
 export function RoomChat() {
-  const { user } = useCurrentUser();
   const pathname = usePathname();
+  const [queryRoomId, setQueryRoomId] = useState<string | null>(null);
+  const roomId = pathname.startsWith("/lobby/")
+    ? pathname.split("/")[2]
+    : queryRoomId;
+
+  useEffect(() => {
+    if (pathname.startsWith("/game/")) {
+      setQueryRoomId(new URLSearchParams(window.location.search).get("room"));
+    } else {
+      setQueryRoomId(null);
+    }
+  }, [pathname]);
 
   const [isFooterVisible, setIsFooterVisible] = useState(false);
 
@@ -29,16 +34,35 @@ export function RoomChat() {
   }, []);
 
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<RoomMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [draft, setDraft] = useState("");
+  const socketRef = useRef<ReturnType<typeof connectToRoom>>(null);
+  const isOpenRef = useRef(isOpen);
 
-  function addMessage(message: ChatMessage) {
-    setMessages((current) => [...current, message]);
-    if (!isOpen) {
-      setUnreadCount((count) => count + 1);
-    }
-  }
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!roomId) return;
+
+    socketRef.current = connectToRoom(
+      roomId,
+      () => {},
+      () => {},
+      (message) => {
+        setMessages((current) => [...current, message]);
+        setUnreadCount((count) => (isOpenRef.current ? count : count + 1));
+      },
+    );
+
+    return () => {
+      socketRef.current?.emit("room:leave", { roomId });
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+    };
+  }, [roomId]);
 
   function handleOpen() {
     setIsOpen(true);
@@ -49,9 +73,9 @@ export function RoomChat() {
     event.preventDefault();
     const text = draft.trim();
 
-    if (!text || !user) return;
+    if (!text || !roomId || !socketRef.current) return;
 
-    addMessage({ username: user.username, avatar: user.avatar, text });
+    socketRef.current.emit("chat:send", { roomId, text });
     setDraft("");
   }
 
