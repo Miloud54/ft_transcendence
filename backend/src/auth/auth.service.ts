@@ -22,7 +22,7 @@ export type OAuthProfile = {
 
 const SALT_ROUNDS = 10;
 const DEFAULT_AVATAR =
-  'https://api.dicebear.com/9.x/identicon/svg?seed=default';
+  'https://api.dicebear.com/10.x/critters/svg?seed=default';
 
 type UserRecord = {
   user_id: bigint;
