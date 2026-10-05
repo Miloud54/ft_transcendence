@@ -1,22 +1,40 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { connectToRoom, type RoomMessage } from "@/lib/room-socket";
 
 export function RoomChat() {
   const pathname = usePathname();
-  const [queryRoomId, setQueryRoomId] = useState<string | null>(null);
-  const roomId = pathname.startsWith("/lobby/")
-    ? pathname.split("/")[2]
-    : queryRoomId;
+  const router = useRouter();
+  const [roomId, setRoomId] = useState<string | null>(() => {
+    if (pathname.startsWith("/lobby/")) {
+      return pathname.split("/")[2] ?? null;
+    }
+
+    if (pathname.startsWith("/game/")) {
+      return typeof window === "undefined"
+        ? null
+        : new URLSearchParams(window.location.search).get("room");
+    }
+
+    return null;
+  });
 
   useEffect(() => {
+    let nextRoomId: string | null = null;
+
     if (pathname.startsWith("/game/")) {
-      setQueryRoomId(new URLSearchParams(window.location.search).get("room"));
-    } else {
-      setQueryRoomId(null);
+      nextRoomId = new URLSearchParams(window.location.search).get("room");
+    } else if (pathname.startsWith("/lobby/")) {
+      nextRoomId = pathname.split("/")[2] ?? null;
     }
+
+    setRoomId((currentRoomId) =>
+      nextRoomId === null && pathname.startsWith("/game/")
+        ? currentRoomId
+        : nextRoomId,
+    );
   }, [pathname]);
 
   const [isFooterVisible, setIsFooterVisible] = useState(false);
@@ -37,6 +55,7 @@ export function RoomChat() {
   const [messages, setMessages] = useState<RoomMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [draft, setDraft] = useState("");
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const socketRef = useRef<ReturnType<typeof connectToRoom>>(null);
   const isOpenRef = useRef(isOpen);
 
@@ -45,15 +64,38 @@ export function RoomChat() {
   }, [isOpen]);
 
   useEffect(() => {
+    setMessages([]);
+    setUnreadCount(0);
+    setDraft("");
+    setConnectionError(null);
+  }, [roomId]);
+
+  useEffect(() => {
     if (!roomId) return;
 
     socketRef.current = connectToRoom(
       roomId,
       () => {},
       () => {},
-      (message) => {
-        setMessages((current) => [...current, message]);
-        setUnreadCount((count) => (isOpenRef.current ? count : count + 1));
+      {
+        onChatMessage: (message) => {
+          if (message.roomId !== roomId) return;
+          setMessages((current) => [...current, message]);
+          setUnreadCount((count) => (isOpenRef.current ? count : count + 1));
+        },
+        onStatus: (status, message) => {
+          if (status === "error") {
+            setConnectionError(message ?? "Room chat connection failed");
+          } else if (status === "connected") {
+            setConnectionError(null);
+          }
+        },
+        onAuthError: (message) => {
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+          setConnectionError(message);
+          router.push(`/login?error=${encodeURIComponent(message)}`);
+        },
       },
     );
 
@@ -62,7 +104,7 @@ export function RoomChat() {
       socketRef.current?.disconnect();
       socketRef.current = null;
     };
-  }, [roomId]);
+  }, [roomId, router]);
 
   function handleOpen() {
     setIsOpen(true);
@@ -114,6 +156,11 @@ export function RoomChat() {
           ✕
         </button>
       </div>
+      {connectionError && (
+        <p className="bg-red-50 px-3 py-2 text-xs text-red-700">
+          {connectionError}
+        </p>
+      )}
       <div className="flex-1 space-y-2 overflow-y-auto bg-zinc-50 p-3">
         {messages.length === 0 && <p className="text-xs text-zinc-400">No messages yet.</p>}
         {messages.map((message, index) => (

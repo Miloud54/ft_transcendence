@@ -53,6 +53,9 @@ export class RoomGateway
     const token = client.handshake.auth?.token;
 
     if (typeof token !== 'string' || token.length === 0) {
+      client.emit('auth:error', {
+        message: 'Authentication token is required',
+      });
       client.disconnect(true);
       return;
     }
@@ -66,6 +69,9 @@ export class RoomGateway
         email: payload.email,
       };
     } catch {
+      client.emit('auth:error', {
+        message: 'Authentication token is invalid or expired',
+      });
       client.disconnect(true);
     }
   }
