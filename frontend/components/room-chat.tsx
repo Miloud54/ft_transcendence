@@ -83,7 +83,7 @@ export function RoomChat() {
   }
 
   return (
-    <div className={`fixed ${bottomOffset} right-4 flex h-96 w-80 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl`}>
+    <div className={`fixed ${bottomOffset} right-4 flex h-96 w-80 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl`}>
       <div className="flex items-center justify-between bg-violet-700 px-4 py-3">
         <p className="text-sm font-semibold text-white">Room chat</p>
         <button type="button" onClick={() => setIsOpen(false)} aria-label="Close room chat" className="text-violet-200 hover:text-white">

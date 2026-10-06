@@ -27,7 +27,7 @@ export function HomeContent() {
       <motion.section
         variants={fadeUp}
         transition={{ duration: 0.4, ease: "easeOut", delay: 0.05 }}
-        className="overflow-hidden rounded-2xl border border-violet-800 bg-gradient-to-br from-violet-700 to-violet-900 p-6 text-white sm:p-8"
+        className="relative overflow-hidden rounded-2xl border border-violet-800 bg-gradient-to-br from-violet-700 to-violet-900 p-6 text-white sm:p-8"
       >
         <motion.div
           initial="hidden"
@@ -72,7 +72,7 @@ export function HomeContent() {
                 whileHover={{ x: 4 }}
                 className="flex items-center justify-between rounded-lg bg-white/10 px-4 py-2.5"
               >
-                <span className="text-sm">
+                <span className="min-w-0 flex-1 truncate text-sm">
                   <strong>{room.hostUsername}</strong>&apos;s room · {room.playerCount}/{room.maxPlayers} players
                 </span>
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
