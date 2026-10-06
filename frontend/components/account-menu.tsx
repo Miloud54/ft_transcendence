@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Modal } from "@/components/modal";
 import { PasswordInput } from "@/components/password-input";
 import { useCurrentUser } from "@/lib/current-user-context";
+import { API_URL } from "@/lib/room-api";
 
 const AVATAR_SEEDS = ["Nova", "Comet", "Pixel", "Blaze", "Echo", "Juno", "Astra", "Rex", "Luna", "Zephyr"];
 
@@ -68,7 +69,7 @@ export function AccountMenu() {
 
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await fetch("http://localhost:3001/users/me", {
+      const response = await fetch(`${API_URL}/users/me`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -107,7 +108,7 @@ export function AccountMenu() {
 
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await fetch("http://localhost:3001/users/me/password", {
+      const response = await fetch(`${API_URL}/users/me/password`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
