@@ -45,6 +45,8 @@ services:
       DATABASE_URL: "postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}"
       VAULT_ADDR: http://vault:8200
       VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID}
+      FRONTEND_URL: https://localhost:8443
+
 
     working_dir: /app
 
@@ -331,6 +333,7 @@ services:
     
     volumes:
       - ./waf/default.conf.template:/etc/nginx/templates/conf.d/default.conf.template:Z,ro
+      - ./waf/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:/etc/modsecurity.d/owasp-crs/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:Z,ro
 
     ports:
       - "8080:8080"
