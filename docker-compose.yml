@@ -331,7 +331,8 @@ services:
         condition: service_healthy
     
     environment:
-      MODSEC_RULE_ENGINE: "On" # a passer en on après
+      MODSEC_RULE_ENGINE: "On" 
+      ALLOWED_METHODS: "GET HEAD POST OPTIONS PATCH"
     
     volumes:
       - ./waf/default.conf.template:/etc/nginx/templates/conf.d/default.conf.template:Z,ro
