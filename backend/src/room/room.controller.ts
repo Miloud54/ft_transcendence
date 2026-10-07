@@ -3,6 +3,7 @@ import { RoomService } from './room.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CreateRoomDto } from './create.room.dto';
 import type { Request } from 'express';
+import { RoomGateway } from './room.gateway';
 
 type AuthenticatedRequest = Request & {
   user: {
@@ -13,7 +14,9 @@ type AuthenticatedRequest = Request & {
 
 @Controller('rooms')
 export class RoomController {
-    constructor(private readonly roomService: RoomService) {}
+    constructor(
+        private readonly roomService: RoomService,
+        private readonly roomGateway: RoomGateway, ) {}
 
     @Get(':roomId')
     @UseGuards(JwtAuthGuard)
@@ -32,19 +35,29 @@ export class RoomController {
 
     @Post(':roomId/join')
     @UseGuards(JwtAuthGuard)
-    join (
+    async join (
         @Param('roomId') roomId: string,
         @Req() request: AuthenticatedRequest,
     ) {
-        return this.roomService.join(roomId, request.user.userId)
+        const room = await this.roomService.join(roomId, request.user.userId);
+        this.roomGateway.emitRoomState(roomId, room);
+
+        return room;
     }
 
     @Post(':roomId/start')
     @UseGuards(JwtAuthGuard)
-    start(
+    async start(
         @Param('roomId') roomId: string,
         @Req() request: AuthenticatedRequest,
     ) {
-        return this.roomService.start(roomId, request.user.userId);
+        const result = await this.roomService.start(
+            roomId,
+            request.user.userId,
+        );
+
+        this.roomGateway.emitRoomStarted(roomId, result);
+
+        return result;
     }
 }
