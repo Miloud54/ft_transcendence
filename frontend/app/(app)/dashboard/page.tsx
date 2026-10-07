@@ -6,6 +6,7 @@ import { mockStats } from "@/lib/mock-data";
 import { StatTile } from "@/components/stat-tile";
 import { LineChart } from "@/components/charts/line-chart";
 import { DonutChart } from "@/components/charts/donut-chart";
+import { API_URL } from "@/lib/room-api";
 
 type Profile = {
   id: string;
@@ -35,7 +36,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
 
-    fetch("http://localhost:3001/users/me", {
+    fetch(`${API_URL}/users/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((response) => {

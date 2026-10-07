@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PasswordInput } from "@/components/password-input";
+import { API_URL } from "@/lib/room-api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("http://localhost:3001/auth/login", {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -47,7 +48,7 @@ export default function LoginPage() {
 
       <div className="mt-6 space-y-3">
         <a
-          href="http://localhost:3001/auth/google"
+          href={`${API_URL}/auth/google`}
           className="flex w-full items-center justify-center gap-2 rounded-md border border-zinc-300 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
@@ -60,7 +61,7 @@ export default function LoginPage() {
         </a>
 
         <a
-          href="http://localhost:3001/auth/discord"
+          href={`${API_URL}/auth/discord`}
           className="flex w-full items-center justify-center gap-2 rounded-md bg-[#5865F2] py-2.5 text-sm font-medium text-white transition hover:bg-[#4a56e0]"
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
