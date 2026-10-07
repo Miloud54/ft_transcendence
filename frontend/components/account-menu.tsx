@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, type FormEvent } from "react";
+import { useCallback, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/modal";
 import { PasswordInput } from "@/components/password-input";
@@ -33,6 +33,13 @@ export function AccountMenu() {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+  const [avatarUploadError, setAvatarUploadError] = useState<string | null>(null);
+  const [avatarUploadSuccess, setAvatarUploadSuccess] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null);
+  const [uploadedAvatarUrl, setUploadedAvatarUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handleClose = useCallback(() => setIsOpen(false), []);
 
   const { user, setUser } = useCurrentUser();
@@ -54,10 +61,13 @@ export function AccountMenu() {
       const currentSeed = seedFromAvatarUrl(user.avatar);
       const index = currentSeed ? AVATAR_SEEDS.indexOf(currentSeed) : -1;
       setSeedIndex(index >= 0 ? index : 0);
+      setCustomAvatarUrl(currentSeed ? null : user.avatar);
+      setUploadedAvatarUrl(currentSeed ? null : user.avatar);
     }
   }
 
   function cycleAvatar(direction: 1 | -1) {
+    setCustomAvatarUrl(null);
     setSeedIndex((current) => (current + direction + AVATAR_SEEDS.length) % AVATAR_SEEDS.length);
   }
 
@@ -75,7 +85,7 @@ export function AccountMenu() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ username, avatar: avatarUrl(AVATAR_SEEDS[seedIndex]) }),
+        body: JSON.stringify({ username, avatar: customAvatarUrl ?? avatarUrl(AVATAR_SEEDS[seedIndex]) }),
       });
 
       const data = await response.json();
@@ -86,7 +96,9 @@ export function AccountMenu() {
       }
 
       setUser(data);
+      setCustomAvatarUrl(data.avatar);
       setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
     } catch {
       setError("Could not reach the server. Please try again.");
     } finally {
@@ -135,6 +147,44 @@ export function AccountMenu() {
     }
   }
 
+  async function handleAvatarFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setAvatarUploadError(null);
+    setAvatarUploadSuccess(false);
+    setIsUploadingAvatar(true);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      const formData = new FormData();
+      formData.append("avatar", file);
+
+      const response = await fetch("http://localhost:3001/users/me/avatar", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setAvatarUploadError(Array.isArray(data.message) ? data.message.join(", ") : data.message);
+        return;
+      }
+
+      setUser(data);
+      setCustomAvatarUrl(data.avatar);
+      setUploadedAvatarUrl(data.avatar);
+      setAvatarUploadSuccess(true);
+      setTimeout(() => setAvatarUploadSuccess(false), 3000);    } catch {
+      setAvatarUploadError("Could not reach the server. Please try again.");
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  }
+
+
   return (
     <>
       <button
@@ -159,7 +209,7 @@ export function AccountMenu() {
                 ‹
               </button>
               <img
-                src={avatarUrl(AVATAR_SEEDS[seedIndex])}
+                src={customAvatarUrl ?? avatarUrl(AVATAR_SEEDS[seedIndex])}
                 alt="Selected avatar"
                 className="h-20 w-20 rounded-full bg-zinc-100"
               />
@@ -171,6 +221,39 @@ export function AccountMenu() {
               >
                 ›
               </button>
+            </div>
+
+            <div className="mt-2 flex flex-col items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarFileChange}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingAvatar}
+                className="text-xs font-medium text-violet-700 hover:text-violet-800 disabled:opacity-60"
+              >
+                {isUploadingAvatar ? "Uploading..." : uploadedAvatarUrl ? "Change photo" : "Upload a photo"}
+              </button>
+
+              {uploadedAvatarUrl && customAvatarUrl !== uploadedAvatarUrl && (
+                <button
+                  type="button"
+                  onClick={() => setCustomAvatarUrl(uploadedAvatarUrl)}
+                  title="Switch back to your uploaded photo"
+                  className="flex items-center gap-1.5 rounded-full border border-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
+                >
+                  <img src={uploadedAvatarUrl} alt="" className="h-4 w-4 rounded-full object-cover" />
+                  My photo
+                </button>
+              )}
+
+              {avatarUploadError && <p className="text-xs text-[#d03b3b]">{avatarUploadError}</p>}
+              {avatarUploadSuccess && <p className="text-xs text-[#0ca30c]">Photo updated.</p>}
             </div>
           </div>
 

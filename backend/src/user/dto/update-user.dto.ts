@@ -12,6 +12,6 @@ export class UpdateUserDto {
   email?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   avatar?: string;
 }
