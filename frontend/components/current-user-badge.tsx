@@ -11,7 +11,7 @@ export function CurrentUserBadge() {
 
   return (
     <div className="flex items-center gap-3">
-      <div className="text-right">
+      <div className="hidden text-right sm:block">
         <p className="text-sm font-medium text-white">{user.username}</p>
       </div>
       <img

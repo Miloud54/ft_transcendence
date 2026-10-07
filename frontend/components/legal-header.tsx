@@ -22,7 +22,7 @@ export function LegalHeader() {
       <header className="flex items-center justify-between gap-6 bg-violet-700 px-6 py-2">
         <div className="flex items-center gap-8">
           <Link href="/home" className="flex items-center" aria-label="Transcendix">
-            <video autoPlay loop muted playsInline className="h-16 w-auto" src="/logo-violet.mp4" />
+            <video autoPlay loop muted playsInline className="h-16 w-auto lg:h-20" src="/logo-violet.mp4" />
           </Link>
           <MainNav items={NAV_ITEMS} />
         </div>
@@ -45,7 +45,7 @@ export function LegalHeader() {
   return (
     <header className="flex items-center bg-violet-700 px-6 py-2">
       <Link href="/" className="flex items-center" aria-label="Transcendix">
-        <video autoPlay loop muted playsInline className="h-16 w-auto" src="/logo-violet.mp4" />
+        <video autoPlay loop muted playsInline className="h-16 w-auto lg:h-20" src="/logo-violet.mp4" />
       </Link>
     </header>
   );

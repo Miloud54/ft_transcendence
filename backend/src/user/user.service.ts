@@ -75,6 +75,17 @@ export class UserService {
     return toPublicUser(user);
   }
 
+  async updateAvatar(userId: string, filename: string) {
+    const avatarUrl = `http://localhost:3001/uploads/avatars/${filename}`;
+
+    const user = await this.prisma.user.update({
+      where: { user_id: BigInt(userId) },
+      data: { avatar: avatarUrl },
+    });
+
+    return toPublicUser(user);
+  }
+
   async changePassword(userId: string, dto: ChangePasswordDto) {
     const user = await this.prisma.user.findUnique({
       where: { user_id: BigInt(userId) },

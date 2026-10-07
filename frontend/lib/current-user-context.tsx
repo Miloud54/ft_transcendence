@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { API_URL } from "@/lib/room-api";
 
 export type CurrentUser = {
   id: string;
@@ -27,7 +28,7 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
     const token = localStorage.getItem("accessToken");
 
-    fetch("http://localhost:3001/users/me", {
+    fetch(`${API_URL}/users/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((response) => {

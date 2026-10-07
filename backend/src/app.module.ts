@@ -9,6 +9,7 @@ import { GameModule } from './game/game.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
+import { PedantixEngineModule } from './pedantix-engine/pedantix-engine.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { UserModule } from './user/user.module';
     GameModule,
     AuthModule,
     UserModule,
+    PedantixEngineModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
