@@ -1,12 +1,6 @@
-/**
- * prisma/seed.ts
- *
- * Setup:
- *   1. Put this file at prisma/seed.ts
- *   2. npm i -D tsx
- *   3. In package.json add:
- *        "prisma": { "seed": "tsx prisma/seed.ts" }
- *   4. Run:  npx prisma db seed     (or: npx prisma migrate reset)
+/*
+To apply the seed to the db run:
+docker compose exec backend npx prisma db seed
  */
 import { PrismaClient, UserStatus, RoomStatus, GameStatus } from "../generated/prisma";
 import { randomBytes, scryptSync } from "crypto";
