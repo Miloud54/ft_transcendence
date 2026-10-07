@@ -9,7 +9,7 @@ services:
 
     working_dir: /app
 
-    command: sh -c "npm run dev 2>&1 | tee /var/log/app/frontend.log"
+    command: sh -c "npm ci && npm run dev 2>&1 | tee /var/log/app/frontend.log"
 
     ports:
       - "3000:3000"
