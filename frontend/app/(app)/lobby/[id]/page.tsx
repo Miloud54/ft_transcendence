@@ -1,8 +1,9 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
+import { connectToRoom } from "@/lib/room-socket";
 import { useRouter } from "next/navigation";
-import { getRoom, startRoom, type Room } from "@/lib/room-api";
+import { startRoom, type Room } from "@/lib/room-api";
 
 export default function LobbyPage({
   params,
@@ -16,12 +17,18 @@ export default function LobbyPage({
   const [isStarting, setIsStarting] = useState(false);
 
   useEffect(() => {
-    getRoom(id)
-      .then(setRoom)
-      .catch((requestError: unknown) => {
-        setError(requestError instanceof Error ? requestError.message : "Could not load room");
-      });
-  }, [id]);
+  const socket = connectToRoom(id, (nextRoom) => {
+    setRoom(nextRoom as Room);
+  }, (data) => {
+    const started = data as { game: { id: string } };
+    router.push(`/game/${started.game.id}?room=${id}`);
+  });
+
+  return () => {
+    socket?.emit("room:leave", { roomId: id });
+    socket?.disconnect();
+  };
+}, [id, router]);
 
   if (error) {
     return <p className="text-sm text-[#d03b3b]">{error}</p>;
