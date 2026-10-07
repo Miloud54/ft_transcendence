@@ -71,8 +71,10 @@ export class GameService {
       throw new ConflictException('Game is not in COUNTDOWN');
     }
 
-    setTimeout(async () => {
-      await this.transitionToRunning(gameId);
+    setTimeout(() => {
+      this.transitionToRunning(gameId).catch((error) => {
+        console.error('Failed to transition game to RUNNING:', error);
+      });
     }, 10_000);
   }
 
