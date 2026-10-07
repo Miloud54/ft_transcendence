@@ -2,6 +2,8 @@ FROM node:24.18.0
 
 WORKDIR /app
 
+RUN chown node:node /app
+
 COPY --chown=node:node package*.json ./
 COPY --chown=node:node prisma ./prisma
 
