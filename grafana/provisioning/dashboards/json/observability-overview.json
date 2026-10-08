@@ -56,6 +56,40 @@
         { "refId": "A", "expr": "process_resident_memory_bytes{job=\"prometheus\"} / 1024 / 1024", "legendFormat": "RSS", "datasource": { "type": "prometheus", "uid": "prometheus" } }
       ],
       "fieldConfig": { "defaults": { "unit": "decmbytes" }, "overrides": [] }
+    },
+
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Requêtes backend par route (taux/s)",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(http_requests_total[1m])) by (route)", "legendFormat": "{{route}}", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Latence backend P95 par route",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, route))", "legendFormat": "{{route}}", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Mémoire backend (Mo)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "process_resident_memory_bytes{job=\"backend\"} / 1024 / 1024", "legendFormat": "RSS", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ],
+      "fieldConfig": { "defaults": { "unit": "decmbytes" }, "overrides": [] }
     }
   ]
 }

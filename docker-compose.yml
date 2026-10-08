@@ -267,7 +267,9 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
-    
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
+      GRAFANA_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+
     volumes:
       - ./vault/entrypoint.sh:/entrypoint.sh:ro
 
@@ -293,31 +295,90 @@ services:
     networks:
       - private-net
 
+  grafana-init: # conteneur jetable : récupère le mot de passe admin Grafana depuis Vault
+    image: docker.io/hashicorp/vault:1.17
+
+    container_name: transcendence-grafana-init
+
+    depends_on:
+      vault-init:
+        condition: service_completed_successfully
+
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID}
+
+    volumes:
+      - grafana_secrets:/secrets
+
+    networks:
+      - private-net
+
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        vault kv get -field=grafana_admin_password secret/backend > /secrets/admin_password
+
   grafana:
     image: docker.io/grafana/grafana:13.2.1
-
     container_name: transcendence-grafana
 
     depends_on:
-      - prometheus
+      prometheus:
+        condition: service_started
+      grafana-init:
+        condition: service_completed_successfully
+
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_SERVER_ROOT_URL: https://localhost:8443/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
 
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:Z
       - grafana_data:/var/lib/grafana
-
-    ports:
-      - "3002:3000"
+      - grafana_secrets:/run/secrets:ro
 
     networks:
       - private-net
+
+  alertmanager-init:
+    image: docker.io/hashicorp/vault:1.17
+
+    container_name: transcendence-alertmanager-init
+
+    depends_on:
+      vault-init:
+        condition: service_completed_successfully
+
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID}
+
+    volumes:
+      - ./alertmanager/alertmanager.yml.template:/alertmanager.yml.template:ro
+      - alertmanager_config:/config
+
+    networks:
+      - private-net
+
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        DISCORD_WEBHOOK_URL=$$(vault kv get -field=discord_webhook_url secret/backend) && \
+        sed "s|\$${DISCORD_WEBHOOK_URL}|$$DISCORD_WEBHOOK_URL|g" /alertmanager.yml.template > /config/alertmanager.yml
 
   alertmanager:
     image: docker.io/prom/alertmanager:v0.32.0
 
     container_name: transcendence-alertmanager
 
+    depends_on:
+      alertmanager-init:
+        condition: service_completed_successfully
+
     volumes:
-      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:Z
+      - alertmanager_config:/etc/alertmanager
 
     ports:
       - "9093:9093"
@@ -358,6 +419,8 @@ volumes:
   es_data:
   prometheus_data:
   grafana_data:
+  grafana_secrets:
+  alertmanager_config:
   app_logs: # volume partage pour les logs
 
 networks:

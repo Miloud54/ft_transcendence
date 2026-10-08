@@ -7,4 +7,6 @@ vault kv put secret/backend \
   google_client_id="$GOOGLE_CLIENT_ID" \
   google_client_secret="$GOOGLE_CLIENT_SECRET" \
   discord_client_id="$DISCORD_CLIENT_ID" \
-  discord_client_secret="$DISCORD_CLIENT_SECRET"
+  discord_client_secret="$DISCORD_CLIENT_SECRET" \
+  discord_webhook_url="$DISCORD_WEBHOOK_URL" \
+  grafana_admin_password="$GRAFANA_ADMIN_PASSWORD"

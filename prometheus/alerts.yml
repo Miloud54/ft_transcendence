@@ -9,3 +9,21 @@ groups:
         annotations:
           summary: "Cible Prometheus down : {{ $labels.job }}"
           description: "La cible {{ $labels.instance }} (job {{ $labels.job }}) ne répond plus depuis plus d'une minute."
+      
+      - alert: HighErrorRate
+        expr: sum(rate(http_requests_total{status_code=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taux d'erreur backend élevé"
+          description: "Plus de 5% des requêtes HTTP renvoient une erreur serveur (5xx) depuis 2 minutes."
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latence backend élevée"
+          description: "Le 95e percentile du temps de réponse dépasse 1 seconde depuis 5 minutes."
