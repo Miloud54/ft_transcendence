@@ -8,9 +8,9 @@ export default function AuthLayout({
 }>) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex items-center justify-center bg-violet-700 px-6 py-3">
+      <header className="flex items-center justify-center bg-violet-700 px-6 py-2">
         <Link href="/" className="flex items-center" aria-label="Transcendix">
-          <video autoPlay loop muted playsInline className="h-16 w-auto lg:h-20" src="/logo-violet.mp4" />
+          <video autoPlay loop muted playsInline className="h-14 w-auto lg:h-[4.5rem]" src="/logo-violet.mp4" />
         </Link>
       </header>
 
