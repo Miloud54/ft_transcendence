@@ -7,6 +7,9 @@ services:
 
     container_name: transcendence-frontend
 
+  #comment next line if not on school pc
+    user: "0:0"
+
     working_dir: /app
 
     command: sh -c "npm ci && npm run dev 2>&1 | tee /var/log/app/frontend.log"
@@ -32,6 +35,9 @@ services:
       context: ./backend
 
     container_name: transcendence-backend
+
+  #comment next line if not on school pc
+    user: "0:0"
 
     depends_on:
       db:
