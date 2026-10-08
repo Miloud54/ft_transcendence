@@ -16,7 +16,7 @@ export class MetricsInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest<Request>();
     const response = context.switchToHttp().getResponse<Response>();
     const start = process.hrtime.bigint();
-    const route = request.route?.path ?? request.path;
+    const route: string = (request.route as { path?: string } | undefined)?.path ?? request.path;
 
     return next.handle().pipe(
       tap(() => {
