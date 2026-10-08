@@ -1,0 +1,10 @@
+route:
+  receiver: discord
+
+receivers:
+  - name: discord
+    discord_configs:
+      - webhook_url: "${DISCORD_WEBHOOK_URL}"
+        send_resolved: true
+        title: "{{ .CommonAnnotations.summary }}"
+        message: "{{ .CommonAnnotations.description }}"
