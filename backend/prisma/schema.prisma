@@ -44,6 +44,17 @@ enum GameStatus {
   FINISHED
 }
 
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+}
+
+enum RoomInvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
 //Users, Rooms, Room_players, Games et Game_players.
 //can also use @default(autoincrement()) → 1, 2, 3, 4...
 //uuid() set random id like a3f9c1e2-...
@@ -60,11 +71,40 @@ model User {
   xp        BigInt
   lvl       BigInt
   status    UserStatus
+  last_seen_at DateTime @default(now())
 
   rooms     RoomPlayer[]
   games     GamePlayer[]
   rooms_created Room[]
+  friendships Friendship[] @relation("FriendOwner")
+  friendOf Friendship[] @relation("FriendTarget")
+  roomInvitations RoomInvitation[]
 	@@map("Users")
+}
+
+model Friendship {
+  friendship_id BigInt @id @default(autoincrement())
+  user_id BigInt
+  friend_id BigInt
+  status FriendshipStatus @default(PENDING)
+  user User @relation("FriendOwner", fields: [user_id], references: [user_id], onDelete: Cascade)
+  friend User @relation("FriendTarget", fields: [friend_id], references: [user_id], onDelete: Cascade)
+
+  @@unique([user_id, friend_id])
+  @@map("Friendships")
+}
+
+model RoomInvitation {
+  invitation_id BigInt @id @default(autoincrement())
+  room_id BigInt
+  invitee_id BigInt
+  status RoomInvitationStatus @default(PENDING)
+  created_at DateTime @default(now())
+  room Room @relation(fields: [room_id], references: [room_id], onDelete: Cascade)
+  invitee User @relation(fields: [invitee_id], references: [user_id], onDelete: Cascade)
+
+  @@unique([room_id, invitee_id])
+  @@map("RoomInvitations")
 }
 
 model Room {
@@ -81,6 +121,7 @@ model Room {
 
   players     RoomPlayer[]
   games_hosted Game[]
+  invitations RoomInvitation[]
 	@@map("Rooms")
 }
 

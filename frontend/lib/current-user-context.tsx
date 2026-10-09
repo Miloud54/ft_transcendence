@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { io } from "socket.io-client";
 import { API_URL } from "@/lib/room-api";
 
 export type CurrentUser = {
@@ -38,6 +39,49 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
       .then(setUser)
       .catch(() => setUser(null))
       .finally(() => setIsLoading(false));
+
+    if (token) {
+      const socketOrigin =
+        window.location.port === "3000"
+          ? "http://localhost:3001"
+          : window.location.origin;
+      const presenceSocket = io(`${socketOrigin}/presence`, {
+        auth: { token },
+        reconnection: true,
+      });
+
+      presenceSocket.on("presence:update", (update: { id: string; status: string }) => {
+        window.dispatchEvent(new CustomEvent("presence:update", { detail: update }));
+      });
+      presenceSocket.on("friend-request:received", (requester: unknown) => {
+        window.dispatchEvent(new CustomEvent("friend-request:received", { detail: requester }));
+      });
+      presenceSocket.on("friend-request:accepted", (friend: unknown) => {
+        window.dispatchEvent(new CustomEvent("friend-request:accepted", { detail: friend }));
+      });
+      presenceSocket.on("friend-request:declined", (request: unknown) => {
+        window.dispatchEvent(new CustomEvent("friend-request:declined", { detail: request }));
+      });
+      presenceSocket.on("friend:removed", (friend: unknown) => {
+        window.dispatchEvent(new CustomEvent("friend:removed", { detail: friend }));
+      });
+      presenceSocket.on("room-invitation:received", (invitation: unknown) => {
+        window.dispatchEvent(new CustomEvent("room-invitation:received", { detail: invitation }));
+      });
+
+      const updatePresence = () =>
+        fetch(`${API_URL}/users/me/presence`, {
+          method: "PATCH",
+          headers: { Authorization: "Bearer " + token },
+        }).catch(() => undefined);
+
+      void updatePresence();
+      const heartbeat = window.setInterval(updatePresence, 30_000);
+      return () => {
+        window.clearInterval(heartbeat);
+        presenceSocket.disconnect();
+      };
+    }
   }, []);
 
   return (
