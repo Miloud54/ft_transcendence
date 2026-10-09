@@ -4,6 +4,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CreateRoomDto } from './create.room.dto';
 import type { Request } from 'express';
 import { RoomGateway } from './room.gateway';
+import { PresenceGateway } from '../user/presence.gateway';
 
 type AuthenticatedRequest = Request & {
   user: {
@@ -16,7 +17,15 @@ type AuthenticatedRequest = Request & {
 export class RoomController {
     constructor(
         private readonly roomService: RoomService,
-        private readonly roomGateway: RoomGateway, ) {}
+        private readonly roomGateway: RoomGateway,
+        private readonly presenceGateway: PresenceGateway,
+    ) {}
+
+    @Get('me/invitations')
+    @UseGuards(JwtAuthGuard)
+    getPendingInvitations(@Req() request: AuthenticatedRequest) {
+        return this.roomService.getPendingInvitations(request.user.userId);
+    }
 
     @Get(':roomId')
     @UseGuards(JwtAuthGuard)
@@ -43,6 +52,45 @@ export class RoomController {
         this.roomGateway.emitRoomState(roomId, room);
 
         return room;
+    }
+
+    @Post(':roomId/invite/:friendId')
+    @UseGuards(JwtAuthGuard)
+    async inviteFriend(
+        @Param('roomId') roomId: string,
+        @Param('friendId') friendId: string,
+        @Req() request: AuthenticatedRequest,
+    ) {
+        const invitation = await this.roomService.inviteFriend(
+            roomId,
+            request.user.userId,
+            friendId,
+        );
+        this.presenceGateway.notifyUser(friendId, 'room-invitation:received', invitation);
+        return invitation;
+    }
+
+    @Post(':roomId/invitation/accept')
+    @UseGuards(JwtAuthGuard)
+    async acceptInvitation(
+        @Param('roomId') roomId: string,
+        @Req() request: AuthenticatedRequest,
+    ) {
+        const room = await this.roomService.acceptInvitation(
+            roomId,
+            request.user.userId,
+        );
+        this.roomGateway.emitRoomState(roomId, room);
+        return room;
+    }
+
+    @Post(':roomId/invitation/decline')
+    @UseGuards(JwtAuthGuard)
+    declineInvitation(
+        @Param('roomId') roomId: string,
+        @Req() request: AuthenticatedRequest,
+    ) {
+        return this.roomService.declineInvitation(roomId, request.user.userId);
     }
 
     @Post(':roomId/start')

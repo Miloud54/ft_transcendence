@@ -3,7 +3,8 @@
 import { use, useEffect, useState } from "react";
 import { connectToRoom } from "@/lib/room-socket";
 import { useRouter } from "next/navigation";
-import { startRoom, type Room } from "@/lib/room-api";
+import { getFriends, inviteFriendToRoom, startRoom, type Friend, type Room } from "@/lib/room-api";
+import { useCurrentUser } from "@/lib/current-user-context";
 
 export default function LobbyPage({
   params,
@@ -12,9 +13,19 @@ export default function LobbyPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { user } = useCurrentUser();
   const [room, setRoom] = useState<Room | null>(null);
+  const [friends, setFriends] = useState<Friend[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [invitingFriendId, setInvitingFriendId] = useState<string | null>(null);
+  const [invitedFriendIds, setInvitedFriendIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    void getFriends().then(setFriends).catch(() => {
+      setError("Could not load your friends.");
+    });
+  }, []);
 
   useEffect(() => {
   const socket = connectToRoom(id, (nextRoom) => {
@@ -52,7 +63,22 @@ export default function LobbyPage({
     }
   }
 
+  async function handleInvite(friend: Friend) {
+    setError(null);
+    setInvitingFriendId(friend.id);
+    try {
+      await inviteFriendToRoom(id, friend.id);
+      setInvitedFriendIds((current) => new Set(current).add(friend.id));
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Could not invite friend");
+    } finally {
+      setInvitingFriendId(null);
+    }
+  }
+
   const slots = Array.from({ length: room.maxPlayers }, (_, index) => room.players[index] ?? null);
+  const isHost = user?.id === room.hostId;
+  const roomPlayerIds = new Set(room.players.map((player) => player.id));
 
   return (
     <div className="space-y-6">
@@ -91,6 +117,41 @@ export default function LobbyPage({
           )
         )}
       </div>
+
+      {isHost && (
+        <section className="rounded-xl border border-violet-100 bg-violet-50/60 p-4">
+          <h2 className="text-sm font-semibold text-violet-950">Invite friends</h2>
+          <p className="mt-1 text-xs text-violet-700">
+            Add friends from your friend list to this game.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {friends.length === 0 ? (
+              <p className="text-sm text-zinc-500">You do not have any accepted friends yet.</p>
+            ) : (
+              friends.map((friend) => {
+                const alreadyInRoom = roomPlayerIds.has(friend.id);
+                return (
+                  <button
+                    key={friend.id}
+                    type="button"
+                    disabled={alreadyInRoom || invitingFriendId !== null || room.players.length >= room.maxPlayers}
+                    onClick={() => void handleInvite(friend)}
+                    className="rounded-md border border-violet-200 bg-white px-3 py-2 text-xs font-semibold text-violet-700 transition-colors hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {alreadyInRoom
+                      ? `${friend.username} is in`
+                      : invitedFriendIds.has(friend.id)
+                        ? `Invitation sent to ${friend.username}`
+                      : invitingFriendId === friend.id
+                        ? `Adding ${friend.username}...`
+                        : `Add ${friend.username}`}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </section>
+      )}
 
       <button
         type="button"

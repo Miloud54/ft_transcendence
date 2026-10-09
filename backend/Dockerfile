@@ -3,6 +3,7 @@ FROM node:24.18.0
 WORKDIR /app
 
 RUN chown node:node /app
+RUN mkdir -p /home/node/.npm && chown -R node:node /home/node
 
 COPY --chown=node:node package*.json ./
 COPY --chown=node:node prisma ./prisma
