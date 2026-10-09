@@ -45,6 +45,6 @@ curl -sf -u "elastic:${ELASTIC_PASSWORD}" -X PUT http://elasticsearch:9200/_snap
 # Archivage : snapshot des logs chaque nuit à 1h30, conservé 1 an
 curl -sf -u "elastic:${ELASTIC_PASSWORD}" -X PUT http://elasticsearch:9200/_slm/policy/daily-logs-archive \
   -H 'Content-Type: application/json' \
-  -d '{"schedule":"0 30 1 * * ?","name":"<logs-{now/d}>","repository":"logs-archive","config":{"indices":["docker-logs-*"]},"retention":{"expire_after":"365d","min_count":1}}'
+  -d '{"schedule":"0 30 1 * * ?","name":"<logs-{now/d}>","repository":"logs-archive","config":{"indices":["docker-logs-*"],"include_global_state":false},"retention":{"expire_after":"365d","min_count":1}}'
 
 echo "Comptes kibana_system et logstash_writer configurés."
