@@ -107,7 +107,7 @@ Deux rôles différents, faciles à confondre :
 
 Vault en mode dev repart **vide** à chaque redémarrage. Sans un conteneur qui le re-remplit automatiquement, il faudrait taper les secrets à la main à chaque `docker compose up` — inacceptable pour le sujet, qui exige un déploiement en **une seule commande**.
 
-`vault-init` : démarre après que `vault` soit `healthy`, écrit les secrets dans Vault via `vault/entrypoint.sh`, s'arrête. Même principe que `logs-init`, déjà présent dans le projet depuis le début.
+`vault-init` : démarre après que `vault` soit `healthy`, écrit les secrets dans Vault via `vault/entrypoint.sh`, s'arrête. Même principe que `volumes-init` (anciennement `logs-init`), déjà présent dans le projet depuis le début.
 
 **Ce n'est pas un hack inventé pour ce projet** — c'est un motif standard. Preuve : [`deviantony/docker-elk`](https://github.com/deviantony/docker-elk), la référence la plus utilisée pour monter ELK avec Docker Compose, utilise un service `setup` qui fait exactement ça : initialise les mots de passe `kibana_system`/`logstash_internal` depuis `.env`, une fois, au démarrage.
 

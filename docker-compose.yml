@@ -83,11 +83,14 @@ services:
       start_period: 120s
   
 
-  logs-init: # conteneur "jetable" : s'exécute une fois puis s'arrête
+  volumes-init: # conteneur "jetable" : règle les droits des volumes partagés, puis s'arrête
     image: docker.io/library/postgres:18-alpine
-    command: sh -c "chmod 1777 /var/log/app" # ouvre le dossier en écriture pour tous, protégé par le sticky bit
+    # app_logs : ouvert en écriture pour tous, protégé par le sticky bit
+    # es_snapshots : donné à l'utilisateur d'Elasticsearch (uid 1000) pour qu'il puisse y écrire ses snapshots
+    command: sh -c "chmod 1777 /var/log/app && chown 1000:0 /snapshots"
     volumes:
       - app_logs:/var/log/app
+      - es_snapshots:/snapshots
   
 
   db:
@@ -132,14 +135,17 @@ services:
 
     container_name: transcendence-elasticsearch
 
+    depends_on:
+      volumes-init:
+        condition: service_completed_successfully
+
     environment:
       discovery.type: single-node         # une seule instance, pas de cluster
       xpack.security.enabled: "true"     # pas d authentification (réseau déjà isolé)
       ES_JAVA_OPTS: "-Xms512m -Xmx512m"   # limite la RAM utilisée à 512 Mo
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       xpack.security.http.ssl.enabled: "false" # HTTP simple + mot de passe (réseau interne déjà isolé, pas de HTTPS pour éviter la gestion de certificats)
-
-
+      path.repo: /usr/share/elasticsearch/snapshots 
     
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:9200 || exit 1"]
@@ -150,6 +156,7 @@ services:
     
     volumes:
       - es_data:/usr/share/elasticsearch/data     # garde les données entre rédemarrages
+      - es_snapshots:/usr/share/elasticsearch/snapshots   # archive des logs
     
     networks:
       - private-net
@@ -417,6 +424,7 @@ services:
 volumes:
   db_data:
   es_data:
+  es_snapshots:
   prometheus_data:
   grafana_data:
   grafana_secrets:

@@ -17,7 +17,7 @@ Trois services dans `docker-compose.yml` :
 | Fichier | Rôle |
 | --- | --- |
 | `logstash/logstash.conf` | dit à Logstash quoi lire (`input file`, `/var/log/app/*.log`) et où envoyer (Elasticsearch, index `docker-logs-%{+YYYY.MM.dd}`) |
-| `docker-compose.yml` | volume `app_logs` partagé entre `frontend`/`backend`/`db`/`logstash` ; service jetable `logs-init` qui ouvre les droits d'écriture sur le volume (`chmod 1777`) ; `db` configuré avec `log_file_mode=0644` pour que Logstash puisse lire son log |
+| `docker-compose.yml` | volume `app_logs` partagé entre `frontend`/`backend`/`db`/`logstash` ; service jetable `volumes-init` (anciennement `logs-init`) qui règle les droits des volumes partagés (`chmod 1777` sur `app_logs`, `chown 1000:0` sur `es_snapshots`) ; `db` configuré avec `log_file_mode=0644` pour que Logstash puisse lire son log |
 
 ## **Ce que Kibana affiche aujourd'hui**
 
