@@ -36,7 +36,7 @@ services:
 
     container_name: transcendence-backend
 
-  #comment next line if not on school pc
+    #comment next line if not on school pc
     user: "0:0"
 
     depends_on:
@@ -95,6 +95,8 @@ services:
     
     container_name: transcendence-db
 
+    user: "0:0"
+
     restart: on-failure
     
     environment:
@@ -105,6 +107,7 @@ services:
     entrypoint: ["sh", "-c"]
     command:
       - >
+        rm -f /var/log/app/db.log &&
         chmod 1777 /var/log/app &&
         exec docker-entrypoint.sh postgres
         -c logging_collector=on
@@ -138,8 +141,6 @@ services:
       ES_JAVA_OPTS: "-Xms512m -Xmx512m"   # limite la RAM utilisée à 512 Mo
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       xpack.security.http.ssl.enabled: "false" # HTTP simple + mot de passe (réseau interne déjà isolé, pas de HTTPS pour éviter la gestion de certificats)
-
-
     
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:9200 || exit 1"]

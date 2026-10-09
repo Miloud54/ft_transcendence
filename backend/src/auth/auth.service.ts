@@ -32,6 +32,7 @@ type UserRecord = {
   xp: bigint;
   lvl: bigint;
   status: UserStatus;
+  last_seen_at: Date;
 };
 
 function toPublicUser(user: UserRecord) {
@@ -76,7 +77,8 @@ export class AuthService {
       },
     });
 
-    return this.buildAuthResponse(user);
+    const activeUser = await this.markOnline(user.user_id);
+    return this.buildAuthResponse(activeUser);
   }
 
   async login(dto: LoginDto) {
@@ -94,7 +96,8 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return this.buildAuthResponse(user);
+    const activeUser = await this.markOnline(user.user_id);
+    return this.buildAuthResponse(activeUser);
   }
 
   refresh(refreshToken: string) {
@@ -182,7 +185,15 @@ export class AuthService {
             });
     }
 
-    return this.buildAuthResponse(user);
+    const activeUser = await this.markOnline(user.user_id);
+    return this.buildAuthResponse(activeUser);
+  }
+
+  private markOnline(userId: bigint) {
+    return this.prisma.user.update({
+      where: { user_id: userId },
+      data: { status: UserStatus.ONLINE, last_seen_at: new Date() },
+    });
   }
 
   private async generateUniqueUsername(base: string) {

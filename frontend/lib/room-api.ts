@@ -8,6 +8,7 @@ export type RoomPlayer = {
 
 export type Room = {
   id: string;
+  hostId: string;
   status: string;
   minPlayers: number;
   maxPlayers: number;
@@ -57,6 +58,71 @@ export function joinRoom(roomId: string) {
   return roomRequest<Room>(`/rooms/${encodeURIComponent(roomId)}/join`, {
     method: "POST",
   });
+}
+
+export function inviteFriendToRoom(roomId: string, friendId: string) {
+  return roomRequest<RoomInvitation>(
+    `/rooms/${encodeURIComponent(roomId)}/invite/${encodeURIComponent(friendId)}`,
+    { method: "POST" },
+  );
+}
+
+export type RoomInvitation = {
+  roomId: string;
+  friendId: string;
+  inviter: {
+    id: string;
+    username: string;
+  };
+};
+
+export function getRoomInvitations() {
+  return roomRequest<RoomInvitation[]>("/rooms/me/invitations");
+}
+
+export type FriendRequest = Friend & {
+  relationship?: "PENDING_RECEIVED";
+};
+
+export function getFriendRequests() {
+  return roomRequest<FriendRequest[]>("/users/me/friend-requests");
+}
+
+export function acceptFriendRequest(requesterId: string) {
+  return roomRequest<Friend>(`/users/me/friend-requests/${encodeURIComponent(requesterId)}/accept`, {
+    method: "PATCH",
+  });
+}
+
+export function declineFriendRequest(requesterId: string) {
+  return roomRequest<{ message: string }>(
+    `/users/me/friend-requests/${encodeURIComponent(requesterId)}/decline`,
+    { method: "POST" },
+  );
+}
+
+export function acceptRoomInvitation(roomId: string) {
+  return roomRequest<Room>(`/rooms/${encodeURIComponent(roomId)}/invitation/accept`, {
+    method: "POST",
+  });
+}
+
+export function declineRoomInvitation(roomId: string) {
+  return roomRequest<{ roomId: string; declined: boolean }>(
+    `/rooms/${encodeURIComponent(roomId)}/invitation/decline`,
+    { method: "POST" },
+  );
+}
+
+export type Friend = {
+  id: string;
+  username: string;
+  avatar: string;
+  status: "ONLINE" | "OFFLINE";
+};
+
+export function getFriends() {
+  return roomRequest<Friend[]>("/users/me/friends");
 }
 
 export type StartRoomResponse = {

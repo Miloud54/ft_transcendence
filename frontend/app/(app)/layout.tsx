@@ -6,6 +6,7 @@ import { CurrentUserBadge } from "@/components/current-user-badge";
 import { AccountMenu } from "@/components/account-menu";
 import { RoomChat } from "@/components/room-chat";
 import { MobileNav } from "@/components/mobile-nav";
+import { NotificationCenter } from "@/components/notification-center";
 
 const NAV_ITEMS = [
   { href: "/home", label: "Home" },
@@ -32,12 +33,8 @@ export default function AppLayout({
           </div>
 
           <div className="flex items-center gap-4">
-            <input
-              type="search"
-              placeholder="Search..."
-              className="hidden rounded-md border border-white/20 bg-white/10 px-3 py-1.5 text-sm text-white outline-none placeholder:text-violet-200 lg:block"
-            />
             <MobileNav items={NAV_ITEMS} />
+            <NotificationCenter />
             <AccountMenu />
             <Link href="/dashboard">
               <CurrentUserBadge />
