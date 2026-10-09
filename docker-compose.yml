@@ -135,10 +135,6 @@ services:
 
     container_name: transcendence-elasticsearch
 
-    depends_on:
-      volumes-init:
-        condition: service_completed_successfully
-
     environment:
       discovery.type: single-node         # une seule instance, pas de cluster
       xpack.security.enabled: "true"     # pas d authentification (réseau déjà isolé)
