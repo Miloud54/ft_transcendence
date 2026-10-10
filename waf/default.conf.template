@@ -11,6 +11,10 @@ upstream backend_upstream {
     server backend:3000;
 }
 
+upstream kibana_upstream {
+    server kibana:5601;
+}
+
 upstream grafana_upstream {
     server grafana:3000;
 }
@@ -54,6 +58,16 @@ server {
     location /socket.io/ {
         proxy_pass http://backend_upstream/socket.io/;
         proxy_set_header Host $host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_http_version 1.1;
+        proxy_read_timeout 3600s;
+    }
+
+    location /kibana/ {
+        proxy_pass http://kibana_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
         proxy_http_version 1.1;

@@ -8,7 +8,7 @@ Trois services dans `docker-compose.yml` :
 
 - **Elasticsearch** (`8.15.0`) — stocke et indexe les logs, mode single-node (pas de cluster), accessible uniquement depuis les autres conteneurs (pas de port publié), **authentification obligatoire** (voir section Sécurisation plus bas)
 - **Logstash** (`8.15.0`) — lit les fichiers de logs dans un volume partagé et les transmet à Elasticsearch avec un compte dédié à droits limités
-- **Kibana** (`8.15.0`) — visualise les logs stockés dans Elasticsearch, accessible sur `http://localhost:5601`, login requis
+- **Kibana** (`8.15.0`) — visualise les logs stockés dans Elasticsearch, accessible uniquement via le WAF sur `https://localhost:8443/kibana/`, login requis (voir section Kibana derrière le WAF plus bas)
 
 `backend`, `frontend` et `db` écrivent leurs logs dans un volume partagé `app_logs` (au lieu du driver `gelf` de Docker, testé puis abandonné : non supporté par Podman, seule alternative — `journald` — ne fonctionnait que par accident sous Podman/Fedora et pas sous Docker Engine). `frontend`/`backend` utilisent `tee` sur leur commande de démarrage, `db` utilise le `logging_collector` natif de Postgres.
 
@@ -57,13 +57,72 @@ Doc de référence sur ce qui est en place. Le point bloquant du sujet ("sécuri
 - Kibana démarre (`Kibana is now available`) et se connecte à Elasticsearch via `kibana_system` sans erreur
 - Logstash démarre (`Pipelines running {:count=>1}`) et écrit via `logstash_writer` sans erreur (après ajout de `manage_index_templates`, sinon `403` au moment d'installer le template `ecs-logstash`)
 
+## **Kibana derrière le WAF, en HTTPS (10/10/2026)**
+
+Point bloquant du sujet : avant ce changement, Kibana était publié directement sur l'hôte (`5601:5601`), en HTTP, sans passer par le WAF. N'importe qui sur le réseau pouvait atteindre la page de connexion sans chiffrement ni filtrage ModSecurity. Désormais, le seul chemin vers Kibana est `https://localhost:8443/kibana/`, comme pour le site et l'API.
+
+### Ce qui a changé
+
+- **Kibana servi sous `/kibana`** : Kibana ne tourne plus à la racine, ce qui permet au WAF de l'aiguiller par préfixe d'URL sans entrer en conflit avec le frontend (`/`) ni l'API (`/api/`).
+- **Port `5601` retiré** : Kibana n'est plus joignable que depuis le réseau Docker `private-net`, donc uniquement via le WAF.
+- **WAF** : nouvel `upstream` vers `kibana:5601` et nouvelle règle d'aiguillage `/kibana/`.
+- **Deux faux positifs ModSecurity** corrigés pour `/kibana/` uniquement (détail plus bas).
+
+### Fichiers modifiés
+
+| Fichier | Changement |
+| --- | --- |
+| `docker-compose.yml` (service `kibana`) | ajout `SERVER_BASEPATH: /kibana`, `SERVER_REWRITEBASEPATH: "true"`, `SERVER_PUBLICBASEURL: https://localhost:8443/kibana` ; suppression du bloc `ports: 5601:5601` |
+| `docker-compose.yml` (service `waf`) | ajout de `kibana` (`condition: service_started`) dans `depends_on` |
+| `waf/default.conf.template` | ajout `upstream kibana_upstream { server kibana:5601; }` et d'un bloc `location /kibana/` dans le serveur HTTPS |
+| `waf/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf` | règle `id:1004` : retire les règles CRS `932260` et `942220` pour les URL commençant par `/kibana/` |
+
+### Rôle des trois variables Kibana
+
+| Variable | Rôle |
+| --- | --- |
+| `SERVER_BASEPATH: /kibana` | Kibana génère ses liens sous `/kibana/...` au lieu de `/...` ; sans ça, ses liens (`/app/...`) partiraient vers le frontend Next.js |
+| `SERVER_REWRITEBASEPATH: "true"` | Kibana accepte les requêtes qui arrivent **avec** le préfixe `/kibana` et le retire lui-même |
+| `SERVER_PUBLICBASEURL` | adresse publique complète, utilisée par Kibana pour ses redirections et liens absolus (sinon avertissement au démarrage) |
+
+### Pièges rencontrés
+
+- **`/` final dans `proxy_pass`** : pour `/api/`, `proxy_pass http://backend_upstream/;` (avec `/`) fait retirer `/api` par Nginx, ce que le backend attend. Pour Kibana, il faut `proxy_pass http://kibana_upstream;` **sans** `/` : Nginx garde `/kibana` dans le chemin, ce que Kibana attend avec `SERVER_REWRITEBASEPATH`. Avec un `/`, on obtient des 404 ou des boucles de redirection.
+- **`depends_on` du WAF** : Nginx vérifie au démarrage que les noms des `upstream` existent ; si le conteneur `kibana` n'existe pas encore, le WAF plante. `service_started` et non `service_healthy`, car Kibana n'a pas de healthcheck dans le compose (le WAF attendrait indéfiniment).
+- **Faux positifs ModSecurity** : une fois Kibana atteint, Discover restait en chargement infini avec une erreur `BfetchRequestError ... Code 403`. Les logs du WAF ont montré deux règles qui se déclenchaient sur des requêtes normales de Kibana :
+
+  | Règle CRS | Ce qu'elle croyait voir | Ce que c'était réellement |
+  | --- | --- | --- |
+  | `932260` (exécution de commande Unix) | le mot `docker` | le nom de l'index `docker-logs-*` |
+  | `942220` (débordement d'entier) | le nombre `2147483647` | valeur envoyée par Kibana dans ses recherches (entier maximal, pour dire « pas de limite ») |
+
+  Les deux règles sont retirées **uniquement** pour `/kibana/` (règle `1004`) : le site et l'API restent protégés par elles, et Kibana exige une connexion. On les retire en entier plutôt que champ par champ, car le champ concerné change d'une requête à l'autre (`ARGS:pattern`, `ARGS:json.batch.array_0...`).
+- **Identifiants de règles uniques** : chaque règle ModSecurity doit avoir un `id` unique. Un doublon (`1001` déjà pris par la règle des méthodes autorisées) empêche ModSecurity de charger la configuration, et le WAF entier ne démarre plus. Les exclusions maison utilisent `1000` à `1004`.
+
+### Validé
+
+- `http://localhost:5601` : connexion refusée (port fermé, plus de contournement du WAF)
+- `https://localhost:8443/kibana/` : `302` vers la page de connexion Kibana
+- `http://localhost:8080/kibana/` : `301` vers `https://localhost:8443/kibana/`
+- Connexion avec `elastic` puis **Discover** sur `docker-logs-*` : champs et logs affichés, toutes les requêtes `/kibana/internal/...` en `200`, aucun blocage dans les logs du WAF
+
+### Diagnostiquer un futur blocage du WAF sur Kibana
+
+Le navigateur n'affiche qu'un `403`, sans la raison. La raison est dans les logs du WAF :
+
+```
+docker logs -f transcendence-waf 2>&1 | grep '"is_interrupted":true'
+```
+
+Dans chaque ligne : `"uri"` (requête bloquée), `"ruleId"` (règle en cause) et `"data"` (texte exact qui l'a déclenchée). Ignorer `949110` et `980170`, qui signalent seulement que le score total a dépassé le seuil.
+
 ## **Prochaines étapes (ELK)**
 
 - [ ]  Tester la stack sur une machine Docker Engine réelle (idéalement macOS), pour confirmer la portabilité — validé pour l'instant uniquement sur Linux/Podman
 - [ ]  **Politique de rétention/archivage des logs** (exigence du sujet) — pas encore configurée, Elasticsearch garde tout indéfiniment pour l'instant
 - [ ]  Filtrer/masquer les données sensibles (mots de passe, tokens) dans le pipeline Logstash avant indexation — aucun filtre en place actuellement, les logs bruts sont indexés tels quels
 - [ ]  TLS interne complet (chiffrement, pas juste authentification) entre Elasticsearch/Kibana/Logstash — actuellement HTTP en clair sur le réseau Docker isolé
-- [ ]  Revoir l'exposition de Kibana (`5601:5601` publié directement sur l'hôte) — à faire passer derrière le WAF ou restreindre l'accès réseau
+- [x]  Revoir l'exposition de Kibana (`5601:5601` publié directement sur l'hôte) — fait le 10/10/2026 : Kibana passe derrière le WAF en HTTPS sur `/kibana/`, port `5601` retiré
 - [ ]  Un premier dashboard Kibana pour visualiser les logs par service / niveau d'erreur
 - [ ]  Documenter ce choix d'architecture dans le `README.md` du projet (section Modules, module ELK)
 
