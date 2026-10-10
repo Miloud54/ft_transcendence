@@ -16,7 +16,7 @@ Trois services dans `docker-compose.yml` :
 
 | Fichier | Rôle |
 | --- | --- |
-| `logstash/logstash.conf` | dit à Logstash quoi lire (`input file`, `/var/log/app/*.log`) et où envoyer (Elasticsearch, index `docker-logs-%{+YYYY.MM.dd}`) |
+| `logstash/logstash.conf` | dit à Logstash quoi lire (`input file`, `/var/log/app/*.log`), quoi transformer (`filter` : champ `service`, masquage des secrets — voir section dédiée) et où envoyer (Elasticsearch, index `docker-logs-%{+YYYY.MM.dd}`) |
 | `docker-compose.yml` | volume `app_logs` partagé entre `frontend`/`backend`/`db`/`logstash` ; service jetable `volumes-init` (anciennement `logs-init`) qui règle les droits des volumes partagés (`chmod 1777` sur `app_logs`, `chown 1000:0` sur `es_snapshots`) ; `db` configuré avec `log_file_mode=0644` pour que Logstash puisse lire son log |
 
 ## **Ce que Kibana affiche aujourd'hui**
@@ -116,11 +116,125 @@ docker logs -f transcendence-waf 2>&1 | grep '"is_interrupted":true'
 
 Dans chaque ligne : `"uri"` (requête bloquée), `"ruleId"` (règle en cause) et `"data"` (texte exact qui l'a déclenchée). Ignorer `949110` et `980170`, qui signalent seulement que le score total a dépassé le seuil.
 
+## **Filtre Logstash : champ `service` et masquage des secrets (10/10/2026)**
+
+Avant ce changement, `logstash.conf` n'avait que deux blocs (`input`, `output`) : chaque ligne de log était envoyée telle quelle à Elasticsearch, sans aucune transformation. Deux problèmes en découlaient.
+
+### Problème 1 : des secrets lisibles dans Kibana
+
+Une recherche `accessToken` dans les index `docker-logs-*` a remonté une vraie ligne de `frontend.log` :
+
+```
+GET /auth/callback?accessToken=eyJhbGci…&refreshToken=eyJhbGci… 200 in 263ms
+```
+
+Après une connexion Google/Discord, le backend redirige vers le frontend avec les deux tokens **dans l'URL** (`auth.controller.ts`, méthode `redirectWithTokens`). Next.js écrit cette URL dans son log, Logstash l'indexait, et le token devenait consultable par toute personne ayant accès à Kibana. Le `refreshToken` permet d'obtenir de nouveaux tokens pendant plusieurs jours : le copier suffit à usurper la session de l'utilisateur. Et la rétention garde les logs longtemps.
+
+Une recherche `password` a remonté 56 lignes, mais uniquement des messages Postgres du type `password authentication failed for user "transcendence"`, sans mot de passe. Le masquage des mots de passe est donc une protection préventive.
+
+### Problème 2 : pas de champ simple pour distinguer les services
+
+Le seul moyen de savoir d'où venait une ligne était `log.file.path` (`/var/log/app/backend.log`…). Filtrer demandait `log.file.path : "*backend.log*"`, et un graphique « logs par service » était difficile à construire sur un chemin de fichier.
+
+### Ce qui a changé
+
+Un bloc `filter` entre `input` et `output`, qui transforme chaque ligne avant indexation. Il utilise uniquement le plugin `mutate` (« modifier la fiche d'un log »), avec trois actions :
+
+| Action `mutate` | Effet |
+| --- | --- |
+| `add_field` | **ajoute** une case : `service` |
+| `gsub` | **remplace** du texte dans une case : les secrets de `message` deviennent `[REDACTED]` |
+| `remove_field` | **supprime** une case : `event.original` (voir piège plus bas) |
+
+**1. Champ `service`**, déduit du fichier d'origine :
+
+```
+if [log][file][path] =~ /frontend\.log$/ {
+  mutate { add_field => { "service" => "frontend" } }
+} else if [log][file][path] =~ /backend\.log$/ { ... "backend" ... }
+  else if [log][file][path] =~ /db\.log$/      { ... "db" ... }
+```
+
+`[log][file][path]` est la syntaxe Logstash pour le champ `log.file.path` ; `=~ /frontend\.log$/` signifie « finit par `frontend.log` » (`$` = fin, `\.` = un vrai point). Pour ajouter un futur service (ex. `game.log`), il suffit d'ajouter un `else if` sur le même modèle.
+
+**2. Masquage des secrets** dans `message` (`gsub` : chaque ligne = champ, modèle à chercher, remplacement) :
+
+| Ce qui est masqué | Exemple avant → après |
+| --- | --- |
+| `accessToken=` / `refreshToken=` dans une URL | `accessToken=eyJ…&x=1` → `accessToken=[REDACTED]&x=1` |
+| en-tête `Bearer` | `Bearer eyJ…` → `Bearer [REDACTED]` |
+| `password=` (URL) ou `"password":"…"` (JSON) | `"password":"abc",` → `"password":"[REDACTED]",` |
+
+Mémo des symboles regex utilisés (expressions régulières, comprises par le moteur Ruby de Logstash, et par `grep`, Nginx, ModSecurity…) :
+
+| Symbole | Sens |
+| --- | --- |
+| `[^X]+` | tout jusqu'au prochain `X` (ex. `[^&\s]+` = jusqu'au prochain `&` ou espace : la valeur entière d'un paramètre d'URL) |
+| `A\|B` | A ou B |
+| `?` | ce qui précède est optionnel (0 ou 1 fois) |
+| `*` | 0 ou plusieurs fois |
+| `\s` | un espace |
+| `( )` | mémorise ce morceau |
+| `\1` | réutilise le morceau mémorisé dans le remplacement (on garde `accessToken=`, on remplace seulement la valeur) |
+| `\"` | un guillemet (le `\` est obligatoire pour ne pas fermer la chaîne du `.conf`) |
+
+**3. Suppression de `event.original`** :
+
+```
+mutate { remove_field => ["[event][original]"] }
+```
+
+### Piège rencontré : la copie brute `event.original`
+
+Premier test : `message` était bien masqué, mais les faux secrets restaient **en clair** dans un autre champ, `event.original`. Logstash 8 suit la norme de nommage **ECS** (`pipeline.ecs_compatibility: v8`, visible au démarrage), qui garde une copie exacte de la ligne reçue, **avant** tout filtre. Utile en général (revenir au texte brut, retraiter plus tard avec de nouveaux filtres, audit), mais ici elle conservait les secrets. Masquer seulement `message` ne servait donc à rien tant que la copie existait.
+
+Choix : supprimer `event.original` plutôt que lui appliquer aussi le `gsub` (une fois masqué, il serait identique à `message`, donc inutile, et on gagne de la place).
+
+### Piège secondaire : coloration rouge dans VS Code
+
+VS Code ne connaît pas la syntaxe Logstash : il affiche en rouge les crochets du bloc `gsub`, parce qu'il compte aussi ceux **à l'intérieur des chaînes** (`[^&\s]`, `[:=]`, `[REDACTED]`, un `}` seul). Ce n'est pas une erreur. La seule vérification fiable est le test de configuration de Logstash :
+
+```
+docker run --rm -v "$PWD/logstash/logstash.conf:/tmp/test.conf:ro" -e LOGSTASH_PASSWORD=x docker.elastic.co/logstash/logstash:8.15.0 bin/logstash -f /tmp/test.conf --config.test_and_exit
+```
+
+`Configuration OK` = syntaxe valide. Ce test ne vérifie **pas** que les regex attrapent bien les secrets : seul un test réel le montre.
+
+### Fichier modifié
+
+| Fichier | Changement |
+| --- | --- |
+| `logstash/logstash.conf` | ajout d'un bloc `filter` (commentaire d'en-tête + champ `service` + `gsub` de masquage + `remove_field` de `event.original`) |
+
+### Validé
+
+1. `--config.test_and_exit` : `Configuration OK`
+2. Relance : `docker compose up -d --force-recreate logstash`, puis `Pipelines running {:count=>1}` dans ses logs
+3. Ligne piège avec de **faux** secrets, écrite directement dans le log du frontend :
+
+   ```
+   docker exec transcendence-frontend sh -c 'echo "TEST-FILTRE GET /auth/callback?accessToken=FAUX111&refreshToken=FAUX222 Bearer FAUX333 password=FAUX444" >> /var/log/app/frontend.log'
+   ```
+
+4. Dans Kibana (Discover, recherche `TEST-FILTRE`) : `message` = `accessToken=[REDACTED]&refreshToken=[REDACTED] Bearer [REDACTED] password=[REDACTED]`, champ `service` = `frontend`, plus de champ `event.original`
+
+Les champs commençant par `_` (`_id`, `_index`, `_score`, `_ignored`) sont ajoutés par Elasticsearch lui-même (identifiant du document, index de rangement…) et ne contiennent rien du log.
+
+### Limites connues
+
+- **Le filtre ne nettoie que les nouveaux logs.** Les lignes indexées avant le 10/10/2026 contiennent encore les vrais tokens (dans `message` et `event.original`). À supprimer avant une démo (suppression des anciens index `docker-logs-*`) ou à laisser expirer avec la rétention.
+- **Doublons à chaque recréation du conteneur Logstash** : sans volume pour mémoriser sa position de lecture, Logstash relit tous les fichiers depuis le début (`start_position => "beginning"`). Les copies relues passent par le filtre (propres), mais s'ajoutent aux anciennes. Voir Prochaines étapes.
+- **Le vrai problème est en amont** : des tokens ne devraient pas transiter dans une URL (ils restent aussi dans l'historique du navigateur). Le filtre empêche leur stockage dans les logs (défense en profondeur), mais la redirection OAuth du backend devrait être revue (cookie `HttpOnly` ou fragment `#` non envoyé au serveur). Signalé à l'équipe backend.
+- **Logs du WAF non couverts** : ModSecurity écrit l'en-tête `Authorization` complet dans son log d'audit, sur la sortie du conteneur. Ces logs ne passent pas par Logstash, donc pas par ce filtre.
+
 ## **Prochaines étapes (ELK)**
 
 - [ ]  Tester la stack sur une machine Docker Engine réelle (idéalement macOS), pour confirmer la portabilité — validé pour l'instant uniquement sur Linux/Podman
 - [ ]  **Politique de rétention/archivage des logs** (exigence du sujet) — pas encore configurée, Elasticsearch garde tout indéfiniment pour l'instant
-- [ ]  Filtrer/masquer les données sensibles (mots de passe, tokens) dans le pipeline Logstash avant indexation — aucun filtre en place actuellement, les logs bruts sont indexés tels quels
+- [x]  Filtrer/masquer les données sensibles (mots de passe, tokens) dans le pipeline Logstash avant indexation — fait le 10/10/2026 (filtre `mutate/gsub` + suppression de `event.original`), plus champ `service`
+- [ ]  Supprimer les anciens index contenant encore des tokens en clair (indexés avant le filtre)
+- [ ]  Volume pour la position de lecture de Logstash (`/usr/share/logstash/data`), sinon chaque recréation du conteneur réindexe tous les logs en double
+- [ ]  Masquer l'en-tête `Authorization` dans le log d'audit ModSecurity du WAF (hors pipeline Logstash)
 - [ ]  TLS interne complet (chiffrement, pas juste authentification) entre Elasticsearch/Kibana/Logstash — actuellement HTTP en clair sur le réseau Docker isolé
 - [x]  Revoir l'exposition de Kibana (`5601:5601` publié directement sur l'hôte) — fait le 10/10/2026 : Kibana passe derrière le WAF en HTTPS sur `/kibana/`, port `5601` retiré
 - [ ]  Un premier dashboard Kibana pour visualiser les logs par service / niveau d'erreur
@@ -143,7 +257,8 @@ Sans ELK, déboguer un problème demanderait de faire `podman logs` sur chaque c
 Onglet **Discover** (menu ☰) : équivalent d'un `grep` avec une interface graphique, sur les données envoyées par Logstash.
 
 - **Data View** : le "sur quels index chercher" — ici `docker-logs-*` (matche `docker-logs-2026.09.12`, etc.). À créer une fois via Stack Management → Data Views (persiste tant que le volume `es_data` n'est pas supprimé — ex: `podman compose down -v` l'efface).
-- **Champ `log.file.path`** : indique quel fichier source a produit la ligne (`/var/log/app/frontend.log`, `backend.log`, `db.log`) — c'est le seul moyen de distinguer les 3 services, puisque l'input est de type `file` (pas de métadonnée `container_name` comme il y aurait eu avec `gelf`).
+- **Champ `service`** (depuis le 10/10/2026) : `frontend`, `backend` ou `db`, ajouté par le filtre Logstash — le plus simple pour filtrer (`service : backend`) et pour les graphiques par service.
+- **Champ `log.file.path`** : indique quel fichier source a produit la ligne (`/var/log/app/frontend.log`, `backend.log`, `db.log`) — c'est de lui que le filtre déduit `service`, puisque l'input est de type `file` (pas de métadonnée `container_name` comme il y aurait eu avec `gelf`).
 - **Champ `message`** : le contenu brut de la ligne de log.
 
 ### Syntaxe de recherche (KQL)
@@ -152,11 +267,12 @@ Onglet **Discover** (menu ☰) : équivalent d'un `grep` avec une interface grap
 | --- | --- |
 | `error` | Cherche "error" dans **tous** les champs |
 | `champ : "valeur"` | Cherche cette valeur dans un champ précis |
-| `log.file.path : "*backend.log*"` | Filtre sur les logs du backend uniquement (le `*` est un joker) |
+| `service : backend` | Filtre sur les logs du backend uniquement (champ ajouté par le filtre Logstash) |
+| `log.file.path : "*backend.log*"` | Même chose via le chemin du fichier (le `*` est un joker) — utile pour les logs indexés avant le 10/10/2026, qui n'ont pas de champ `service` |
 | `message : "error"` | Cherche "error" uniquement dans le contenu du message |
 | `A and B` / `A or B` / `not A` | Combine plusieurs conditions |
 
-Exemple combiné : `log.file.path : "*backend.log*" and message : "error"` → uniquement les erreurs du backend.
+Exemple combiné : `service : backend and message : "error"` → uniquement les erreurs du backend.
 
 ### Pour progresser
 
