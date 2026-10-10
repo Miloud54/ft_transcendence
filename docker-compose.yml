@@ -220,9 +220,11 @@ services:
        ELASTICSEARCH_HOSTS: http://elasticsearch:9200        # où aller chercher les données
        ELASTICSEARCH_USERNAME: kibana_system
        ELASTICSEARCH_PASSWORD: ${KIBANA_PASSWORD}
+       SERVER_BASEPATH: /kibana
+       SERVER_REWRITEBASEPATH: "true"
+       SERVER_PUBLICBASEURL: https://localhost:8443/kibana
 
-    ports:
-      - "5601:5601"
+
 
     networks:
       - private-net
@@ -410,6 +412,8 @@ services:
         condition: service_started
       backend:
         condition: service_healthy
+      kibana:
+        condition: service_started
     
     environment:
       MODSEC_RULE_ENGINE: "On" 
