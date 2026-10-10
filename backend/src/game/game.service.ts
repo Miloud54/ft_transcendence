@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from 'src/prisma/prisma.service';
+import { PedantixEngineService } from 'src/pedantix-engine/pedantix-engine.service';
 
 import {
   GameStatus,
@@ -13,7 +14,13 @@ import {
 
 @Injectable()
 export class GameService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly countdowns = new Set<string>();
+  private readonly preparations = new Map<string, Promise<void>>();
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly pedantixEngine: PedantixEngineService,
+  ) {}
 
   async transitionToRunning(gameId: string): Promise<void> {
     const game = await this.prisma.game.findUnique({
@@ -28,6 +35,10 @@ export class GameService {
 
     if (game.status !== GameStatus.COUNTDOWN) {
       throw new ConflictException('Game is not in COUNTDOWN');
+    }
+
+    if (!this.pedantixEngine.isGamePrepared(gameId)) {
+      throw new ConflictException('Game preparation is not complete');
     }
 
     await this.prisma.$transaction(async (transaction) => {
@@ -71,10 +82,25 @@ export class GameService {
       throw new ConflictException('Game is not in COUNTDOWN');
     }
 
-    setTimeout(() => {
-      this.transitionToRunning(gameId).catch((error) => {
-        console.error('Failed to transition game to RUNNING:', error);
-      });
+    if (this.countdowns.has(gameId)) {
+      return;
+    }
+
+    this.countdowns.add(gameId);
+
+    const preparation = this.pedantixEngine.prepareGame(gameId);
+    this.preparations.set(gameId, preparation);
+
+    setTimeout(async () => {
+      try {
+        await preparation;
+        await this.transitionToRunning(gameId);
+      } catch (error) {
+        console.error('Failed to start game:', error);
+      } finally {
+        this.countdowns.delete(gameId);
+        this.preparations.delete(gameId);
+      }
     }, 10_000);
   }
 
@@ -118,7 +144,6 @@ export class GameService {
       });
     });
   }
-
 }
 
 /*

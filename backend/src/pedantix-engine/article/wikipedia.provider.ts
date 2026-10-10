@@ -27,6 +27,13 @@ interface WikipediaRandomResponse {
   };
 }
 
+interface WikipediaPageviewsResponse {
+    items?: {
+        timestamp: string;
+        views: number;
+    }[];
+}
+
 @Injectable()
 export class WikipediaProvider extends ArticleProvider {
     private readonly wikipediaApiUrl =
@@ -111,6 +118,60 @@ export class WikipediaProvider extends ArticleProvider {
 
         return paragraphs;
     }
+
+    async getAverageMonthlyPageviews(title: string): Promise<number> {
+        const now = new Date();
+
+        // Premier jour du mois courant : ce mois sera exclu.
+        const endDate = new Date(
+            Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+        );
+
+        // Début de la période : 60 mois avant le mois courant.
+        const startDate = new Date(
+            Date.UTC(
+                endDate.getUTCFullYear(),
+                endDate.getUTCMonth() - 60,
+                1,
+            ),
+        );
+
+        const formatDate = (date: Date): string =>
+            `${date.getUTCFullYear()}${String(
+                date.getUTCMonth() + 1,
+            ).padStart(2, '0')}01`;
+
+        const start = formatDate(startDate);
+        const end = formatDate(endDate);
+        const encodedTitle = encodeURIComponent(title.replace(/ /g, '_'));
+
+        const url =
+            'https://wikimedia.org/api/rest_v1/metrics/pageviews/' +
+            'per-article/en.wikipedia.org/all-access/user/' +
+            `${encodedTitle}/monthly/${start}/${end}`;
+
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': this.userAgent,
+                Accept: 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(
+                `Wikipedia Pageviews API returned HTTP ${response.status}`,
+            );
+        }
+
+        const data = (await response.json()) as WikipediaPageviewsResponse;
+        const totalViews = (data.items ?? []).reduce(
+            (total, item) => total + item.views,
+            0,
+        );
+
+        return totalViews / 60;
+    }
+        
 
     async getRandomArticleCandidate(): Promise<ArticleCandidate | null> {
         const url =

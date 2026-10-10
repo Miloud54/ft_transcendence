@@ -159,4 +159,81 @@ describe('WikipediaProvider', () => {
 
       expect(candidate).toBeNull();
     });
+
+    describe('getAverageMonthlyPageviews', () => {
+        it('calculates the average over 60 complete months', async () => {
+            jest.useFakeTimers();
+            jest.setSystemTime(new Date('2026-10-10T12:00:00Z'));
+
+            try {
+                fetchMock.mockResolvedValue({
+                    status: 200,
+                    ok: true,
+                    json: async () => ({
+                        items: [
+                            { timestamp: '2021100100', views: 600_000 },
+                            { timestamp: '2021110100', views: 600_000 },
+                            { timestamp: '2021120100', views: 600_000 },
+                        ],
+                    }),
+                } as Response);
+
+                const average =
+                    await provider.getAverageMonthlyPageviews('Jupiter');
+
+                // 1 800 000 vues / 60 mois = 30 000.
+                expect(average).toBe(30_000);
+
+                const requestedUrl = fetchMock.mock.calls[0][0] as string;
+
+                expect(requestedUrl).toContain(
+                    '/Jupiter/monthly/20211001/20261001',
+                );
+
+                expect(fetchMock).toHaveBeenCalledWith(
+                    requestedUrl,
+                    expect.objectContaining({
+                        headers: expect.objectContaining({
+                            'User-Agent': expect.any(String),
+                            Accept: 'application/json',
+                        }),
+                    }),
+                );
+            } finally {
+                jest.useRealTimers();
+            }
+        });
+
+        it('encodes article titles in the Pageviews URL', async () => {
+            fetchMock.mockResolvedValue({
+                status: 200,
+                ok: true,
+                json: async () => ({
+                    items: [{ timestamp: '2021100100', views: 600_000 }],
+                }),
+            } as Response);
+
+            await provider.getAverageMonthlyPageviews('Albert Einstein');
+
+            const requestedUrl = fetchMock.mock.calls[0][0] as string;
+
+            expect(requestedUrl).toContain('Albert_Einstein');
+        });
+
+        it('throws when the Pageviews API returns an HTTP error', async () => {
+            fetchMock.mockResolvedValue({
+                status: 503,
+                ok: false,
+                json: async () => ({}),
+            } as Response);
+
+            await expect(
+                provider.getAverageMonthlyPageviews('Jupiter'),
+            ).rejects.toThrow(
+                'Wikipedia Pageviews API returned HTTP 503',
+            );
+        });
+    });
+
+
 });

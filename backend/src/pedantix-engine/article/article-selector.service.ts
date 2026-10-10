@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { Article } from './article';
 import { ArticleProvider } from './article.provider';
 
+const MIN_AVERAGE_MONTHLY_PAGEVIEWS = 10_000;
+
 @Injectable()
 export class ArticleSelectorService {
   constructor(
@@ -15,6 +17,13 @@ export class ArticleSelectorService {
 
       if (!candidate || candidate.isDisambiguation) {
         continue;
+      }
+
+      const averageMonthlyPageviews =
+          await this.articleProvider.getAverageMonthlyPageviews(candidate.title);
+
+      if (averageMonthlyPageviews < MIN_AVERAGE_MONTHLY_PAGEVIEWS) {
+          continue;
       }
 
       const article =
