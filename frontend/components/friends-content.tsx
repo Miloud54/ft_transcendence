@@ -12,6 +12,8 @@ type Friend = {
   relationship?: "NONE" | "PENDING_SENT" | "PENDING_RECEIVED" | "ACCEPTED";
 };
 
+type RemovedFriend = Pick<Friend, "id">;
+
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
@@ -103,7 +105,7 @@ export function FriendsContent() {
       );
     };
     const handleFriendRemoved = (event: Event) => {
-      const removedFriend = (event as CustomEvent<Friend>).detail;
+      const removedFriend = (event as CustomEvent<RemovedFriend>).detail;
       setFriends((currentFriends) =>
         currentFriends.filter((friend) => friend.id !== removedFriend.id),
       );
@@ -189,6 +191,9 @@ export function FriendsContent() {
       });
       setRequests((currentRequests) =>
         currentRequests.filter((currentRequest) => currentRequest.id !== requester.id),
+      );
+      window.dispatchEvent(
+        new CustomEvent("friend-request:resolved", { detail: { id: requester.id } }),
       );
       if (action === "accept") {
         setFriends((currentFriends) =>

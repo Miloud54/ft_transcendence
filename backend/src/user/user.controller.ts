@@ -55,8 +55,8 @@ export class UserController {
   async removeFriend(@Req() req: Request, @Param('friendId') friendId: string) {
     const { userId } = req.user as { userId: string };
     const result = await this.userService.removeFriend(userId, friendId);
-    this.presenceGateway.notifyUser(userId, 'friend:removed', result);
-    this.presenceGateway.notifyUser(friendId, 'friend:removed', result);
+    this.presenceGateway.notifyUser(userId, 'friend:removed', { id: friendId });
+    this.presenceGateway.notifyUser(friendId, 'friend:removed', { id: userId });
     return result;
   }
 
