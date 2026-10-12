@@ -6,9 +6,8 @@ import { ArticleSelectorService } from './article-selector.service';
 describe('ArticleSelectorService', () => {
   let service: ArticleSelectorService;
   let articleProvider: {
-    getRandomArticleCandidate: jest.Mock;
+    getRandomArticleCandidates: jest.Mock;
     getArticle: jest.Mock;
-    getAverageMonthlyPageviews: jest.Mock;
   };
 
   const article: Article = {
@@ -24,9 +23,8 @@ describe('ArticleSelectorService', () => {
 
   beforeEach(async () => {
     articleProvider = {
-      getRandomArticleCandidate: jest.fn(),
+      getRandomArticleCandidates: jest.fn(),
       getArticle: jest.fn(),
-      getAverageMonthlyPageviews: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -42,109 +40,73 @@ describe('ArticleSelectorService', () => {
     service = module.get<ArticleSelectorService>(ArticleSelectorService);
   });
 
-  it('returns a valid popular English article', async () => {
-    articleProvider.getRandomArticleCandidate.mockResolvedValue({
-      id: 123,
-      title: 'Jupiter',
-      isDisambiguation: false,
-    });
-    articleProvider.getAverageMonthlyPageviews.mockResolvedValue(149_212);
-    articleProvider.getArticle.mockResolvedValue(article);
+  it('returns the first playable article', async () => {
+    articleProvider.getRandomArticleCandidates.mockResolvedValue([
+      {
+        id: 123,
+        title: 'Jupiter',
+        isDisambiguation: false,
+      },
+      {
+        id: 456,
+        title: 'Mars',
+        isDisambiguation: false,
+      },
+    ]);
+
+    articleProvider.getArticle
+      .mockResolvedValueOnce(article);
 
     await expect(service.selectArticle()).resolves.toEqual(article);
 
     expect(
-      articleProvider.getAverageMonthlyPageviews,
-    ).toHaveBeenCalledWith('Jupiter');
+      articleProvider.getRandomArticleCandidates,
+    ).toHaveBeenCalledTimes(1);
+
+    expect(articleProvider.getArticle).toHaveBeenCalledTimes(1);
     expect(articleProvider.getArticle).toHaveBeenCalledWith('Jupiter');
   });
 
-  it('skips disambiguation candidates without checking their popularity', async () => {
-    articleProvider.getRandomArticleCandidate
-      .mockResolvedValueOnce({
+  it('skips disambiguation candidates', async () => {
+    articleProvider.getRandomArticleCandidates.mockResolvedValue([
+      {
         id: 1,
         title: 'Mercury',
         isDisambiguation: true,
-      })
-      .mockResolvedValueOnce({
+      },
+      {
         id: 123,
         title: 'Jupiter',
         isDisambiguation: false,
-      });
+      },
+    ]);
 
-    articleProvider.getAverageMonthlyPageviews.mockResolvedValue(149_212);
     articleProvider.getArticle.mockResolvedValue(article);
 
     await expect(service.selectArticle()).resolves.toEqual(article);
 
     expect(
-      articleProvider.getRandomArticleCandidate,
-    ).toHaveBeenCalledTimes(2);
-    expect(
-      articleProvider.getAverageMonthlyPageviews,
+      articleProvider.getRandomArticleCandidates,
     ).toHaveBeenCalledTimes(1);
-    expect(
-      articleProvider.getAverageMonthlyPageviews,
-    ).toHaveBeenCalledWith('Jupiter');
+
     expect(articleProvider.getArticle).toHaveBeenCalledTimes(1);
-  });
-
-  it('skips articles below the popularity threshold', async () => {
-    articleProvider.getRandomArticleCandidate
-      .mockResolvedValueOnce({
-        id: 456,
-        title: 'List of minor planets',
-        isDisambiguation: false,
-      })
-      .mockResolvedValueOnce({
-        id: 123,
-        title: 'Jupiter',
-        isDisambiguation: false,
-      });
-
-    articleProvider.getAverageMonthlyPageviews
-      .mockResolvedValueOnce(5_824)
-      .mockResolvedValueOnce(149_212);
-
-    articleProvider.getArticle.mockResolvedValue(article);
-
-    await expect(service.selectArticle()).resolves.toEqual(article);
-
-    expect(
-      articleProvider.getAverageMonthlyPageviews,
-    ).toHaveBeenCalledTimes(2);
-    expect(articleProvider.getArticle).toHaveBeenCalledTimes(1);
-    expect(articleProvider.getArticle).toHaveBeenCalledWith('Jupiter');
-  });
-
-  it('accepts an article exactly at the popularity threshold', async () => {
-    articleProvider.getRandomArticleCandidate.mockResolvedValue({
-      id: 123,
-      title: 'Jupiter',
-      isDisambiguation: false,
-    });
-    articleProvider.getAverageMonthlyPageviews.mockResolvedValue(10_000);
-    articleProvider.getArticle.mockResolvedValue(article);
-
-    await expect(service.selectArticle()).resolves.toEqual(article);
-
     expect(articleProvider.getArticle).toHaveBeenCalledWith('Jupiter');
   });
 
   it('skips candidates for which no article can be retrieved', async () => {
-    articleProvider.getRandomArticleCandidate
-      .mockResolvedValueOnce({
+    articleProvider.getRandomArticleCandidates.mockResolvedValue([
+      {
         id: 999,
         title: 'Unavailable article',
         isDisambiguation: false,
-      })
-      .mockResolvedValueOnce({
+      },
+      {
         id: 123,
         title: 'Jupiter',
         isDisambiguation: false,
-      });
+      },
+    ]);
 
-    articleProvider.getAverageMonthlyPageviews.mockResolvedValue(149_212);
     articleProvider.getArticle
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(article);
@@ -152,8 +114,51 @@ describe('ArticleSelectorService', () => {
     await expect(service.selectArticle()).resolves.toEqual(article);
 
     expect(
-      articleProvider.getRandomArticleCandidate,
-    ).toHaveBeenCalledTimes(2);
+      articleProvider.getRandomArticleCandidates,
+    ).toHaveBeenCalledTimes(1);
+
     expect(articleProvider.getArticle).toHaveBeenCalledTimes(2);
+
+    expect(articleProvider.getArticle).toHaveBeenNthCalledWith(
+      1,
+      'Unavailable article',
+    );
+
+    expect(articleProvider.getArticle).toHaveBeenNthCalledWith(
+      2,
+      'Jupiter',
+    );
+  });
+
+  it('throws when none of the candidates is playable', async () => {
+    articleProvider.getRandomArticleCandidates.mockResolvedValue([
+      {
+        id: 999,
+        title: 'Unavailable article',
+        isDisambiguation: false,
+      },
+    ]);
+
+    articleProvider.getArticle.mockResolvedValue(null);
+
+    await expect(service.selectArticle()).rejects.toThrow(
+      'Unable to find a playable article among the 10 candidates',
+    );
+  });
+
+  it('does not request content for disambiguation pages', async () => {
+    articleProvider.getRandomArticleCandidates.mockResolvedValue([
+      {
+        id: 1,
+        title: 'Mercury',
+        isDisambiguation: true,
+      },
+    ]);
+
+    await expect(service.selectArticle()).rejects.toThrow(
+      'Unable to find a playable article among the 10 candidates',
+    );
+
+    expect(articleProvider.getArticle).not.toHaveBeenCalled();
   });
 });
