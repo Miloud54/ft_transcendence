@@ -132,6 +132,29 @@ services:
     networks:
       - private-net
 
+  backup:
+    image: docker.io/library/postgres:18-alpine
+
+    container_name: transcendence-backup
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    environment:
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      BACKUP_INTERVAL_SECONDS: "86400" # toutes les 24h 
+
+    volumes:
+      - ./backup/backup.sh:/backup.sh:ro
+      - db_backups:/backups
+
+    entrypoint: ["sh", "/backup.sh"]
+
+    networks:
+      - private-net
   
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
@@ -434,6 +457,7 @@ services:
 
 volumes:
   db_data:
+  db_backups:
   es_data:
   es_snapshots:
   prometheus_data:
