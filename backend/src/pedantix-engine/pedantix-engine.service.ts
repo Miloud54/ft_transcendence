@@ -4,6 +4,8 @@ import { Article } from './article/article';
 import { ArticleSelectorService } from './article/article-selector.service';
 import { ArticleTokenized } from './tokenizer/article-tokenized';
 import { TokenizerService } from './tokenizer/tokenizer.service';
+import { ArticleViewService } from './article-view/article-view.service';
+import { InitialArticleView } from './article-view/initial-article-view';
 
 interface PreparedGame {
   article: Article;
@@ -18,6 +20,7 @@ export class PedantixEngineService {
   constructor(
     private readonly articleSelector: ArticleSelectorService,
     private readonly tokenizer: TokenizerService,
+    private readonly articleView: ArticleViewService,
   ) {}
 
   async prepareGame(gameId: string): Promise<void> {
@@ -48,6 +51,18 @@ export class PedantixEngineService {
 
   getTokenizedArticle(gameId: string): ArticleTokenized | undefined {
     return this.games.get(gameId)?.tokenizedArticle;
+  }
+
+  getInitialArticleView(
+    gameId: string,
+  ): InitialArticleView | undefined {
+    const tokenizedArticle = this.games.get(gameId)?.tokenizedArticle;
+
+    if (!tokenizedArticle) {
+      return undefined;
+    }
+
+    return this.articleView.buildInitialView(tokenizedArticle);
   }
 
   private async doPrepareGame(gameId: string): Promise<void> {

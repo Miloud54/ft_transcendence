@@ -4,13 +4,15 @@ export interface ArticleToken {
   length?: number;
 }
 
-export interface TokenizedParagraph {
+export interface TokenizedText {
   tokens: ArticleToken[];
 }
+
+export interface TokenizedParagraph extends TokenizedText {}
 
 export interface ArticleTokenized {
   articleId: number;
   url: string;
-  title: string;
+  title: TokenizedText;
   paragraphs: TokenizedParagraph[];
 }
