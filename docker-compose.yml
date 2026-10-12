@@ -354,7 +354,7 @@ services:
     entrypoint: ["sh", "-c"]
     command:
       - |
-        vault kv get -field=grafana_admin_password secret/backend > /secrets/admin_password
+        vault kv get -field=grafana_admin_password secret/backend > /secrets/grafana_admin_password
 
   grafana:
     image: docker.io/grafana/grafana:13.2.1
