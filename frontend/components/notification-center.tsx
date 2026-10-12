@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   acceptFriendRequest,
@@ -26,17 +26,21 @@ export function NotificationCenter() {
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [roomInvitations, setRoomInvitations] = useState<RoomInvitation[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const resolvedFriendRequestIds = useRef(new Set<string>());
 
   useEffect(() => {
     void Promise.all([getFriendRequests(), getRoomInvitations()]).then(
       ([requests, invitations]) => {
-        setFriendRequests(requests);
+        setFriendRequests(
+          requests.filter((request) => !resolvedFriendRequestIds.current.has(request.id)),
+        );
         setRoomInvitations(invitations);
       },
     ).catch(() => undefined);
 
     const onFriendRequest = (event: Event) => {
       const request = (event as CustomEvent<FriendRequest>).detail;
+      resolvedFriendRequestIds.current.delete(request.id);
       setFriendRequests((current) =>
         current.some((item) => item.id === request.id) ? current : [request, ...current],
       );
@@ -49,12 +53,19 @@ export function NotificationCenter() {
           : [invitation, ...current],
       );
     };
+    const onFriendRequestResolved = (event: Event) => {
+      const { id } = (event as CustomEvent<{ id: string }>).detail;
+      resolvedFriendRequestIds.current.add(id);
+      setFriendRequests((current) => current.filter((request) => request.id !== id));
+    };
 
     window.addEventListener("friend-request:received", onFriendRequest);
     window.addEventListener("room-invitation:received", onRoomInvitation);
+    window.addEventListener("friend-request:resolved", onFriendRequestResolved);
     return () => {
       window.removeEventListener("friend-request:received", onFriendRequest);
       window.removeEventListener("room-invitation:received", onRoomInvitation);
+      window.removeEventListener("friend-request:resolved", onFriendRequestResolved);
     };
   }, []);
 
@@ -69,6 +80,7 @@ export function NotificationCenter() {
       } else {
         await declineFriendRequest(request.id);
       }
+      resolvedFriendRequestIds.current.add(request.id);
       setFriendRequests((current) => current.filter((item) => item.id !== request.id));
     } finally {
       setBusyId(null);
