@@ -17,7 +17,7 @@ curl -sf -u "elastic:${ELASTIC_PASSWORD}" \
   -d '{
     "cluster": ["monitor", "manage_index_templates"],
     "indices": [
-      { "names": ["docker-logs-*"], "privileges": ["create_index", "write", "manage"] }
+      { "names": ["docker-logs-*"], "privileges": ["create_index", "write"] }
     ]
   }'
 
