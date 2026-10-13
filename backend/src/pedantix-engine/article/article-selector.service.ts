@@ -2,8 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { Article } from './article';
 import { ArticleProvider } from './article.provider';
 
-const MIN_AVERAGE_MONTHLY_PAGEVIEWS = 10_000;
-
 @Injectable()
 export class ArticleSelectorService {
   constructor(
@@ -11,29 +9,24 @@ export class ArticleSelectorService {
   ) {}
 
   async selectArticle(): Promise<Article> {
-    while (true) {
-      const candidate =
-        await this.articleProvider.getRandomArticleCandidate();
+    const candidates =
+      await this.articleProvider.getRandomArticleCandidates();
 
-      if (!candidate || candidate.isDisambiguation) {
+    for (const candidate of candidates) {
+      if (candidate.isDisambiguation) {
         continue;
-      }
-
-      const averageMonthlyPageviews =
-          await this.articleProvider.getAverageMonthlyPageviews(candidate.title);
-
-      if (averageMonthlyPageviews < MIN_AVERAGE_MONTHLY_PAGEVIEWS) {
-          continue;
       }
 
       const article =
         await this.articleProvider.getArticle(candidate.title);
 
-      if (!article) {
-        continue;
+      if (article) {
+        return article;
       }
-
-      return article;
     }
+
+    throw new Error(
+      'Unable to find a playable article among the 10 candidates',
+    );
   }
 }

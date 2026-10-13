@@ -5,6 +5,8 @@ import { ArticleSelectorService } from './article/article-selector.service';
 import { Article } from './article/article';
 import { TokenizerService } from './tokenizer/tokenizer.service';
 import { ArticleTokenized } from './tokenizer/article-tokenized';
+import { ArticleViewService } from './article-view/article-view.service';
+import { InitialArticleView } from './article-view/initial-article-view';
 
 describe('PedantixEngineService', () => {
   let service: PedantixEngineService;
@@ -15,6 +17,10 @@ describe('PedantixEngineService', () => {
 
   let tokenizer: {
     tokenize: jest.Mock;
+  };
+
+  let articleView: {
+    buildInitialView: jest.Mock;
   };
 
   const article: Article = {
@@ -31,13 +37,34 @@ describe('PedantixEngineService', () => {
   const tokenizedArticle: ArticleTokenized = {
     articleId: 123,
     url: 'https://en.wikipedia.org/wiki/Jupiter',
-    title: 'Jupiter',
+    title: {
+      tokens: [
+        { text: 'Jupiter', type: 'word', length: 7 },
+      ],
+    },
     paragraphs: [
       {
         tokens: [
           { text: 'Jupiter', type: 'word', length: 7 },
           { text: ' ', type: 'separator' },
           { text: 'is', type: 'word', length: 2 },
+        ],
+      },
+    ],
+  };
+
+  const initialArticleView: InitialArticleView = {
+    title: {
+      tokens: [
+        { type: 'word', status: 'hidden', length: 7 },
+      ],
+    },
+    paragraphs: [
+      {
+        tokens: [
+          { type: 'word', status: 'hidden', length: 7 },
+          { type: 'separator', display: ' ' },
+          { type: 'word', status: 'hidden', length: 2 },
         ],
       },
     ],
@@ -52,6 +79,10 @@ describe('PedantixEngineService', () => {
       tokenize: jest.fn().mockReturnValue(tokenizedArticle),
     };
 
+    articleView = {
+      buildInitialView: jest.fn().mockReturnValue(initialArticleView),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PedantixEngineService,
@@ -62,6 +93,10 @@ describe('PedantixEngineService', () => {
         {
           provide: TokenizerService,
           useValue: tokenizer,
+        },
+        {
+          provide: ArticleViewService,
+          useValue: articleView,
         },
       ],
     }).compile();
@@ -82,6 +117,38 @@ describe('PedantixEngineService', () => {
     expect(service.getTokenizedArticle('game-1')).toEqual(
       tokenizedArticle,
     );
+  });
+
+  it('returns no initial view for an unknown game', () => {
+    expect(service.getInitialArticleView('unknown-game')).toBeUndefined();
+    expect(articleView.buildInitialView).not.toHaveBeenCalled();
+  });
+
+  it('returns the initial public view for a prepared game', async () => {
+    articleSelector.selectArticle.mockResolvedValue(article);
+
+    await service.prepareGame('game-1');
+
+    expect(service.getInitialArticleView('game-1')).toEqual(
+      initialArticleView,
+    );
+    expect(articleView.buildInitialView).toHaveBeenCalledTimes(1);
+    expect(articleView.buildInitialView).toHaveBeenCalledWith(
+      tokenizedArticle,
+    );
+  });
+
+  it('builds the public view on demand without preparing the game again', async () => {
+    articleSelector.selectArticle.mockResolvedValue(article);
+
+    await service.prepareGame('game-1');
+
+    service.getInitialArticleView('game-1');
+    service.getInitialArticleView('game-1');
+
+    expect(articleSelector.selectArticle).toHaveBeenCalledTimes(1);
+    expect(tokenizer.tokenize).toHaveBeenCalledTimes(1);
+    expect(articleView.buildInitialView).toHaveBeenCalledTimes(2);
   });
 
   it('does not prepare an already prepared game twice', async () => {

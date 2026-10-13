@@ -96,14 +96,16 @@ describe('TokenizerService', () => {
     ]);
   });
 
-  it('should preserve punctuation outside words', () => {
+  it('should tokenize the title with the same rules as paragraphs', () => {
     const result = service.tokenize({
       ...article,
-      paragraphs: ['Hello!'],
+      title: "Mother-in-law's planet!",
     });
 
-    expect(result.paragraphs[0].tokens).toEqual([
-      { text: 'Hello', type: 'word', length: 5 },
+    expect(result.title.tokens).toEqual([
+      { text: "Mother-in-law's", type: 'word', length: 12 },
+      { text: ' ', type: 'separator' },
+      { text: 'planet', type: 'word', length: 6 },
       { text: '!', type: 'separator' },
     ]);
   });
@@ -145,7 +147,10 @@ describe('TokenizerService', () => {
 
     expect(result.articleId).toBe(article.id);
     expect(result.url).toBe(article.url);
-    expect(result.title).toBe(article.title);
+
+    expect(result.title.tokens).toEqual([
+      { text: 'Jupiter', type: 'word', length: 7 },
+    ]);
   });
 
   it('should count letters and digits but not apostrophes or hyphens', () => {

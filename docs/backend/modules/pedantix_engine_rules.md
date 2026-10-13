@@ -698,3 +698,21 @@ Pour lancer les tests de spec :
 docker compose exec backend npx jest src/pedantix-engine/article/wikipedia.provider.spec.ts --runInBand
 
 docker compose exec backend npx jest src/pedantix-engine/article/article-selector.service.spec.ts --runInBand
+
+Pour les lancer tous :
+docker compose exec backend npx jest --runInBand
+
+Pour exclure les spects de Romm :
+docker compose exec backend npx jest \
+  src/pedantix-engine/article/wikipedia.provider.spec.ts \
+  src/pedantix-engine/article/article-selector.service.spec.ts \
+  src/game/game.service.spec.ts \
+  src/pedantix-engine/pedantix-engine.service.spec.ts \
+  src/app.controller.spec.ts \
+  src/pedantix-engine/article-view/article-view.service.spec.ts \
+  src/pedantix-engine/tokenizer/tokenizer.service.spec.ts \
+  --runInBand
+
+Pour lancer le script de tests :
+docker compose exec backend node /app/test-wikipedia.js
+
