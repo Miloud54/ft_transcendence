@@ -226,6 +226,7 @@ services:
       - ./logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:Z
       - ./logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:Z
       - app_logs:/var/log/app:ro
+      - logstash_data:/usr/share/logstash/data
 
     networks:
       - private-net
@@ -248,6 +249,26 @@ services:
        SERVER_PUBLICBASEURL: https://localhost:8443/kibana
 
 
+
+    networks:
+      - private-net
+  
+  kibana-init:
+    image: docker.io/curlimages/curl:latest
+
+    container_name: transcendence-kibana-init
+
+    depends_on:
+      kibana:
+        condition: service_started
+    
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+
+    volumes:
+      - ./kibana:/kibana-init:ro
+    
+    entrypoint: sh /kibana-init/init.sh
 
     networks:
       - private-net
@@ -445,6 +466,7 @@ services:
     volumes:
       - ./waf/default.conf.template:/etc/nginx/templates/conf.d/default.conf.template:Z,ro
       - ./waf/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:/etc/modsecurity.d/owasp-crs/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:Z,ro
+      - app_logs:/var/log/app
 
     ports:
       - "8080:8080"
@@ -465,6 +487,7 @@ volumes:
   grafana_secrets:
   alertmanager_config:
   app_logs: # volume partage pour les logs
+  logstash_data:
 
 networks:
   public-net:
