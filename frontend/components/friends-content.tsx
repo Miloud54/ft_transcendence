@@ -333,8 +333,8 @@ export function FriendsContent() {
             whileHover={{ y: -4 }}
             className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-5"
           >
-            <div className="relative flex h-11 w-11 items-center justify-center rounded-full bg-violet-100 text-sm font-semibold text-violet-700">
-              {friend.username.charAt(0)}
+            <div className="relative h-11 w-11 shrink-0">
+              <img src={friend.avatar} alt={friend.username} className="h-11 w-11 rounded-full bg-violet-100 object-cover" />
               <span
                 className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${
                   friend.status === "ONLINE"
