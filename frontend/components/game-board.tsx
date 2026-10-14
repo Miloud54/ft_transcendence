@@ -138,7 +138,9 @@ export function GameBoard({ gameId, players }: { gameId: string; players: RoomPl
   );
   const [attemptCount, setAttemptCount] = useState(0);
 
-  useEffect(() => {
+  const [previousPlayers, setPreviousPlayers] = useState(players);
+  if (players !== previousPlayers) {
+    setPreviousPlayers(players);
     setAttempts((current) => {
       const withYourAvatar = current.map((attempt) =>
         attempt.username === "You" && !attempt.avatarUrl && you?.avatarUrl
@@ -159,7 +161,7 @@ export function GameBoard({ gameId, players }: { gameId: string; players: RoomPl
 
       return missingTeammates.length > 0 ? [...withYourAvatar, ...missingTeammates] : withYourAvatar;
     });
-  }, [players, you]);
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
