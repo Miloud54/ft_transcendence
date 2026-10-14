@@ -55,26 +55,6 @@ export function AccountMenu() {
     router.push("/");
   }
 
-  async function handleStatusChange(status: "ONLINE" | "OFFLINE") {
-    try {
-      const token = localStorage.getItem("accessToken");
-      const response = await fetch(`${API_URL}/users/me/status`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setUser(data);
-      }
-    } catch {
-      // non-critical: ignore network errors here
-    }
-  }
-
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   if (isOpen !== prevIsOpen) {
     setPrevIsOpen(isOpen);
