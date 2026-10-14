@@ -85,6 +85,9 @@ export function FriendsContent() {
     };
     const handleRequestAccepted = (event: Event) => {
       const friend = (event as CustomEvent<Friend>).detail;
+      setRequests((currentRequests) =>
+        currentRequests.filter((request) => request.id !== friend.id),
+      );
       setFriends((currentFriends) =>
         currentFriends.some((currentFriend) => currentFriend.id === friend.id)
           ? currentFriends
