@@ -8,7 +8,7 @@ type Friend = {
   id: string;
   username: string;
   avatar: string;
-  status: "ONLINE" | "OFFLINE";
+  status: "ONLINE" | "OFFLINE" | "IN_GAME";
   relationship?: "NONE" | "PENDING_SENT" | "PENDING_RECEIVED" | "ACCEPTED";
 };
 
@@ -133,7 +133,7 @@ export function FriendsContent() {
 
   useEffect(() => {
     const handlePresenceUpdate = (event: Event) => {
-      const update = (event as CustomEvent<{ id: string; status: "ONLINE" | "OFFLINE" }>).detail;
+      const update = (event as CustomEvent<{ id: string; status: "ONLINE" | "OFFLINE" | "IN_GAME" }>).detail;
       setFriends((currentFriends) =>
         currentFriends.map((friend) =>
           friend.id === update.id ? { ...friend, status: update.status } : friend,
@@ -337,13 +337,19 @@ export function FriendsContent() {
               {friend.username.charAt(0)}
               <span
                 className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${
-                  friend.status === "ONLINE" ? "bg-lime-400" : "bg-zinc-300"
+                  friend.status === "ONLINE"
+                    ? "bg-lime-400"
+                    : friend.status === "IN_GAME"
+                      ? "bg-violet-500"
+                      : "bg-zinc-300"
                 }`}
               />
             </div>
             <div>
               <p className="text-sm font-medium text-zinc-950">{friend.username}</p>
-              <p className="text-xs text-zinc-400">{friend.status === "ONLINE" ? "Online" : "Offline"}</p>
+              <p className="text-xs text-zinc-400">
+                {friend.status === "ONLINE" ? "Online" : friend.status === "IN_GAME" ? "In game" : "Offline"}
+              </p>
             </div>
             <button
               type="button"

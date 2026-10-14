@@ -83,7 +83,7 @@ export class PresenceGateway
     this.server.to(this.userRoom(userId)).emit(event, payload);
   }
 
-  broadcastPresence(userId: string, status: 'ONLINE' | 'OFFLINE') {
+  broadcastPresence(userId: string, status: 'ONLINE' | 'OFFLINE' | 'IN_GAME') {
     this.server.emit('presence:update', { id: userId, status });
   }
 }

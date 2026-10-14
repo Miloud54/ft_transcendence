@@ -23,10 +23,16 @@ type UserRecord = {
   last_seen_at: Date;
 };
 
-function toPublicUser(
-  user: UserRecord,
-  online = user.status !== UserStatus.OFFLINE && isOnline(user.last_seen_at),
-) {
+function toPublicUser(user: UserRecord) {
+  const live = isOnline(user.last_seen_at);
+  const status = !live
+    ? 'OFFLINE'
+    : user.status === UserStatus.IN_GAME
+      ? 'IN_GAME'
+      : user.status === UserStatus.OFFLINE
+        ? 'OFFLINE'
+        : 'ONLINE';
+
   return {
     id: user.user_id.toString(),
     username: user.username,
@@ -34,7 +40,7 @@ function toPublicUser(
     avatar: user.avatar,
     xp: Number(user.xp),
     lvl: Number(user.lvl),
-    status: online ? 'ONLINE' : 'OFFLINE',
+    status,
   };
 }
 
@@ -307,11 +313,11 @@ export class UserService {
     return toPublicUser(user);
   }
 
-  async setPresence(userId: string, status: 'ONLINE' | 'OFFLINE') {
+  async setPresence(userId: string, status: 'ONLINE' | 'OFFLINE' | 'IN_GAME') {
     const user = await this.prisma.user.update({
       where: { user_id: BigInt(userId) },
       data: {
-        status: status === 'ONLINE' ? UserStatus.ONLINE : UserStatus.OFFLINE,
+        status: UserStatus[status],
         last_seen_at: new Date(),
       },
     });

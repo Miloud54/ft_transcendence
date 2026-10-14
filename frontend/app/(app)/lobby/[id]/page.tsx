@@ -28,6 +28,34 @@ export default function LobbyPage({
   }, []);
 
   useEffect(() => {
+    const handleFriendAccepted = (event: Event) => {
+      const friend = (event as CustomEvent<Friend>).detail;
+      setFriends((current) =>
+        current.some((existing) => existing.id === friend.id) ? current : [...current, friend],
+      );
+    };
+    const handleFriendRemoved = (event: Event) => {
+      const { id } = (event as CustomEvent<{ id: string }>).detail;
+      setFriends((current) => current.filter((friend) => friend.id !== id));
+    };
+    const handlePresenceUpdate = (event: Event) => {
+      const update = (event as CustomEvent<{ id: string; status: "ONLINE" | "OFFLINE" | "IN_GAME" }>).detail;
+      setFriends((current) =>
+        current.map((friend) => (friend.id === update.id ? { ...friend, status: update.status } : friend)),
+      );
+    };
+
+    window.addEventListener("friend-request:accepted", handleFriendAccepted);
+    window.addEventListener("friend:removed", handleFriendRemoved);
+    window.addEventListener("presence:update", handlePresenceUpdate);
+    return () => {
+      window.removeEventListener("friend-request:accepted", handleFriendAccepted);
+      window.removeEventListener("friend:removed", handleFriendRemoved);
+      window.removeEventListener("presence:update", handlePresenceUpdate);
+    };
+  }, []);
+
+  useEffect(() => {
   const socket = connectToRoom(id, (nextRoom) => {
     setRoom(nextRoom as Room);
   }, (data) => {
@@ -134,17 +162,41 @@ export default function LobbyPage({
                   <button
                     key={friend.id}
                     type="button"
-                    disabled={alreadyInRoom || invitingFriendId !== null || room.players.length >= room.maxPlayers}
+                    disabled={alreadyInRoom || invitingFriendId !== null || room.players.length >= room.maxPlayers || friend.status !== "ONLINE"}
                     onClick={() => void handleInvite(friend)}
-                    className="rounded-md border border-violet-200 bg-white px-3 py-2 text-xs font-semibold text-violet-700 transition-colors hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex items-center gap-2 rounded-md border border-violet-200 bg-white px-3 py-2 text-xs font-semibold text-violet-700 transition-colors hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {alreadyInRoom
-                      ? `${friend.username} is in`
-                      : invitedFriendIds.has(friend.id)
-                        ? `Invitation sent to ${friend.username}`
-                      : invitingFriendId === friend.id
-                        ? `Adding ${friend.username}...`
-                        : `Add ${friend.username}`}
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        friend.status === "ONLINE"
+                          ? "bg-lime-400"
+                          : friend.status === "IN_GAME"
+                            ? "bg-violet-500"
+                            : "bg-zinc-300"
+                      }`}
+                    />
+                    <span>
+                      {alreadyInRoom
+                        ? `${friend.username} is in`
+                        : invitedFriendIds.has(friend.id)
+                          ? `Invitation sent to ${friend.username}`
+                        : invitingFriendId === friend.id
+                          ? `Adding ${friend.username}...`
+                        : friend.status !== "ONLINE"
+                          ? `${friend.username} is unavailable`
+                          : `Add ${friend.username}`}
+                    </span>
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                        friend.status === "ONLINE"
+                          ? "bg-lime-100 text-lime-800"
+                          : friend.status === "IN_GAME"
+                            ? "bg-violet-100 text-violet-700"
+                            : "bg-zinc-100 text-zinc-500"
+                      }`}
+                    >
+                      {friend.status === "ONLINE" ? "Online" : friend.status === "IN_GAME" ? "In game" : "Offline"}
+                    </span>
                   </button>
                 );
               })
