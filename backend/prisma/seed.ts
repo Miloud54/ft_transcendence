@@ -3,15 +3,13 @@ To apply the seed to the db run:
 docker compose exec backend npx prisma db seed
  */
 import { PrismaClient, UserStatus, RoomStatus, GameStatus } from "../generated/prisma";
-import { randomBytes, scryptSync } from "crypto";
+import * as bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
 // Dependency-free password hashing (swap for bcrypt/argon2 if you already use one)
 function hashPassword(plain: string): string {
-  const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(plain, salt, 64).toString("hex");
-  return `${salt}:${hash}`;
+  return bcrypt.hashSync(plain, 10);
 }
 
 const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000);
@@ -49,7 +47,7 @@ async function main() {
         username: u.username,
         email: u.email,
         password: defaultPassword,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.username}`,
+        avatar: `https://api.dicebear.com/10.x/critters/svg?seed=${u.username}`,        
         xp: BigInt(u.xp),
         lvl: BigInt(u.lvl),
         status: u.status,
@@ -64,8 +62,7 @@ async function main() {
       email: "google.user@gmail.com",
       password: null,
       googleId: "google-oauth-1234567890",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=google_user",
-      xp: BigInt(0),
+      avatar: "https://api.dicebear.com/10.x/critters/svg?seed=google_user",      xp: BigInt(0),
       lvl: BigInt(1),
       status: UserStatus.OFFLINE,
     },
@@ -77,7 +74,7 @@ async function main() {
       email: "discord.user@example.com",
       password: null,
       discordId: "discord-oauth-0987654321",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=discord_user",
+      avatar: "https://api.dicebear.com/10.x/critters/svg?seed=discord_user",
       xp: BigInt(0),
       lvl: BigInt(1),
       status: UserStatus.OFFLINE,
@@ -163,6 +160,7 @@ async function main() {
       status: GameStatus.RUNNING,
       started_at: minutesAgo(10),
       room_id: roomInGame.room_id,
+      article_title: "Eiffel Tower",
     },
   });
 
@@ -171,17 +169,33 @@ async function main() {
       status: GameStatus.COUNTDOWN,
       started_at: null,
       room_id: roomStarting.room_id,
+      article_title: "Photosynthesis",
     },
   });
 
-  const gameFinished = await prisma.game.create({
-    data: {
-      status: GameStatus.FINISHED,
-      started_at: minutesAgo(150),
-      ended_at: minutesAgo(125),
-      room_id: roomClosed.room_id,
-    },
-  });
+  const finishedGamesData = [
+    { article: "Napoleon Bonaparte", daysAgo: 1, winner: "alice", others: ["bob", "charlie"] },
+    { article: "Great Wall of China", daysAgo: 2, winner: "diana", others: ["eve", "frank", "grace"] },
+    { article: "Marie Curie", daysAgo: 3, winner: "bob", others: ["alice"] },
+    { article: "The Beatles", daysAgo: 4, winner: "grace", others: ["heidi", "ivan"] },
+    { article: "Mount Everest", daysAgo: 5, winner: "alice", others: ["diana", "frank"] },
+    { article: "William Shakespeare", daysAgo: 6, winner: "charlie", others: ["bob", "eve", "grace"] },
+  ];
+
+  const finishedGames = [];
+  for (const data of finishedGamesData) {
+    const minutesAgoStart = data.daysAgo * 24 * 60 + 30;
+    const game = await prisma.game.create({
+      data: {
+        status: GameStatus.FINISHED,
+        started_at: minutesAgo(minutesAgoStart),
+        ended_at: minutesAgo(minutesAgoStart - 15),
+        room_id: roomClosed.room_id,
+        article_title: data.article,
+      },
+    });
+    finishedGames.push({ game, ...data });
+  }
 
   // ---------------------------------------------------------------------------
   // GAME PLAYERS
@@ -197,11 +211,32 @@ async function main() {
       // Countdown game
       { game_id: gameCountdown.game_id, user_id: users.grace.user_id },
       { game_id: gameCountdown.game_id, user_id: users.ivan.user_id },
-      // Finished game
-      { game_id: gameFinished.game_id, user_id: users.eve.user_id },
-      { game_id: gameFinished.game_id, user_id: users.heidi.user_id },
     ],
   });
+
+  for (const { game, winner, others } of finishedGames) {
+    await prisma.gamePlayer.create({
+      data: {
+        game_id: game.game_id,
+        user_id: users[winner].user_id,
+        result: "WIN",
+        score: 1000,
+        rank: 1,
+      },
+    });
+
+    for (const [index, username] of others.entries()) {
+      await prisma.gamePlayer.create({
+        data: {
+          game_id: game.game_id,
+          user_id: users[username].user_id,
+          result: "LOSS",
+          score: 850 - index * 120,
+          rank: index + 2,
+        },
+      });
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Summary

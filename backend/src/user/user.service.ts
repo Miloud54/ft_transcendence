@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { FriendshipStatus, UserStatus } from '../../generated/prisma';
+import { FriendshipStatus, GameResult, UserStatus } from '../../generated/prisma';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 
@@ -109,6 +109,88 @@ export class UserService {
     });
 
     return friendships.map(({ friend }) => toPublicUser(friend));
+  }
+
+    async getStats(userId: string) {
+    const userIdBig = BigInt(userId);
+
+    const user = await this.prisma.user.findUnique({
+      where: { user_id: userIdBig },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const results = await this.prisma.gamePlayer.findMany({
+      where: { user_id: userIdBig, result: { not: null } },
+      select: { result: true, score: true, rank: true },
+    });
+
+    const gamesPlayed = results.length;
+    const wins = results.filter((entry) => entry.result === GameResult.WIN).length;
+    const losses = results.filter((entry) => entry.result === GameResult.LOSS).length;
+    const winRate = gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0;
+
+    const scores = results
+      .map((entry) => entry.score)
+      .filter((score): score is number => score !== null);
+    const averageScore =
+      scores.length > 0
+        ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
+        : 0;
+
+    const bestRank = results.reduce<number | null>((best, entry) => {
+      if (entry.rank === null) return best;
+      return best === null ? entry.rank : Math.min(best, entry.rank);
+    }, null);
+
+    const achievements = [
+      { id: 'first-win', label: 'First victory', description: 'Win your first game', earned: wins >= 1 },
+      { id: 'veteran', label: 'Veteran', description: 'Play 5 games', earned: gamesPlayed >= 5 },
+      { id: 'champion', label: 'Champion', description: 'Finish 1st in a game', earned: bestRank === 1 },
+      { id: 'on-a-roll', label: 'On a roll', description: 'Win 5 games', earned: wins >= 5 },
+    ];
+
+    return {
+      gamesPlayed,
+      wins,
+      losses,
+      winRate,
+      averageScore,
+      bestRank,
+      level: Number(user.lvl),
+      xp: Number(user.xp),
+      achievements,
+    };
+  }
+
+  async getMatchHistory(userId: string, limit = 20) {
+    const userIdBig = BigInt(userId);
+
+    const entries = await this.prisma.gamePlayer.findMany({
+      where: { user_id: userIdBig, result: { not: null } },
+      include: {
+        game: {
+          include: {
+            player: { include: { users: true } },
+          },
+        },
+      },
+      orderBy: { game: { ended_at: 'desc' } },
+      take: limit,
+    });
+
+    return entries.map((entry) => ({
+      id: entry.game.game_id.toString(),
+      articleTitle: entry.game.article_title,
+      result: entry.result === GameResult.WIN ? 'win' : 'loss',
+      score: entry.score,
+      rank: entry.rank,
+      playedAt: entry.game.ended_at,
+      opponents: entry.game.player
+        .filter((player) => player.user_id !== userIdBig)
+        .map((player) => player.users.username),
+    }));
   }
 
   async addFriend(userId: string, friendId: string) {
@@ -214,7 +296,15 @@ export class UserService {
   }
 
   async updatePresence(userId: string) {
-    return this.setPresence(userId, 'ONLINE');
+    return this.touchLastSeen(userId);
+  }
+
+  async touchLastSeen(userId: string) {
+    const user = await this.prisma.user.update({
+      where: { user_id: BigInt(userId) },
+      data: { last_seen_at: new Date() },
+    });
+    return toPublicUser(user);
   }
 
   async setPresence(userId: string, status: 'ONLINE' | 'OFFLINE') {

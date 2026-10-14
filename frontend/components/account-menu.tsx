@@ -7,7 +7,9 @@ import { PasswordInput } from "@/components/password-input";
 import { useCurrentUser } from "@/lib/current-user-context";
 import { API_URL } from "@/lib/room-api";
 
-const AVATAR_SEEDS = ["Nova", "Comet", "Pixel", "Blaze", "Echo", "Juno", "Astra", "Rex", "Luna", "Zephyr"];
+function randomSeed() {
+  return Math.random().toString(36).slice(2, 10);
+}
 
 function avatarUrl(seed: string) {
   return `https://api.dicebear.com/10.x/critters/svg?seed=${seed}`;
@@ -21,7 +23,7 @@ function seedFromAvatarUrl(url: string) {
 export function AccountMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [username, setUsername] = useState("");
-  const [seedIndex, setSeedIndex] = useState(0);
+  const [avatarSeed, setAvatarSeed] = useState(() => randomSeed());
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,16 +61,16 @@ export function AccountMenu() {
     if (isOpen && user) {
       setUsername(user.username);
       const currentSeed = seedFromAvatarUrl(user.avatar);
-      const index = currentSeed ? AVATAR_SEEDS.indexOf(currentSeed) : -1;
-      setSeedIndex(index >= 0 ? index : 0);
+      setAvatarSeed(currentSeed ?? randomSeed());
       setCustomAvatarUrl(currentSeed ? null : user.avatar);
       setUploadedAvatarUrl(currentSeed ? null : user.avatar);
     }
   }
 
-  function cycleAvatar(direction: 1 | -1) {
+
+  function randomizeAvatar() {
     setCustomAvatarUrl(null);
-    setSeedIndex((current) => (current + direction + AVATAR_SEEDS.length) % AVATAR_SEEDS.length);
+    setAvatarSeed(randomSeed());
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -85,7 +87,7 @@ export function AccountMenu() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ username, avatar: customAvatarUrl ?? avatarUrl(AVATAR_SEEDS[seedIndex]) }),
+        body: JSON.stringify({ username, avatar: customAvatarUrl ?? avatarUrl(avatarSeed) }),
       });
 
       const data = await response.json();
@@ -198,32 +200,27 @@ export function AccountMenu() {
       <Modal isOpen={isOpen} onClose={handleClose} title="Account settings">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <p className="text-sm font-medium text-zinc-700">Avatar</p>
-            <div className="mt-2 flex items-center justify-center gap-4">
-              <button
-                type="button"
-                onClick={() => cycleAvatar(-1)}
-                aria-label="Previous avatar"
-                className="rounded-full border border-zinc-200 p-2 text-zinc-500 hover:bg-zinc-50"
-              >
-                ‹
-              </button>
-              <img
-                src={customAvatarUrl ?? avatarUrl(AVATAR_SEEDS[seedIndex])}
-                alt="Selected avatar"
-                className="h-20 w-20 rounded-full bg-zinc-100"
-              />
-              <button
-                type="button"
-                onClick={() => cycleAvatar(1)}
-                aria-label="Next avatar"
-                className="rounded-full border border-zinc-200 p-2 text-zinc-500 hover:bg-zinc-50"
-              >
-                ›
-              </button>
+              <p className="text-sm font-medium text-zinc-700">Avatar</p>
+            <div className="mt-2 flex justify-center">
+              <div className="relative">
+                <img
+                  src={customAvatarUrl ?? avatarUrl(avatarSeed)}
+                  alt="Selected avatar"
+                  className="h-20 w-20 rounded-full bg-zinc-100"
+                />
+                <button
+                  type="button"
+                  onClick={randomizeAvatar}
+                  aria-label="Randomize avatar"
+                  title="Try a random avatar"
+                  className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 bg-white text-sm shadow-sm hover:bg-zinc-50"
+                >
+                  🎲
+                </button>
+              </div>
             </div>
 
-            <div className="mt-2 flex flex-col items-center gap-2">
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -251,10 +248,14 @@ export function AccountMenu() {
                   My photo
                 </button>
               )}
-
-              {avatarUploadError && <p className="text-xs text-[#d03b3b]">{avatarUploadError}</p>}
-              {avatarUploadSuccess && <p className="text-xs text-[#0ca30c]">Photo updated.</p>}
             </div>
+
+            {(avatarUploadError || avatarUploadSuccess) && (
+              <div className="mt-1 flex justify-center">
+                {avatarUploadError && <p className="text-xs text-[#d03b3b]">{avatarUploadError}</p>}
+                {avatarUploadSuccess && <p className="text-xs text-[#0ca30c]">Photo updated.</p>}
+              </div>
+            )}
           </div>
 
           <div>
