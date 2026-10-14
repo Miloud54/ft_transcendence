@@ -7,6 +7,7 @@ import { AccountMenu } from "@/components/account-menu";
 import { RoomChat } from "@/components/room-chat";
 import { MobileNav } from "@/components/mobile-nav";
 import { NotificationCenter } from "@/components/notification-center";
+import { ActiveGameButton } from "@/components/active-game-button";
 
 const NAV_ITEMS = [
   { href: "/home", label: "Home" },
@@ -33,6 +34,7 @@ export default function AppLayout({
           </div>
 
           <div className="flex items-center gap-4">
+            <ActiveGameButton />
             <MobileNav items={NAV_ITEMS} />
             <NotificationCenter />
             <AccountMenu />
@@ -40,7 +42,7 @@ export default function AppLayout({
               <CurrentUserBadge />
             </Link>
           </div>
-        </header>
+         </header>
 
         <main className="flex-1 px-4 py-8 sm:px-8">{children}</main>
 
