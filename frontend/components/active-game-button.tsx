@@ -15,7 +15,6 @@ export function ActiveGameButton() {
 
   useEffect(() => {
     if (user?.status !== "IN_GAME") {
-      setActiveGame(null);
       return;
     }
 
@@ -28,7 +27,7 @@ export function ActiveGameButton() {
       .catch(() => setActiveGame(null));
   }, [user?.status]);
 
-  if (!activeGame || pathname.startsWith("/game/")) {
+  if (user?.status !== "IN_GAME" || !activeGame || pathname.startsWith("/game/")) {
     return null;
   }
 

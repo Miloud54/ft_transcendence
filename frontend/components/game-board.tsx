@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useCurrentUser } from "@/lib/current-user-context";
 import type { RoomPlayer } from "@/lib/room-api";
 
