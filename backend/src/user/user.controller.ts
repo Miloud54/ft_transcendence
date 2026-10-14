@@ -55,6 +55,12 @@ export class UserController {
     return this.userService.getMatchHistory(userId);
   }
 
+  @Get('me/active-game')
+  getActiveGame(@Req() req: Request) {
+    const { userId } = req.user as { userId: string };
+    return this.userService.getActiveGame(userId);
+  }
+
   @Post('me/friends/:friendId')
   async addFriend(@Req() req: Request, @Param('friendId') friendId: string) {
     const { userId } = req.user as { userId: string };

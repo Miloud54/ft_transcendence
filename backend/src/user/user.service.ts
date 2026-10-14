@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { FriendshipStatus, GameResult, UserStatus } from '../../generated/prisma';
+import { FriendshipStatus, GameResult, GameStatus, RoomStatus, UserStatus } from '../../generated/prisma';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 
@@ -197,6 +197,36 @@ export class UserService {
         .filter((player) => player.user_id !== userIdBig)
         .map((player) => player.users.username),
     }));
+  }
+
+  async getActiveGame(userId: string) {
+    const roomPlayer = await this.prisma.roomPlayer.findFirst({
+      where: {
+        user_id: BigInt(userId),
+        room: { status: RoomStatus.IN_GAME },
+      },
+      include: {
+        room: {
+          include: {
+            games_hosted: {
+              where: { status: GameStatus.RUNNING },
+              orderBy: { started_at: 'desc' },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    const game = roomPlayer?.room.games_hosted[0];
+    if (!roomPlayer || !game) {
+      return null;
+    }
+
+    return {
+      roomId: roomPlayer.room.room_id.toString(),
+      gameId: game.game_id.toString(),
+    };
   }
 
   async addFriend(userId: string, friendId: string) {
