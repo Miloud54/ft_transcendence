@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Body, Controller, ConflictException, Delete, Get, Param, Patch, Post, Query, Req, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -101,6 +101,10 @@ export class UserController {
   @Patch('me/status')
   async setStatus(@Req() req: Request, @Body() dto: UpdateStatusDto) {
     const { userId } = req.user as { userId: string };
+    const current = await this.userService.findById(userId);
+    if (current.status === 'IN_GAME') {
+      throw new ConflictException('Cannot change status while in a game');
+    }
     const result = await this.userService.setPresence(userId, dto.status);
     this.presenceGateway.broadcastPresence(userId, dto.status);
     return result;

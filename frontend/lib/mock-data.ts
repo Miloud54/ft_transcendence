@@ -6,7 +6,7 @@ export type MockUser = {
   username: string;
   email: string;
   avatarUrl: string | null;
-  status: "online" | "offline";
+  status: "online" | "offline" | "in_game";
   xp: number;
   level: number;
 };
@@ -98,7 +98,7 @@ export const mockWinnerArticleTitle = "Eiffel Tower";
 export type MockFriend = {
   id: string;
   username: string;
-  status: "online" | "offline";
+  status: "online" | "offline" | "in_game";
 };
 
 export const mockFriends: MockFriend[] = [

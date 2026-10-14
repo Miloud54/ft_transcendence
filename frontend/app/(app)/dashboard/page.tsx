@@ -137,18 +137,25 @@ export default function ProfilePage() {
             <div>
               <dt className="text-zinc-400">Status</dt>
               <dd>
-                <button
-                  type="button"
-                  onClick={() => void handleStatusChange(profile.status === "ONLINE" ? "OFFLINE" : "ONLINE")}
-                  className={`mt-0.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    profile.status === "ONLINE"
-                      ? "bg-lime-100 text-lime-800 hover:bg-lime-200"
-                      : "bg-zinc-200 text-zinc-700 hover:bg-zinc-300"
-                  }`}
-                >
-                  <span className={`h-1.5 w-1.5 rounded-full ${profile.status === "ONLINE" ? "bg-lime-500" : "bg-zinc-400"}`} />
-                  {profile.status === "ONLINE" ? "Online" : "Offline"}
-                </button>
+                {profile.status === "IN_GAME" ? (
+                  <span className="mt-0.5 inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+                    In game
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void handleStatusChange(profile.status === "ONLINE" ? "OFFLINE" : "ONLINE")}
+                    className={`mt-0.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      profile.status === "ONLINE"
+                        ? "bg-lime-100 text-lime-800 hover:bg-lime-200"
+                        : "bg-zinc-200 text-zinc-700 hover:bg-zinc-300"
+                    }`}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full ${profile.status === "ONLINE" ? "bg-lime-500" : "bg-zinc-400"}`} />
+                    {profile.status === "ONLINE" ? "Online" : "Offline"}
+                  </button>
+                )}
               </dd>
             </div>
           </dl>

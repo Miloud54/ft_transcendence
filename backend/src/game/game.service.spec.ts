@@ -8,6 +8,8 @@ import { GameService } from './game.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { PedantixEngineService } from 'src/pedantix-engine/pedantix-engine.service';
 import { GameStatus, RoomStatus } from 'generated/prisma';
+import { UserService } from 'src/user/user.service';
+import { PresenceGateway } from 'src/user/presence.gateway';
 
 describe('GameService', () => {
   let service: GameService;
@@ -20,6 +22,9 @@ describe('GameService', () => {
     room: {
       update: jest.Mock;
     };
+    roomPlayer: {
+      findMany: jest.Mock;
+    };
     $transaction: jest.Mock;
   };
 
@@ -27,6 +32,9 @@ describe('GameService', () => {
     prepareGame: jest.Mock;
     isGamePrepared: jest.Mock;
   };
+
+  let userService: { setPresence: jest.Mock; findById: jest.Mock };
+  let presenceGateway: { broadcastPresence: jest.Mock };
 
   const gameId = '123';
   const roomId = BigInt(456);
@@ -46,6 +54,9 @@ describe('GameService', () => {
       room: {
         update: jest.fn(),
       },
+      roomPlayer: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
       $transaction: jest.fn(),
     };
 
@@ -59,6 +70,14 @@ describe('GameService', () => {
       isGamePrepared: jest.fn().mockReturnValue(true),
     };
 
+    userService = {
+      setPresence: jest.fn().mockResolvedValue(undefined),
+      findById: jest.fn(),
+    };
+    presenceGateway = {
+      broadcastPresence: jest.fn(),
+    };
+ 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GameService,
@@ -69,6 +88,14 @@ describe('GameService', () => {
         {
           provide: PedantixEngineService,
           useValue: pedantixEngine,
+        },
+        {
+          provide: UserService,
+          useValue: userService,
+        },
+        {
+          provide: PresenceGateway,
+          useValue: presenceGateway,
         },
       ],
     }).compile();
@@ -274,6 +301,23 @@ describe('GameService', () => {
       prisma.game.findUnique.mockResolvedValue(game);
       prisma.game.updateMany.mockResolvedValue({ count: 1 });
       prisma.room.update.mockResolvedValue({});
+
+    it('sets IN_GAME status for every room player once RUNNING', async () => {
+      prisma.game.findUnique.mockResolvedValue(game);
+      prisma.game.updateMany.mockResolvedValue({ count: 1 });
+      prisma.room.update.mockResolvedValue({});
+      prisma.roomPlayer.findMany.mockResolvedValue([
+        { user_id: BigInt(1) },
+        { user_id: BigInt(2) },
+      ]);
+
+      await service.transitionToRunning(gameId);
+
+      expect(userService.setPresence).toHaveBeenCalledWith('1', 'IN_GAME');
+      expect(userService.setPresence).toHaveBeenCalledWith('2', 'IN_GAME');
+      expect(presenceGateway.broadcastPresence).toHaveBeenCalledWith('1', 'IN_GAME');
+      expect(presenceGateway.broadcastPresence).toHaveBeenCalledWith('2', 'IN_GAME');
+    });
 
       await service.transitionToRunning(gameId);
 

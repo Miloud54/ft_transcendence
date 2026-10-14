@@ -8,6 +8,6 @@ import { AuthModule } from '../auth/auth.module';
   imports: [AuthModule],
   controllers: [UserController],
   providers: [UserService, PresenceGateway],
-  exports: [PresenceGateway],
+  exports: [PresenceGateway, UserService],
 })
 export class UserModule {}

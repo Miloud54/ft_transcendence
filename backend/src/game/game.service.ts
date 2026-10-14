@@ -9,6 +9,9 @@ import { PedantixEngineService } from 'src/pedantix-engine/pedantix-engine.servi
 
 import { GameResult, GameStatus, RoomStatus } from 'generated/prisma';
 
+import { UserService } from 'src/user/user.service';
+import { PresenceGateway } from 'src/user/presence.gateway';
+
 @Injectable()
 export class GameService {
   private readonly countdowns = new Set<string>();
@@ -17,6 +20,8 @@ export class GameService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly pedantixEngine: PedantixEngineService,
+    private readonly userService: UserService,
+    private readonly presenceGateway: PresenceGateway,
   ) {}
 
   async transitionToRunning(gameId: string): Promise<void> {
@@ -38,7 +43,7 @@ export class GameService {
       throw new ConflictException('Game preparation is not complete');
     }
 
-    await this.prisma.$transaction(async (transaction) => {
+    const transitioned = await this.prisma.$transaction(async (transaction) => {
       const updatedGame = await transaction.game.updateMany({
         where: {
           game_id: game.game_id,
@@ -50,7 +55,7 @@ export class GameService {
       });
 
       if (updatedGame.count === 0) {
-        return;
+        return false;
       }
 
       await transaction.room.update({
@@ -61,7 +66,25 @@ export class GameService {
           status: RoomStatus.IN_GAME,
         },
       });
+
+      return true;
     });
+
+    if (!transitioned) {
+      return;
+    }
+
+    const roomPlayers = await this.prisma.roomPlayer.findMany({
+      where: { room_id: game.room_id },
+    });
+
+    await Promise.all(
+      roomPlayers.map(async (roomPlayer) => {
+        const userId = roomPlayer.user_id.toString();
+        await this.userService.setPresence(userId, 'IN_GAME');
+        this.presenceGateway.broadcastPresence(userId, 'IN_GAME');
+      }),
+    );
   }
 
   async startCountdown(gameId: string): Promise<void> {
@@ -116,7 +139,7 @@ export class GameService {
       throw new ConflictException('Game is not RUNNING');
     }
 
-    await this.prisma.$transaction(async (transaction) => {
+    const finished = await this.prisma.$transaction(async (transaction) => {
       const updatedGame = await transaction.game.updateMany({
         where: {
           game_id: game.game_id,
@@ -128,7 +151,7 @@ export class GameService {
       });
 
       if (updatedGame.count === 0) {
-        return;
+        return false;
       }
 
       await transaction.room.update({
@@ -139,7 +162,25 @@ export class GameService {
           status: RoomStatus.OPEN,
         },
       });
+
+      return true;
     });
+
+    if (!finished) {
+      return;
+    }
+
+    const roomPlayers = await this.prisma.roomPlayer.findMany({
+      where: { room_id: game.room_id },
+    });
+
+    await Promise.all(
+      roomPlayers.map(async (roomPlayer) => {
+        const userId = roomPlayer.user_id.toString();
+        await this.userService.setPresence(userId, 'ONLINE');
+        this.presenceGateway.broadcastPresence(userId, 'ONLINE');
+      }),
+    );
   }
 
   async getLeaderboard(limit = 20) {
