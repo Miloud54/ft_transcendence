@@ -1,34 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useCurrentUser } from "@/lib/current-user-context";
 import type { RoomPlayer } from "@/lib/room-api";
 
-const FALLBACK_TEAMMATES = [
-  { username: "Odile", avatarUrl: null as string | null, color: "bg-violet-500" },
-  { username: "Maria", avatarUrl: null as string | null, color: "bg-violet-300" },
-];
+
+const TEAMMATE_COLORS = ["bg-violet-500", "bg-violet-300", "bg-violet-400", "bg-zinc-400"];
 
 function buildInitialAttempts(players: RoomPlayer[], you: RoomPlayer | undefined) {
   const teammates = players.filter((player) => player.id !== you?.id);
 
   return [
     { username: "You", avatarUrl: you?.avatarUrl ?? null, word: "tower", proximity: 1000, color: "bg-lime-400" },
-    {
-      username: teammates[0]?.username ?? FALLBACK_TEAMMATES[0].username,
-      avatarUrl: teammates[0]?.avatarUrl ?? FALLBACK_TEAMMATES[0].avatarUrl,
-      word: "metallic",
-      proximity: 842,
-      color: FALLBACK_TEAMMATES[0].color,
-    },
-    {
-      username: teammates[1]?.username ?? FALLBACK_TEAMMATES[1].username,
-      avatarUrl: teammates[1]?.avatarUrl ?? FALLBACK_TEAMMATES[1].avatarUrl,
-      word: "iron",
-      proximity: 615,
-      color: FALLBACK_TEAMMATES[1].color,
-    },
+    ...teammates.map((teammate, index) => ({
+      username: teammate.username,
+      avatarUrl: teammate.avatarUrl,
+      word: "—",
+      proximity: 0,
+      color: TEAMMATE_COLORS[index % TEAMMATE_COLORS.length],
+    })),
   ];
 }
 
@@ -147,6 +138,31 @@ export function GameBoard({ gameId, players }: { gameId: string; players: RoomPl
   );
   const [attemptCount, setAttemptCount] = useState(0);
 
+  const [previousPlayers, setPreviousPlayers] = useState(players);
+  if (players !== previousPlayers) {
+    setPreviousPlayers(players);
+    setAttempts((current) => {
+      const withYourAvatar = current.map((attempt) =>
+        attempt.username === "You" && !attempt.avatarUrl && you?.avatarUrl
+          ? { ...attempt, avatarUrl: you.avatarUrl }
+          : attempt,
+      );
+
+      const existingUsernames = new Set(withYourAvatar.map((attempt) => attempt.username));
+      const missingTeammates = players
+        .filter((player) => player.id !== you?.id && !existingUsernames.has(player.username))
+        .map((player, index) => ({
+          username: player.username,
+          avatarUrl: player.avatarUrl,
+          word: "—",
+          proximity: 0,
+          color: TEAMMATE_COLORS[index % TEAMMATE_COLORS.length],
+        }));
+
+      return missingTeammates.length > 0 ? [...withYourAvatar, ...missingTeammates] : withYourAvatar;
+    });
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const word = guess.trim();
@@ -195,7 +211,7 @@ export function GameBoard({ gameId, players }: { gameId: string; players: RoomPl
           </div>
           <div className="rounded-lg border border-zinc-200 bg-white px-4 py-2">
             <span className="block text-xs text-zinc-400">Players</span>
-            <strong className="text-zinc-900">3 online</strong>
+            <strong className="text-zinc-900">{players.length} online</strong>
           </div>
         </div>
       </header>
