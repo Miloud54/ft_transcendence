@@ -1,7 +1,18 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { mockLeaderboard } from "@/lib/mock-data";
+import { API_URL } from "@/lib/room-api";
+
+type LeaderboardEntry = {
+  rank: number;
+  id: string;
+  username: string;
+  avatar: string;
+  level: number;
+  wins: number;
+  gamesPlayed: number;
+};
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -9,6 +20,33 @@ const fadeUp = {
 };
 
 export function LeaderboardContent() {
+  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+
+    fetch(`${API_URL}/game/leaderboard`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Could not load the leaderboard.");
+        return response.json();
+      })
+      .then(setEntries)
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  if (error) {
+    return <p className="text-sm text-[#d03b3b]">{error}</p>;
+  }
+
+  if (isLoading) {
+    return <p className="text-sm text-zinc-500">Loading the leaderboard...</p>;
+  }
+
   return (
     <motion.div
       initial="hidden"
@@ -27,9 +65,9 @@ export function LeaderboardContent() {
         variants={{ visible: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } } }}
         className="overflow-hidden rounded-xl border border-zinc-200 bg-white"
       >
-        {mockLeaderboard.map((entry) => (
+        {entries.map((entry) => (
           <motion.div
-            key={entry.rank}
+            key={entry.id}
             variants={fadeUp}
             className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 last:border-0"
           >
@@ -41,6 +79,7 @@ export function LeaderboardContent() {
               >
                 {entry.rank}
               </span>
+              <img src={entry.avatar} alt={entry.username} className="h-8 w-8 rounded-full bg-zinc-100" />
               <div>
                 <p className="text-sm font-medium text-zinc-950">{entry.username}</p>
                 <p className="text-xs text-zinc-400">Level {entry.level}</p>

@@ -9,6 +9,7 @@ import { PresenceGateway } from './presence.gateway';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import type { Request } from 'express';
+import { UpdateStatusDto } from './dto/update-status.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('users')
@@ -40,6 +41,18 @@ export class UserController {
   getFriendRequests(@Req() req: Request) {
     const { userId } = req.user as { userId: string };
     return this.userService.getFriendRequests(userId);
+  }
+
+  @Get('me/stats')
+  getStats(@Req() req: Request) {
+    const { userId } = req.user as { userId: string };
+    return this.userService.getStats(userId);
+  }
+
+  @Get('me/matches')
+  getMatchHistory(@Req() req: Request) {
+    const { userId } = req.user as { userId: string };
+    return this.userService.getMatchHistory(userId);
   }
 
   @Post('me/friends/:friendId')
@@ -83,6 +96,14 @@ export class UserController {
   updatePresence(@Req() req: Request) {
     const { userId } = req.user as { userId: string };
     return this.userService.updatePresence(userId);
+  }
+
+  @Patch('me/status')
+  async setStatus(@Req() req: Request, @Body() dto: UpdateStatusDto) {
+    const { userId } = req.user as { userId: string };
+    const result = await this.userService.setPresence(userId, dto.status);
+    this.presenceGateway.broadcastPresence(userId, dto.status);
+    return result;
   }
 
   @Patch('me')

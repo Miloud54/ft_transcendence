@@ -7,10 +7,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { PedantixEngineService } from 'src/pedantix-engine/pedantix-engine.service';
 
-import {
-  GameStatus,
-  RoomStatus,
-} from 'generated/prisma';
+import { GameResult, GameStatus, RoomStatus } from 'generated/prisma';
 
 @Injectable()
 export class GameService {
@@ -143,6 +140,46 @@ export class GameService {
         },
       });
     });
+  }
+
+  async getLeaderboard(limit = 20) {
+    const players = await this.prisma.gamePlayer.findMany({
+      where: { result: { not: null } },
+      include: { users: true },
+    });
+
+    const statsByUser = new Map<
+      string,
+      { user: { user_id: bigint; username: string; avatar: string; lvl: bigint }; wins: number; games: number }
+    >();
+
+    for (const player of players) {
+      const key = player.user_id.toString();
+      const existing = statsByUser.get(key);
+      if (existing) {
+        existing.games += 1;
+        if (player.result === GameResult.WIN) existing.wins += 1;
+      } else {
+        statsByUser.set(key, {
+          user: player.users,
+          wins: player.result === GameResult.WIN ? 1 : 0,
+          games: 1,
+        });
+      }
+    }
+
+    return Array.from(statsByUser.values())
+      .sort((a, b) => b.wins - a.wins)
+      .slice(0, limit)
+      .map((entry, index) => ({
+        rank: index + 1,
+        id: entry.user.user_id.toString(),
+        username: entry.user.username,
+        avatar: entry.user.avatar,
+        level: Number(entry.user.lvl),
+        wins: entry.wins,
+        gamesPlayed: entry.games,
+      }));
   }
 }
 
