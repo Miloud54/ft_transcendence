@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import type { Socket } from "socket.io-client";
 import { useCurrentUser } from "@/lib/current-user-context";
 import type { RoomPlayer } from "@/lib/room-api";
+import type { GameState, GuessResult } from "@/lib/game-socket";
 
 const FALLBACK_TEAMMATES = [
   { username: "Odile", avatarUrl: null as string | null, color: "bg-violet-500" },
@@ -90,22 +92,6 @@ const ARTICLE_PARAGRAPHS: ArticleWord[][] = [
   ],
 ];
 
-const WORD_SCORES: Record<string, number> = {
-  eiffel: 1000,
-  tower: 1000,
-  "eiffel tower": 1000,
-  iron: 615,
-  paris: 540,
-  monument: 488,
-  steel: 430,
-  france: 322,
-};
-
-function getProximity(word: string) {
-  const normalizedWord = word.trim().toLowerCase();
-  return WORD_SCORES[normalizedWord] ?? Math.max(70, 400 - normalizedWord.length * 19);
-}
-
 type ArticleWordStatus = "found" | "hidden";
 
 type ArticleWord = { label: string; status: ArticleWordStatus };
@@ -129,13 +115,25 @@ function ArticleText({ paragraph }: { paragraph: ArticleWord[] }) {
   );
 }
 
-export function GameBoard({ gameId, players }: { gameId: string; players: RoomPlayer[] }) {
+export function GameBoard({
+  gameId,
+  players,
+  gameState,
+  socket,
+  lastGuess,
+}: {
+  gameId: string;
+  players: RoomPlayer[];
+  gameState: GameState | null;
+  socket: Socket | null;
+  lastGuess: GuessResult | null;
+}) {
   const { user } = useCurrentUser();
   const you = players.find((player) => player.id === user?.id);
 
   const [guess, setGuess] = useState("");
   const [attempts, setAttempts] = useState(() => buildInitialAttempts(players, you));
-  const [discoveredCount, setDiscoveredCount] = useState(3);
+  const [discoveredCount] = useState(3);
   const [isSolved, setIsSolved] = useState(false);
   const [notice, setNotice] = useState("Find the word closest to the secret article.");
   const [bestScore, setBestScore] = useState(() =>
@@ -147,6 +145,30 @@ export function GameBoard({ gameId, players }: { gameId: string; players: RoomPl
   );
   const [attemptCount, setAttemptCount] = useState(0);
 
+  useEffect(() => {
+    if (!lastGuess || lastGuess.userId !== you?.id) return;
+
+    setAttempts((currentAttempts) => [
+      {
+        username: "You",
+        avatarUrl: you?.avatarUrl ?? null,
+        word: lastGuess.guess,
+        proximity: lastGuess.score,
+        color: "bg-lime-400",
+      },
+      ...currentAttempts.filter((attempt) => attempt.word !== lastGuess.guess),
+    ]);
+    setBestScore((currentBest) => Math.max(currentBest, lastGuess.score));
+    setAttemptCount((count) => count + 1);
+    setGuess("");
+    setIsSolved(lastGuess.correct);
+    setNotice(
+      lastGuess.correct
+        ? "Well done, you found the secret article!"
+        : "That guess was not the answer. Try again.",
+    );
+  }, [lastGuess, you?.id]);
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const word = guess.trim();
@@ -156,25 +178,12 @@ export function GameBoard({ gameId, players }: { gameId: string; players: RoomPl
       return;
     }
 
-    const proximity = getProximity(word);
-    const isCorrect = word.toLowerCase() === "eiffel" || word.toLowerCase() === "eiffel tower";
-
-    setAttempts((currentAttempts) => [
-      { username: "You", avatarUrl: you?.avatarUrl ?? null, word, proximity, color: "bg-lime-400" },
-      ...currentAttempts.filter((attempt) => attempt.username !== "You"),
-    ]);
-    setBestScore((currentBest: number) => Math.max(currentBest, proximity));
-    setAttemptCount((count: number) => count + 1);
-    setGuess("");
-
-    if (isCorrect) {
-      setIsSolved(true);
-      setNotice("Well done, you found the secret article!");
+    if (!socket) {
+      setNotice("The game connection is not ready.");
       return;
     }
 
-    setDiscoveredCount((count) => Math.min(12, count + (proximity > 500 ? 1 : 0)));
-    setNotice(proximity > 500 ? "You're very close. Keep going in that direction." : "Still a bit cold, try a different angle.");
+    socket.emit("game:guess", { gameId, guess: word });
   }
 
   return (
@@ -183,7 +192,11 @@ export function GameBoard({ gameId, players }: { gameId: string; players: RoomPl
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
             <span className="h-2 w-2 rounded-full bg-lime-500" />
-            Game in progress · #{gameId}
+            {gameState?.status === "countdown"
+              ? `Starting in ${gameState.countdownRemaining}s`
+              : gameState?.status === "finished"
+                ? "Game finished"
+                : "Game in progress"} · #{gameId}
           </div>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">The secret word</h1>
           <p className="mt-1 text-sm text-zinc-500">One Wikipedia article, 12 visible clues, only one right answer.</p>
@@ -191,7 +204,9 @@ export function GameBoard({ gameId, players }: { gameId: string; players: RoomPl
         <div className="flex items-center gap-3 text-sm">
           <div className="rounded-lg border border-zinc-200 bg-white px-4 py-2">
             <span className="block text-xs text-zinc-400">Time</span>
-            <strong className="font-mono text-zinc-900">04:28</strong>
+            <strong className="font-mono text-zinc-900">
+              {gameState?.status === "countdown" ? `${gameState.countdownRemaining}s` : "04:28"}
+            </strong>
           </div>
           <div className="rounded-lg border border-zinc-200 bg-white px-4 py-2">
             <span className="block text-xs text-zinc-400">Players</span>
