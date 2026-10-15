@@ -81,7 +81,13 @@ export function NotificationCenter() {
         await declineFriendRequest(request.id);
       }
       resolvedFriendRequestIds.current.add(request.id);
-      setFriendRequests((current) => current.filter((item) => item.id !== request.id));
+      setFriendRequests((current) => {
+        const next = current.filter((item) => item.id !== request.id);
+        if (next.length === 0 && roomInvitations.length === 0) {
+          setIsOpen(false);
+        }
+        return next;
+      });
     } finally {
       setBusyId(null);
     }
@@ -92,11 +98,23 @@ export function NotificationCenter() {
     try {
       if (action === "accept") {
         await acceptRoomInvitation(invitation.roomId);
-        setRoomInvitations((current) => current.filter((item) => item.roomId !== invitation.roomId));
+        setRoomInvitations((current) => {
+          const next = current.filter((item) => item.roomId !== invitation.roomId);
+          if (next.length === 0 && friendRequests.length === 0) {
+            setIsOpen(false);
+          }
+          return next;
+        });
         router.push(`/lobby/${invitation.roomId}`);
       } else {
         await declineRoomInvitation(invitation.roomId);
-        setRoomInvitations((current) => current.filter((item) => item.roomId !== invitation.roomId));
+        setRoomInvitations((current) => {
+          const next = current.filter((item) => item.roomId !== invitation.roomId);
+          if (next.length === 0 && friendRequests.length === 0) {
+            setIsOpen(false);
+          }
+          return next;
+        });
       }
     } finally {
       setBusyId(null);
