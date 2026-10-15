@@ -5,6 +5,7 @@ import { CreateRoomDto } from './create.room.dto';
 import type { Request } from 'express';
 import { RoomGateway } from './room.gateway';
 import { PresenceGateway } from '../user/presence.gateway';
+import { JoinByCodeDto } from './dto/join-by-code.dto';
 
 type AuthenticatedRequest = Request & {
   user: {
@@ -40,6 +41,17 @@ export class RoomController {
         @Body() dto: CreateRoomDto,
     ) {
         return this.roomService.create(request.user.userId, dto);
+    }
+
+    @Post('join-by-code')
+    @UseGuards(JwtAuthGuard)
+    async joinByCode(
+        @Body() dto: JoinByCodeDto,
+        @Req() request: AuthenticatedRequest,
+    ) {
+        const room = await this.roomService.joinByCode(dto.code, request.user.userId);
+        this.roomGateway.emitRoomState(room.id, room);
+        return room;
     }
 
     @Post(':roomId/join')
