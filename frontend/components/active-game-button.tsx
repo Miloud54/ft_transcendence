@@ -16,8 +16,6 @@ export function ActiveGameButton() {
 
   useEffect(() => {
     if (user?.status !== "IN_GAME") {
-      setActiveGame(null);
-      setActiveGameError(null);
       return;
     }
 
