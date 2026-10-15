@@ -1,6 +1,10 @@
 import { io, type Socket } from "socket.io-client";
 
-const SOCKET_URL = "http://localhost:3001/rooms";
+function getSocketOrigin() {
+  return window.location.port === "3000"
+    ? "http://localhost:3001"
+    : window.location.origin;
+}
 
 export type RoomMessage = {
   id: string;
@@ -40,7 +44,7 @@ export function connectToRoom(
 
   options.onStatus?.("connecting");
 
-  const socket = io(SOCKET_URL, {
+  const socket = io(`${getSocketOrigin()}/rooms`, {
     auth: {
       token,
     },
