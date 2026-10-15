@@ -64,9 +64,10 @@ export class GameService {
       countdownRemaining: countdownEndsAt
         ? Math.max(0, Math.ceil((countdownEndsAt - Date.now()) / 1000))
         : 0,
-      article: game.status === GameStatus.RUNNING
-        ? this.pedantixEngine.getInitialArticleView(gameId)
-        : undefined,
+      article:
+        game.status === GameStatus.RUNNING
+          ? this.pedantixEngine.getInitialArticleView(gameId)
+          : undefined,
       scores: Object.fromEntries(this.scores.get(gameId) ?? []),
       attempts: Object.fromEntries(this.attempts.get(gameId) ?? []),
     };
@@ -98,7 +99,9 @@ export class GameService {
 
     const guess = rawGuess.trim().toLowerCase();
     if (guess.length < 1 || guess.length > 100) {
-      throw new ConflictException('Guess must contain between 1 and 100 characters');
+      throw new ConflictException(
+        'Guess must contain between 1 and 100 characters',
+      );
     }
 
     const tokenizedArticle = this.pedantixEngine.getTokenizedArticle(gameId);
@@ -218,17 +221,19 @@ export class GameService {
     const preparation = this.pedantixEngine.prepareGame(gameId);
     this.preparations.set(gameId, preparation);
 
-    setTimeout(async () => {
-      try {
-        await preparation;
-        await this.transitionToRunning(gameId);
-      } catch (error) {
-        console.error('Failed to start game:', error);
-      } finally {
-        this.countdowns.delete(gameId);
-        this.preparations.delete(gameId);
-        this.countdownEnds.delete(gameId);
-      }
+    setTimeout(() => {
+      void (async () => {
+        try {
+          await preparation;
+          await this.transitionToRunning(gameId);
+        } catch (error) {
+          console.error('Failed to start game:', error);
+        } finally {
+          this.countdowns.delete(gameId);
+          this.preparations.delete(gameId);
+          this.countdownEnds.delete(gameId);
+        }
+      })();
     }, 10_000);
     this.countdownEnds.set(gameId, Date.now() + 10_000);
     void this.emitState(gameId);
@@ -309,7 +314,16 @@ export class GameService {
 
     const statsByUser = new Map<
       string,
-      { user: { user_id: bigint; username: string; avatar: string; lvl: bigint }; wins: number; games: number }
+      {
+        user: {
+          user_id: bigint;
+          username: string;
+          avatar: string;
+          lvl: bigint;
+        };
+        wins: number;
+        games: number;
+      }
     >();
 
     for (const player of players) {

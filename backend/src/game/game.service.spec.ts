@@ -11,6 +11,10 @@ import { GameStatus, RoomStatus } from 'generated/prisma';
 import { UserService } from 'src/user/user.service';
 import { PresenceGateway } from 'src/user/presence.gateway';
 
+jest.mock('src/user/presence.gateway', () => ({
+  PresenceGateway: class PresenceGateway {},
+}));
+
 describe('GameService', () => {
   let service: GameService;
 
@@ -302,23 +306,6 @@ describe('GameService', () => {
       prisma.game.updateMany.mockResolvedValue({ count: 1 });
       prisma.room.update.mockResolvedValue({});
 
-    it('sets IN_GAME status for every room player once RUNNING', async () => {
-      prisma.game.findUnique.mockResolvedValue(game);
-      prisma.game.updateMany.mockResolvedValue({ count: 1 });
-      prisma.room.update.mockResolvedValue({});
-      prisma.roomPlayer.findMany.mockResolvedValue([
-        { user_id: BigInt(1) },
-        { user_id: BigInt(2) },
-      ]);
-
-      await service.transitionToRunning(gameId);
-
-      expect(userService.setPresence).toHaveBeenCalledWith('1', 'IN_GAME');
-      expect(userService.setPresence).toHaveBeenCalledWith('2', 'IN_GAME');
-      expect(presenceGateway.broadcastPresence).toHaveBeenCalledWith('1', 'IN_GAME');
-      expect(presenceGateway.broadcastPresence).toHaveBeenCalledWith('2', 'IN_GAME');
-    });
-
       await service.transitionToRunning(gameId);
 
       expect(prisma.game.updateMany).toHaveBeenCalledWith({
@@ -339,6 +326,23 @@ describe('GameService', () => {
           status: RoomStatus.IN_GAME,
         },
       });
+    });
+
+    it('sets IN_GAME status for every room player once RUNNING', async () => {
+      prisma.game.findUnique.mockResolvedValue(game);
+      prisma.game.updateMany.mockResolvedValue({ count: 1 });
+      prisma.room.update.mockResolvedValue({});
+      prisma.roomPlayer.findMany.mockResolvedValue([
+        { user_id: BigInt(1) },
+        { user_id: BigInt(2) },
+      ]);
+
+      await service.transitionToRunning(gameId);
+
+      expect(userService.setPresence).toHaveBeenCalledWith('1', 'IN_GAME');
+      expect(userService.setPresence).toHaveBeenCalledWith('2', 'IN_GAME');
+      expect(presenceGateway.broadcastPresence).toHaveBeenCalledWith('1', 'IN_GAME');
+      expect(presenceGateway.broadcastPresence).toHaveBeenCalledWith('2', 'IN_GAME');
     });
   });
 });

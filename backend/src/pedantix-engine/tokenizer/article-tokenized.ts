@@ -8,7 +8,7 @@ export interface TokenizedText {
   tokens: ArticleToken[];
 }
 
-export interface TokenizedParagraph extends TokenizedText {}
+export type TokenizedParagraph = TokenizedText;
 
 export interface ArticleTokenized {
   articleId: number;

@@ -38,9 +38,7 @@ describe('PedantixEngineService', () => {
     articleId: 123,
     url: 'https://en.wikipedia.org/wiki/Jupiter',
     title: {
-      tokens: [
-        { text: 'Jupiter', type: 'word', length: 7 },
-      ],
+      tokens: [{ text: 'Jupiter', type: 'word', length: 7 }],
     },
     paragraphs: [
       {
@@ -55,9 +53,7 @@ describe('PedantixEngineService', () => {
 
   const initialArticleView: InitialArticleView = {
     title: {
-      tokens: [
-        { type: 'word', status: 'hidden', length: 7 },
-      ],
+      tokens: [{ type: 'word', status: 'hidden', length: 7 }],
     },
     paragraphs: [
       {
@@ -101,9 +97,7 @@ describe('PedantixEngineService', () => {
       ],
     }).compile();
 
-    service = module.get<PedantixEngineService>(
-      PedantixEngineService,
-    );
+    service = module.get<PedantixEngineService>(PedantixEngineService);
   });
 
   it('prepares a game successfully', async () => {
@@ -114,9 +108,7 @@ describe('PedantixEngineService', () => {
     expect(articleSelector.selectArticle).toHaveBeenCalledTimes(1);
     expect(tokenizer.tokenize).toHaveBeenCalledWith(article);
     expect(service.isGamePrepared('game-1')).toBe(true);
-    expect(service.getTokenizedArticle('game-1')).toEqual(
-      tokenizedArticle,
-    );
+    expect(service.getTokenizedArticle('game-1')).toEqual(tokenizedArticle);
   });
 
   it('returns no initial view for an unknown game', () => {
@@ -129,13 +121,9 @@ describe('PedantixEngineService', () => {
 
     await service.prepareGame('game-1');
 
-    expect(service.getInitialArticleView('game-1')).toEqual(
-      initialArticleView,
-    );
+    expect(service.getInitialArticleView('game-1')).toEqual(initialArticleView);
     expect(articleView.buildInitialView).toHaveBeenCalledTimes(1);
-    expect(articleView.buildInitialView).toHaveBeenCalledWith(
-      tokenizedArticle,
-    );
+    expect(articleView.buildInitialView).toHaveBeenCalledWith(tokenizedArticle);
   });
 
   it('builds the public view on demand without preparing the game again', async () => {
@@ -181,9 +169,7 @@ describe('PedantixEngineService', () => {
     await Promise.all([firstPreparation, secondPreparation]);
 
     expect(service.isGamePrepared('game-1')).toBe(true);
-    expect(service.getTokenizedArticle('game-1')).toEqual(
-      tokenizedArticle,
-    );
+    expect(service.getTokenizedArticle('game-1')).toEqual(tokenizedArticle);
     expect(articleSelector.selectArticle).toHaveBeenCalledTimes(1);
     expect(tokenizer.tokenize).toHaveBeenCalledTimes(1);
   });

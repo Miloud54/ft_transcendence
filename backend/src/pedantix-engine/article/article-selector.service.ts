@@ -19,9 +19,7 @@ export class ArticleSelectorService {
     let timeout: ReturnType<typeof setTimeout> | undefined;
 
     try {
-      const wikipediaAttempt = this.selectWikipediaArticle(
-        controller.signal,
-      );
+      const wikipediaAttempt = this.selectWikipediaArticle(controller.signal);
 
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeout = setTimeout(() => {
@@ -35,10 +33,7 @@ export class ArticleSelectorService {
         }, WIKIPEDIA_TIMEOUT_MS);
       });
 
-      return await Promise.race([
-        wikipediaAttempt,
-        timeoutPromise,
-      ]);
+      return await Promise.race([wikipediaAttempt, timeoutPromise]);
     } catch {
       controller.abort();
 
@@ -56,9 +51,7 @@ export class ArticleSelectorService {
     }
   }
 
-  private async selectWikipediaArticle(
-    signal: AbortSignal,
-  ): Promise<Article> {
+  private async selectWikipediaArticle(signal: AbortSignal): Promise<Article> {
     const candidates =
       await this.articleProvider.getRandomArticleCandidates(signal);
 

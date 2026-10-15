@@ -20,13 +20,9 @@ export interface ArticleSeparatorToken {
   display: string;
 }
 
-export type ArticleWordToken =
-  | HiddenWordToken
-  | RevealedWordToken;
+export type ArticleWordToken = HiddenWordToken | RevealedWordToken;
 
-export type ArticleViewToken =
-  | ArticleWordToken
-  | ArticleSeparatorToken;
+export type ArticleViewToken = ArticleWordToken | ArticleSeparatorToken;
 
 export interface ArticleViewParagraph {
   tokens: ArticleViewToken[];

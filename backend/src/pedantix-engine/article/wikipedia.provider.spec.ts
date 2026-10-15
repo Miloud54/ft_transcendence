@@ -18,11 +18,12 @@ describe('WikipediaProvider', () => {
       fetchMock.mockResolvedValue({
         status: 200,
         ok: true,
-        json: async () => ({
-          id: 123,
-          key: 'Jupiter',
-          title: 'Jupiter',
-          html: `
+        json: () =>
+          Promise.resolve({
+            id: 123,
+            key: 'Jupiter',
+            title: 'Jupiter',
+            html: `
             <p>First paragraph with a <a href="/wiki/Test">link</a>.</p>
             <p>Second paragraph<sup class="reference">[1]</sup>.</p>
             <p>Third paragraph.</p>
@@ -31,7 +32,7 @@ describe('WikipediaProvider', () => {
 
             <p>This paragraph must not be included.</p>
           `,
-        }),
+          }),
       } as Response);
 
       const article = await provider.getArticle('Jupiter');
@@ -50,16 +51,17 @@ describe('WikipediaProvider', () => {
       fetchMock.mockResolvedValue({
         status: 200,
         ok: true,
-        json: async () => ({
-          id: 123,
-          key: 'Test',
-          title: 'Test',
-          html: `
+        json: () =>
+          Promise.resolve({
+            id: 123,
+            key: 'Test',
+            title: 'Test',
+            html: `
             <p>First paragraph.</p>
             <p>Second paragraph.</p>
             <h2>Section</h2>
           `,
-        }),
+          }),
       } as Response);
 
       const article = await provider.getArticle('Test');
@@ -76,12 +78,13 @@ describe('WikipediaProvider', () => {
       fetchMock.mockResolvedValue({
         status: 200,
         ok: true,
-        json: async () => ({
-          id: 123,
-          key: 'Test',
-          title: 'Test',
-          html: paragraphs,
-        }),
+        json: () =>
+          Promise.resolve({
+            id: 123,
+            key: 'Test',
+            title: 'Test',
+            html: paragraphs,
+          }),
       } as Response);
 
       const article = await provider.getArticle('Test');
@@ -98,16 +101,17 @@ describe('WikipediaProvider', () => {
       fetchMock.mockResolvedValue({
         status: 200,
         ok: true,
-        json: async () => ({
-          id: 123,
-          key: 'Jupiter',
-          title: 'Jupiter',
-          html: `
+        json: () =>
+          Promise.resolve({
+            id: 123,
+            key: 'Jupiter',
+            title: 'Jupiter',
+            html: `
             <p>First paragraph.</p>
             <p>Second paragraph.</p>
             <p>Third paragraph.</p>
           `,
-        }),
+          }),
       } as Response);
 
       await provider.getArticle('Jupiter', controller.signal);
@@ -125,22 +129,23 @@ describe('WikipediaProvider', () => {
       fetchMock.mockResolvedValue({
         status: 200,
         ok: true,
-        json: async () => ({
-          query: {
-            pages: {
-              '123': {
-                pageid: 123,
-                ns: 0,
-                title: 'Jupiter',
-              },
-              '456': {
-                pageid: 456,
-                ns: 0,
-                title: 'Mars',
+        json: () =>
+          Promise.resolve({
+            query: {
+              pages: {
+                '123': {
+                  pageid: 123,
+                  ns: 0,
+                  title: 'Jupiter',
+                },
+                '456': {
+                  pageid: 456,
+                  ns: 0,
+                  title: 'Mars',
+                },
               },
             },
-          },
-        }),
+          }),
       } as Response);
 
       const candidates = await provider.getRandomArticleCandidates();
@@ -163,20 +168,21 @@ describe('WikipediaProvider', () => {
       fetchMock.mockResolvedValue({
         status: 200,
         ok: true,
-        json: async () => ({
-          query: {
-            pages: {
-              '456': {
-                pageid: 456,
-                ns: 0,
-                title: 'Mercury',
-                pageprops: {
-                  disambiguation: '',
+        json: () =>
+          Promise.resolve({
+            query: {
+              pages: {
+                '456': {
+                  pageid: 456,
+                  ns: 0,
+                  title: 'Mercury',
+                  pageprops: {
+                    disambiguation: '',
+                  },
                 },
               },
             },
-          },
-        }),
+          }),
       } as Response);
 
       const candidates = await provider.getRandomArticleCandidates();
@@ -189,38 +195,40 @@ describe('WikipediaProvider', () => {
         },
       ]);
     });
-     it('returns an empty array when Wikipedia returns no pages', async () => {
+    it('returns an empty array when Wikipedia returns no pages', async () => {
       fetchMock.mockResolvedValue({
         status: 200,
         ok: true,
-        json: async () => ({
-          query: {},
-        }),
+        json: () =>
+          Promise.resolve({
+            query: {},
+          }),
       } as Response);
-       const candidates = await provider.getRandomArticleCandidates();
-       expect(candidates).toEqual([]);
+      const candidates = await provider.getRandomArticleCandidates();
+      expect(candidates).toEqual([]);
     });
-     it('requests up to 10 candidates in one HTTP request', async () => {
+    it('requests up to 10 candidates in one HTTP request', async () => {
       fetchMock.mockResolvedValue({
         status: 200,
         ok: true,
-        json: async () => ({
-          query: {
-            pages: {
-              '123': {
-                pageid: 123,
-                ns: 0,
-                title: 'Jupiter',
+        json: () =>
+          Promise.resolve({
+            query: {
+              pages: {
+                '123': {
+                  pageid: 123,
+                  ns: 0,
+                  title: 'Jupiter',
+                },
               },
             },
-          },
-        }),
+          }),
       } as Response);
-       await provider.getRandomArticleCandidates();
-       expect(fetchMock).toHaveBeenCalledTimes(1);
-       const requestedUrl = fetchMock.mock.calls[0][0] as string;
-       expect(requestedUrl).toContain('grnminsize=50000');
-       expect(requestedUrl).toContain('grnlimit=10');
+      await provider.getRandomArticleCandidates();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const requestedUrl = fetchMock.mock.calls[0][0] as string;
+      expect(requestedUrl).toContain('grnminsize=50000');
+      expect(requestedUrl).toContain('grnlimit=10');
     });
     it('passes the abort signal to fetch', async () => {
       const controller = new AbortController();
@@ -228,17 +236,18 @@ describe('WikipediaProvider', () => {
       fetchMock.mockResolvedValue({
         status: 200,
         ok: true,
-        json: async () => ({
-          query: {
-            pages: {
-              '123': {
-                pageid: 123,
-                ns: 0,
-                title: 'Jupiter',
+        json: () =>
+          Promise.resolve({
+            query: {
+              pages: {
+                '123': {
+                  pageid: 123,
+                  ns: 0,
+                  title: 'Jupiter',
+                },
               },
             },
-          },
-        }),
+          }),
       } as Response);
 
       await provider.getRandomArticleCandidates(controller.signal);
@@ -249,7 +258,5 @@ describe('WikipediaProvider', () => {
 
       expect(requestOptions?.signal).toBe(controller.signal);
     });
-
-
   });
 });

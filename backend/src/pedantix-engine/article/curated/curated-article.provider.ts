@@ -30,8 +30,7 @@ export class CuratedArticleProvider {
     try {
       content = await readFile(this.libraryPath, 'utf8');
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : String(error);
+      const message = error instanceof Error ? error.message : String(error);
 
       throw new Error(
         `Unable to read the curated article library at ` +
@@ -51,9 +50,7 @@ export class CuratedArticleProvider {
     }
 
     if (!Array.isArray(parsed)) {
-      throw new Error(
-        'The curated article library must contain a JSON array.',
-      );
+      throw new Error('The curated article library must contain a JSON array.');
     }
 
     const articles: Article[] = [];
