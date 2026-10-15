@@ -246,6 +246,50 @@ Limites à connaître :
 - le modèle d'index ne s'applique qu'aux index **créés après lui** : un index plus ancien n'est jamais supprimé par la rétention (les anciens index de septembre/octobre ont été supprimés à la main le 13/10/2026)
 - Elasticsearch ne vérifie les politiques ILM que **toutes les 10 minutes** par défaut (`indices.lifecycle.poll_interval`) : à prendre en compte pour une démo avec une politique de test courte
 
+### Pourquoi c'est Elasticsearch qui gère rétention et snapshots (et pas Logstash)
+
+Chaque brique a un seul rôle :
+
+| Brique | Rôle | Voit les logs… |
+| --- | --- | --- |
+| Logstash | **transporter et transformer** : lit chaque nouvelle ligne, la nettoie, l'envoie | un par un, au passage, puis les oublie |
+| Elasticsearch | **stocker** : range les logs dans des index (un par jour) | tous, et les garde |
+| Kibana | **afficher** | via Elasticsearch |
+
+Rétention et archivage agissent sur des **index entiers déjà stockés** (« supprimer l'index de plus de 30 jours », « copier tous les index `docker-logs-*` cette nuit ») : seul celui qui stocke les données peut le faire. Logstash ne garde rien ; il ne sait même pas quels index existent. C'est aussi une question de droits : le compte `logstash_writer` peut créer et écrire des index, mais **pas les supprimer** — ce qui est voulu (un mot de passe Logstash volé ne permet pas d'effacer les traces). Les deux mécanismes sont donc intégrés à Elasticsearch : **ILM** (*Index Lifecycle Management*) pour la rétention, **SLM** (*Snapshot Lifecycle Management*) pour l'archivage. `es-init` ne fait que les configurer au démarrage.
+
+Snapshot : copie de sauvegarde des index à un instant donné, rangée hors d'Elasticsearch (dossier déclaré par `path.repo`, volume `es_snapshots`). Elle peut être restaurée après la suppression des index par la rétention. Planification de `daily-logs-archive` : `0 30 1 * * ?` (format cron : secondes, minutes, heure, jour du mois, mois, jour de la semaine) = tous les jours à 1h30 **UTC** (3h30 heure de Paris en été), au moment où l'activité est la plus faible.
+
+## **Référence : tous les fichiers de la stack ELK**
+
+### Fichiers du dépôt
+
+| Fichier | Rôle | Détails dans |
+| --- | --- | --- |
+| `logstash/logstash.conf` | pipeline Logstash : `input` (lit `/var/log/app/*.log`), `filter` (champ `service`, `drop` du healthcheck, masquage `gsub`, découpage `grok` des lignes WAF, suppression d'`event.original`), `output` (Elasticsearch, index `docker-logs-AAAA.MM.JJ`, compte `logstash_writer`) | sections Filtre Logstash et Logs du WAF |
+| `logstash/logstash.yml` | réglages de Logstash lui-même (remplace le fichier par défaut de l'image). Contient seulement les identifiants (`logstash_writer` / `${LOGSTASH_PASSWORD}`) de la **supervision interne** de Logstash (`xpack.monitoring`, qui enverrait ses propres métriques de fonctionnement à Elasticsearch). Cette supervision n'est **pas activée** (`xpack.monitoring.enabled` absent, désactivé par défaut en 8.x ; aucune trace dans les logs de Logstash) : ces deux lignes sont donc sans effet aujourd'hui — à retirer, ou à compléter par `xpack.monitoring.enabled: true` si l'on veut superviser Logstash | — |
+| `elasticsearch/init.sh` | script lancé par `es-init` : mot de passe de `kibana_system`, rôle et compte `logstash_writer`, politique de rétention `docker-logs-retention`, modèle d'index `docker-logs` (rattache la politique à chaque nouvel index), dépôt de snapshots `logs-archive`, politique d'archivage `daily-logs-archive` | sections Sécurisation, Rétention et archivage |
+| `kibana/init.sh` | script lancé par `kibana-init` : attend Kibana, importe `export.ndjson`, désactive `bfetch`, définit la data view par défaut | section `kibana-init` |
+| `kibana/export.ndjson` | export Kibana : data view `docker-logs-*`, recherche « Requests overview », dashboard « Transcendence - Log » (définitions, pas les données). À réexporter après chaque modification du dashboard | section Contenu du dashboard |
+| `waf/default.conf.template` | config Nginx du WAF : `log_format timed` + `access_log /var/log/app/waf.log`, bloc `location /kibana/` (adresse résolue à chaque requête, `proxy_buffering off`) | sections Kibana derrière le WAF, Logs du WAF, piège 7 |
+| `waf/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf` | exceptions ModSecurity ; pour ELK : règle `1004` (retire `932260`, `942220`, `932235` sur `/kibana/` uniquement) | section Kibana derrière le WAF, pièges |
+| `.env` / `.env.example` | `ELASTIC_PASSWORD`, `KIBANA_PASSWORD`, `LOGSTASH_PASSWORD` (`.env` hors git ; `.env.example` = modèle) | section Sécurisation |
+
+### Services et volumes dans `docker-compose.yml`
+
+| Élément | Rôle et réglages |
+| --- | --- |
+| service `elasticsearch` | `discovery.type: single-node` (une seule instance, pas de cluster) ; `xpack.security.enabled: "true"` (mot de passe obligatoire) ; `xpack.security.http.ssl.enabled: "false"` (HTTP en clair, assumé : réseau Docker privé) ; `ES_JAVA_OPTS: -Xms512m -Xmx512m` (mémoire Java limitée à 512 Mo) ; `ELASTIC_PASSWORD` (lu **seulement à la création** du volume `es_data`) ; `path.repo` (dossier autorisé pour les snapshots) ; healthcheck `curl localhost:9200` ; **aucun port publié** |
+| service `es-init` | conteneur jetable (`curlimages/curl`) qui lance `elasticsearch/init.sh` à chaque démarrage, une fois Elasticsearch `healthy` |
+| service `logstash` | monte `logstash.conf`, `logstash.yml`, `app_logs` (lecture seule) et `logstash_data` ; dépend d'`elasticsearch` (`healthy`) ; aucun port publié |
+| service `kibana` | `SERVER_BASEPATH`, `SERVER_REWRITEBASEPATH`, `SERVER_PUBLICBASEURL` (servi sous `/kibana` derrière le WAF) ; se connecte avec `kibana_system` ; dépend d'`elasticsearch` (`healthy`) ; **aucun port publié** |
+| service `kibana-init` | conteneur jetable qui lance `kibana/init.sh` ; dossier `./kibana` monté en lecture seule |
+| service `volumes-init` | conteneur jetable qui règle les droits des volumes partagés (`chmod 1777` sur `app_logs`, `chown 1000:0` sur `es_snapshots` pour l'utilisateur d'Elasticsearch) |
+| volume `es_data` | données d'Elasticsearch (index, comptes, réglages Kibana, dashboard importé). Supprimé par `down -v` |
+| volume `es_snapshots` | archive des snapshots (`logs-archive`) |
+| volume `logstash_data` | position de lecture de Logstash (*sincedb*) : évite les doublons |
+| volume `app_logs` | fichiers de logs partagés : écrits par `frontend`, `backend`, `db`, `waf` ; lus par `logstash` |
+
 ## **Dashboard, logs du WAF et fiabilité (13/10/2026)**
 
 ### Ce qui a changé
@@ -429,96 +473,82 @@ Test décisif pour isoler le WAF : contourner temporairement (port direct), comp
 
 ## **Démo pour la soutenance**
 
-Objectif : montrer **en direct** chaque exigence du module (collecte, transformation, visualisation, rétention/archivage, sécurité). Toutes les commandes `curl` passent par le conteneur Elasticsearch (le port `9200` n'est pas publié) avec le compte `elastic`.
+Objectif : montrer chaque exigence du module (collecte, transformation, visualisation, rétention, archivage, sécurité) **uniquement en clics**, sans terminal.
 
 ### Préparation (avant l'arrivée de l'évaluateur)
 
-1. Stack démarrée (`docker compose up -d`), tout `healthy`/`Up` : `docker compose ps`
+1. Stack démarrée (`docker compose up -d`) et tout en état `Up` / `healthy` (`docker compose ps`)
 2. Ouvrir `https://localhost:8443/kibana/`, se connecter avec `elastic`, ouvrir le dashboard « Transcendence - Log » (le premier chargement de Kibana est lent : le faire à l'avance)
-3. Période **Last 1 hour**, rafraîchissement automatique **every 10 seconds** (icône calendrier)
-4. Garder un deuxième onglet sur `https://localhost:8443` (le site) et un terminal à la racine du projet
+3. En haut à droite : période **Last 24 hours**, rafraîchissement automatique **toutes les 10 secondes** (icône calendrier)
+4. Naviguer quelques minutes sur le site pour que les graphiques ne soient pas vides
+5. Garder un deuxième onglet ouvert sur le site (`https://localhost:8443`)
 
-### 1. Collecte et transformation en direct (dashboard)
+### 1. Les logs arrivent en direct (dashboard)
 
-| Action | Ce que l'évaluateur voit |
+| Action dans l'onglet du site | Ce qui apparaît sur le dashboard |
 | --- | --- |
-| Ouvrir `https://localhost:8443/nimportequoi` | un `404` apparaît dans **Codes de réponse** et une ligne dans **errors waf** (URL, méthode, heure) |
-| Se tromper 3 fois de mot de passe sur `https://localhost:8443/login` | une barre monte dans **Login failures** |
-| Naviguer sur le site | **Logs par service** et **Response time** bougent |
+| Ouvrir `https://localhost:8443/nimportequoi` | un `404` dans **Response codes** et une ligne dans le tableau **Requests overview** |
+| Se tromper 3 fois de mot de passe sur la page de login | une barre dans **Login failures** |
 
-À dire : « WAF (access log) → Logstash (champ `service`, masquage des secrets, découpage `grok`) → Elasticsearch → Kibana ».
+À dire : « Chaque requête passe par le WAF, Logstash la trie (champ `service`), masque les secrets et la découpe en champs, Elasticsearch la stocke, Kibana l'affiche. »
 
-**Masquage des secrets** — dans le terminal :
+### 2. Rétention (montrer la règle)
 
-```
-docker exec transcendence-frontend sh -c 'echo "DEMO GET /auth/callback?accessToken=FAUX123&refreshToken=FAUX456 password=FAUX789" >> /var/log/app/frontend.log'
-```
+☰ → **Stack Management** → **Index Lifecycle Policies** → **`docker-logs-retention`** : phase **Delete** après **30 jours**, colonne *Linked indices* = nombre d'index de logs qui suivent la règle.
 
-Dans Discover, chercher `DEMO` : `accessToken=[REDACTED]&refreshToken=[REDACTED] password=[REDACTED]`, pas de champ `event.original`. Chercher `FAUX123` : aucun résultat (le secret n'est stocké nulle part).
+Puis ☰ → **Stack Management** → **Index Management** → clic sur un index `docker-logs-…` → section lifecycle : politique `docker-logs-retention`, phase actuelle (`new`) et âge de l'index.
 
-### 2. Rétention : suppression automatique en direct
+À dire : « Chaque index de logs suit automatiquement cette règle : il est supprimé à 30 jours. »
 
-La vraie politique supprime les index après 30 jours : impossible à attendre. On crée une politique **identique avec 1 minute**, sur un index **de test** (les vrais logs ne sont pas touchés), et on réduit temporairement l'intervalle de vérification ILM (10 minutes par défaut).
+Si l'évaluateur demande comment on sait que ça marche : « Je l'ai testée avec la même règle réglée sur 1 minute : l'index a été supprimé automatiquement en 88 secondes (test refait deux fois le 15/10/2026). C'est le mécanisme ILM d'Elasticsearch. »
 
-```
-docker exec -it transcendence-elasticsearch bash
-E="curl -s -u elastic:$ELASTIC_PASSWORD -H Content-Type:application/json localhost:9200"
+### 3. Archivage (une vraie sauvegarde en un clic)
 
-# a. verification ILM toutes les 10 s (au lieu de 10 min) - temporaire
-$E/_cluster/settings -X PUT -d '{"persistent":{"indices.lifecycle.poll_interval":"10s"}}'
+☰ → **Stack Management** → **Snapshot and Restore** :
 
-# b. meme politique que docker-logs-retention, mais 1 minute au lieu de 30 jours
-$E/_ilm/policy/demo-retention -X PUT -d '{"policy":{"phases":{"delete":{"min_age":"1m","actions":{"delete":{}}}}}}'
+1. onglet **Policies** → **`daily-logs-archive`** : sauvegarde chaque nuit, conservée 1 an
+2. bouton **Run now** au bout de la ligne : déclenche tout de suite la sauvegarde de la nuit
+3. onglet **Snapshots** (bouton *Reload* si besoin) : une nouvelle ligne datée de maintenant, état **Complete** ; cliquer dessus montre les index `docker-logs-…` copiés
 
-# c. index de test rattache a cette politique, avec un log dedans
-$E/demo-logs-1 -X PUT -d '{"settings":{"index.lifecycle.name":"demo-retention","number_of_replicas":0}}'
-$E/demo-logs-1/_doc?refresh=true -X POST -d '{"message":"log de demonstration"}'
+À dire : « Les logs restent 30 jours dans Elasticsearch ; chaque nuit, une copie est archivée et gardée 1 an. Elle peut être restaurée si on a besoin de remonter plus loin. »
 
-# d. montrer qu'il existe, et son age / sa phase
-$E/_cat/indices/demo-logs-*?v
-$E/demo-logs-1/_ilm/explain?pretty
-
-# e. attendre 1 a 2 minutes, puis relancer : l'index a disparu tout seul
-$E/_cat/indices/demo-logs-*?v
-```
-
-Testé le 15/10/2026 : index `demo-logs-1` supprimé automatiquement **88 secondes** après sa création (1 minute de `min_age` + le délai de vérification ILM).
-
-À dire : « personne ne l'a supprimé à la main : c'est la politique ILM. La vraie (`docker-logs-retention`) fait la même chose à 30 jours, rattachée automatiquement à chaque nouvel index par le modèle `docker-logs`. »
-
-Montrer aussi la vraie politique : `$E/_ilm/policy/docker-logs-retention?pretty`.
-
-### 3. Archivage : snapshot déclenché en direct
-
-Le snapshot automatique tourne chaque nuit à 1h30 ; on le déclenche immédiatement :
-
-```
-$E/_slm/policy/daily-logs-archive/_execute -X POST
-$E/_cat/snapshots/logs-archive?v
-```
-
-Résultat attendu : une ligne `logs-AAAA.MM.JJ-…` avec le statut `SUCCESS` (testé le 15/10/2026 : 3 index archivés en 0,2 s). À dire : « les snapshots sont gardés 1 an (`expire_after: 365d`) sur le volume `es_snapshots` : la rétention supprime les index actifs à 30 jours, l'archive permet de les restaurer pendant 1 an ».
+Testé le 15/10/2026 : *Run now* via Kibana et le WAF → snapshot `SUCCESS`, 3 index copiés en 0,2 s, aucun blocage ModSecurity.
 
 ### 4. Sécurité des accès
 
-| Démonstration | Commande / action | Résultat |
+| Ce qu'on montre | Comment | Résultat |
 | --- | --- | --- |
-| Kibana uniquement via le WAF, en HTTPS | `curl -m 3 http://localhost:5601` | connexion refusée |
-| Elasticsearch fermé à l'extérieur | `curl -m 3 http://localhost:9200` | connexion refusée |
-| Elasticsearch exige un mot de passe, même en interne | `docker exec transcendence-elasticsearch curl -s -o /dev/null -w "%{http_code}\n" localhost:9200` | `401` |
-| Kibana exige une connexion | ouvrir `https://localhost:8443/kibana/` dans une fenêtre privée | page de login |
-| Moindre privilège | `$E/_security/role/logstash_writer?pretty` | `create_index`, `write` seulement (pas de suppression) |
+| Kibana n'est accessible que via le WAF | ouvrir `http://localhost:5601` | la page ne s'ouvre pas |
+| Kibana est en HTTPS et demande une connexion | ouvrir `https://localhost:8443/kibana/` dans une fenêtre privée | page de login |
+| Elasticsearch n'est pas accessible de l'extérieur | ouvrir `http://localhost:9200` | la page ne s'ouvre pas |
 
-### Nettoyage après la démo (important)
+À dire : « Elasticsearch n'a aucun port ouvert et exige un mot de passe même en interne ; Kibana passe par le WAF en HTTPS ; chaque service a son propre compte avec le minimum de droits (Logstash peut écrire des logs, pas les supprimer). »
+
+### Variante avancée (optionnelle) : suppression en direct
+
+Pour montrer un index qui disparaît réellement. Non nécessaire : montrer la règle et citer le test suffit. Dans Kibana : ☰ → **Management** → **Dev Tools**, une commande à la fois (bouton ▶). Testé via le WAF le 15/10/2026, aucun blocage.
 
 ```
-$E/demo-logs-1 -X DELETE                       # si l'index existe encore
-$E/_ilm/policy/demo-retention -X DELETE
-$E/_cluster/settings -X PUT -d '{"persistent":{"indices.lifecycle.poll_interval":null}}'   # retour aux 10 min par defaut
-exit
+PUT _cluster/settings
+{ "persistent": { "indices.lifecycle.poll_interval": "10s" } }
+
+PUT _ilm/policy/demo-retention
+{ "policy": { "phases": { "delete": { "min_age": "1m", "actions": { "delete": {} } } } } }
+
+PUT demo-logs-1
+{ "settings": { "index.lifecycle.name": "demo-retention", "number_of_replicas": 0 } }
+
+GET _cat/indices/demo-logs-*?v
 ```
 
-Le `poll_interval` à 10 s fait travailler Elasticsearch inutilement : ne pas l'oublier.
+Relancer la dernière commande après ~1 min 30 : plus aucun index (supprimé en 88 s lors des tests). Sans le premier réglage, Elasticsearch ne vérifie ses règles que toutes les 10 minutes. Nettoyage obligatoire ensuite :
+
+```
+DELETE _ilm/policy/demo-retention
+
+PUT _cluster/settings
+{ "persistent": { "indices.lifecycle.poll_interval": null } }
+```
 
 ## **Prochaines étapes (ELK)**
 
