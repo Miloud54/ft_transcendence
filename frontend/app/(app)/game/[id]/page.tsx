@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import {  Suspense, use, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Socket } from "socket.io-client";
 import { GameBoard } from "@/components/game-board";
@@ -9,6 +9,15 @@ import { connectToGame, type GameState, type GuessResult } from "@/lib/game-sock
 
 export default function GamePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  return (
+    <Suspense fallback={null}>
+      <GameContent id={id} />
+    </Suspense>
+  );
+}
+
+
+function GameContent({ id }: { id: string }) {
   const searchParams = useSearchParams();
   const roomId = searchParams.get("room");
   const [room, setRoom] = useState<Room | null>(null);

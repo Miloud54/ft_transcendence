@@ -1,10 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useRef, useState, type FormEvent } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { connectToRoom, type RoomMessage } from "@/lib/room-socket";
 
 export function RoomChat() {
+  return (
+    <Suspense fallback={null}>
+      <RoomChatResolver />
+    </Suspense>
+  );
+}
+
+function RoomChatResolver() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const roomId = pathname.startsWith("/lobby/")
