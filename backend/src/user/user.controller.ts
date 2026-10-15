@@ -25,15 +25,15 @@ export class UserController {
     return this.userService.findById(userId);
   }
 
-  @Get(':profileId')
-  getProfile(@Param('profileId') profileId: string) {
-    return this.userService.findById(profileId);
-  }
-
   @Get('search')
   search(@Req() req: Request, @Query('q') query = '') {
     const { userId } = req.user as { userId: string };
     return this.userService.search(userId, query);
+  }
+
+  @Get(':profileId')
+  getProfile(@Param('profileId') profileId: string) {
+    return this.userService.findById(profileId);
   }
 
   @Get('me/friends')
