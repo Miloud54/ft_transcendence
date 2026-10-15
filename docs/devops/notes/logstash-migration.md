@@ -310,14 +310,60 @@ Vérification : `tags : _grokparsefailure` dans Discover liste les lignes que `g
 
 ### Contenu du dashboard
 
-| Panneau | Ce qu'il montre |
-| --- | --- |
-| Logs par service dans le temps (barres empilées, `@timestamp` + breakdown `service.keyword`) | l'activité de chaque service ; un trou = service muet ou tombé, un pic = événement |
-| Recherche enregistrée « errors waf » (`http.response.status_code >= 400`, colonnes code / méthode / URL / IP) | les vraies erreurs HTTP et les blocages du WAF (`403`) |
+Dashboard « Transcendence - Log » (15/10/2026) : un panneau = une question.
 
-Dans Lens, utiliser `service.keyword` (et non `service`) pour regrouper et compter : `service` est un champ texte pour la recherche, `service.keyword` la valeur exacte pour les agrégations. Penser à monter « Number of values » au-delà de 3, sinon le 4ᵉ service est rangé dans « Other ».
+| Panneau | Type Lens | Configuration | Question à laquelle il répond |
+| --- | --- | --- | --- |
+| **Logs par service** | Bar vertical stacked | `@timestamp` + breakdown `service.keyword` | Est-ce que chaque partie du système est vivante ? |
+| **Codes de réponse** | Bar vertical stacked | filtre `service : waf and not url.original.keyword : /kibana*`, `@timestamp` + breakdown **Top values** de `http.response.status_code` (10 valeurs) | Le site répond-il correctement ? |
+| **Response time (95th percentile, seconds)** | Line | même filtre, `@timestamp` + **95th percentile** de `waf.request_time` | Le site est-il rapide ? |
+| **Login failures** | Bar vertical | filtre `service : waf and url.original.keyword : "/api/auth/login" and http.response.status_code : 401`, `@timestamp` | Quelqu'un essaie-t-il de forcer des comptes ? |
+| **Requests overview** (recherche enregistrée) | Discover | `service : waf and not url.original.keyword : /kibana*`, colonnes code / URL / méthode / IP / `waf.request_time` | Que s'est-il passé exactement (toutes les requêtes du site, triables par code ou par durée) ? |
 
-Le dashboard est **dynamique** : chaque panneau est une requête relancée à l'ouverture ou au rafraîchissement (option *Refresh every 10 seconds* pour une démo en direct).
+Recherche enregistrée complémentaire, hors dashboard : **errors waf** (`http.response.status_code >= 400`) — uniquement les erreurs, y compris celles de Kibana. Ajoutable au dashboard via *Add from library*.
+
+Les graphiques donnent la **vue d'ensemble** (combien, quand, quel code) ; le tableau donne le **détail** (quelle URL). On repère un problème sur un graphique, on lit sa cause dans le tableau.
+
+Remplacé : l'ancien panneau « Erreurs par service », qui cherchait le **mot** « error » dans `message` (faux positifs : noms de composants React, noms de fichiers, `Found 0 errors`), a été supprimé au profit de « Codes de réponse », basé sur le vrai code découpé par `grok`.
+
+Astuces Lens :
+- utiliser `service.keyword` (et non `service`) pour regrouper et compter : `service` est un champ texte pour la recherche, `service.keyword` la valeur exacte pour les agrégations ; idem `url.original.keyword` pour comparer une URL exacte (entre guillemets)
+- monter « Number of values » au-delà de 3, sinon les valeurs suivantes sont rangées dans « Other »
+- pour un champ numérique (`http.response.status_code`) en breakdown, choisir la fonction **Top values** (et non *Intervals*, qui regroupe en tranches)
+- le filtre `not url.original.keyword : /kibana*` retire les requêtes de Kibana lui-même (des centaines par ouverture de Kibana), qui noieraient l'activité du site. Utiliser `.keyword` : `url.original` est un champ texte découpé en mots (sans le `/` initial), le modèle `/kibana*` n'y correspond jamais et ne retire rien (constaté le 15/10/2026 : 139 requêtes Kibana sur 139 laissées passer)
+
+Le dashboard est **dynamique** : chaque panneau est une requête relancée à l'ouverture ou au rafraîchissement (option *Refresh every 10 seconds* pour une démo en direct). Après toute modification : **Save** sur le dashboard, puis réexporter `kibana/export.ndjson`.
+
+### Expliquer le dashboard en soutenance
+
+**Les trois questions du dashboard** : *est-ce que ça tourne ?* (Logs par service, Codes de réponse), *est-ce qu'on est attaqué ?* (Login failures, `403` dans Codes de réponse), *est-ce que c'est rapide ?* (Response time). Le tableau donne le détail quand une réponse est « non ».
+
+**Logs par service** — chaque couleur est un service (`frontend`, `backend`, `db`, `waf`). Une couleur qui disparaît = service muet ou tombé ; un pic = événement (redémarrage, afflux). Nuance : `backend` (NestJS) et `db` (PostgreSQL) ne loggent que leurs démarrages et leurs erreurs, pas chaque requête ; leur activité normale est visible via le WAF.
+
+**Codes de réponse** — seul le WAF a un code de réponse, mais il voit toutes les requêtes vers le front et le back : c'est la meilleure vue d'ensemble du site.
+
+| Code | Sens | Normal ? |
+| --- | --- | --- |
+| `200`, `201`, `206`, `304` | OK, créé, contenu partiel (vidéo), « pas changé » (cache navigateur) | oui |
+| `101` | passage en WebSocket | oui |
+| `302` | redirection (ex. vers le login) | oui |
+| `401` | non authentifié | normal avant connexion, à surveiller sur le login |
+| `400` | requête invalide (ex. `http://` envoyé au port HTTPS) | erreur de saisie |
+| `403` | **bloqué par le WAF** | à examiner : attaque ou faux positif |
+| `404` | page introuvable | à surveiller s'il y en a beaucoup |
+| `5xx` | erreur du serveur | **problème** côté backend |
+
+**Response time (p95)** — plus la ligne est haute, plus le site est lent ; on veut une ligne basse et plate. Pourquoi le 95ᵉ percentile : on range les requêtes d'une minute de la plus rapide à la plus lente et on prend celle à 95 % de la file (seules 5 % sont plus lentes).
+- la **moyenne** cache les requêtes lentes : exemple réel du 15/10 à 14:27, 52 requêtes, moyenne 0,14 s mais p95 0,40 s (près de 3 fois plus)
+- le **maximum** s'affole pour un seul accident isolé
+- le **p95** ignore les accidents rares mais montre une lenteur qui touche assez de visiteurs ; c'est la mesure standard en monitoring (on parle aussi de p99, et de p50 = médiane)
+- avec peu de requêtes dans une minute, le p95 est presque le maximum : d'où les sauts quand le trafic est faible
+- pic observé à ~14:26 : redémarrage du frontend, qui tourne en mode dev (`npm run dev`) et compile chaque page à la première visite ; en production (`build` + `start`), ces pics disparaîtraient
+- un trou dans la ligne = une minute sans visite (rien à mesurer)
+
+**Login failures** — chaque barre compte les mots de passe refusés (`401` sur `POST /api/auth/login`). Un pic soudain = tentative de *brute force*. Limite : en local, toutes les requêtes arrivent depuis la passerelle Docker (`172.x.x.1`), l'IP réelle du visiteur est masquée, donc on ne peut pas (encore) distinguer les attaquants par IP.
+
+**errors waf** — savoir distinguer une vraie erreur d'un comportement normal. Exemples réels : `401` sur `/kibana/internal/security/user_profile` (Kibana avant login, normal), `403` sur `/__nextjs_original-stack-frames` (outil d'erreur de Next.js en mode dev, faux positif connu de la règle ModSecurity `920420`, absent en production), `400` sur `/` en HTTP/1.1 depuis Firefox (adresse tapée en `http://` sur le port HTTPS, refusée par le WAF).
 
 ### Pièges rencontrés
 
@@ -350,6 +396,12 @@ docker compose run --rm --no-deps waf nginx -t
 
 **6. Doublons après chaque recréation de Logstash.** Logstash note, pour chaque fichier lu, jusqu'à quel octet il a lu (fichier *sincedb*, dans `/usr/share/logstash/data/plugins/inputs/file/`). Sans volume, ce fichier disparaît avec le conteneur ; avec `start_position => "beginning"`, le nouveau conteneur relit tout et renvoie toutes les lignes. Exemple constaté : la ligne `starting PostgreSQL` du démarrage de 12:22:27 indexée deux fois (12:24 et 14:33, heure d'une recréation de Logstash). Corrigé par le volume `logstash_data`.
 
+**7. Démarrage aléatoire sous podman (15/10/2026).** Sur les postes de l'école, `docker compose` est en réalité `podman-compose` (message *Emulate Docker CLI using podman*). Erreur : `dependencies of container … are not running: container state improper`. Podman exige que les dépendances d'un conteneur **tournent** au moment où il démarre ; or `es-init` (et `vault-init`) sont des conteneurs **jetables** qui s'arrêtent après leur tâche. Selon le moment (race condition), `es-init` tourne encore ou a déjà fini quand Kibana démarre : d'où un démarrage qui marche « une fois sur deux », et qui bloque `es-init` → `kibana` → `waf` → tout le site. Docker, lui, comprend `service_completed_successfully`. Correction (commit `db534dec`) :
+- `kibana` et `logstash` dépendent de `elasticsearch` (`service_healthy`) au lieu de `es-init` : ils réessaient seuls jusqu'à ce que leur compte existe
+- le WAF ne dépend plus de Kibana : bloc `upstream kibana_upstream` supprimé (Nginx résout tous les `upstream` **au démarrage** et refuse de démarrer si un nom est introuvable), remplacé dans `location /kibana/` par `set $kibana_backend http://kibana:5601; proxy_pass $kibana_backend;` : l'adresse est résolue **à chaque requête** via le `resolver` DNS (écrit automatiquement au démarrage par l'image, sous Docker comme sous podman)
+- choix assumé : le WAF attend toujours `frontend` et `backend` (indispensables au site) mais pas Kibana (outil d'administration) — isolation des pannes : si Kibana est absent, seul `/kibana/` répond `502`, le site reste disponible
+- reste possible : `backend` → `vault-init` (même mécanisme), à traiter côté backend si le problème réapparaît
+
 ### Diagnostiquer une lenteur ou un blocage (méthode)
 
 Suivre la requête couche par couche : navigateur → WAF (Nginx + ModSecurity) → Kibana → Elasticsearch.
@@ -375,11 +427,105 @@ Test décisif pour isoler le WAF : contourner temporairement (port direct), comp
 - rôle `logstash_writer` = `create_index` + `write` ; Logstash écrit toujours (pas de `403`)
 - Kibana via le WAF : ~0,15 s par requête de données, ModSecurity actif
 
+## **Démo pour la soutenance**
+
+Objectif : montrer **en direct** chaque exigence du module (collecte, transformation, visualisation, rétention/archivage, sécurité). Toutes les commandes `curl` passent par le conteneur Elasticsearch (le port `9200` n'est pas publié) avec le compte `elastic`.
+
+### Préparation (avant l'arrivée de l'évaluateur)
+
+1. Stack démarrée (`docker compose up -d`), tout `healthy`/`Up` : `docker compose ps`
+2. Ouvrir `https://localhost:8443/kibana/`, se connecter avec `elastic`, ouvrir le dashboard « Transcendence - Log » (le premier chargement de Kibana est lent : le faire à l'avance)
+3. Période **Last 1 hour**, rafraîchissement automatique **every 10 seconds** (icône calendrier)
+4. Garder un deuxième onglet sur `https://localhost:8443` (le site) et un terminal à la racine du projet
+
+### 1. Collecte et transformation en direct (dashboard)
+
+| Action | Ce que l'évaluateur voit |
+| --- | --- |
+| Ouvrir `https://localhost:8443/nimportequoi` | un `404` apparaît dans **Codes de réponse** et une ligne dans **errors waf** (URL, méthode, heure) |
+| Se tromper 3 fois de mot de passe sur `https://localhost:8443/login` | une barre monte dans **Login failures** |
+| Naviguer sur le site | **Logs par service** et **Response time** bougent |
+
+À dire : « WAF (access log) → Logstash (champ `service`, masquage des secrets, découpage `grok`) → Elasticsearch → Kibana ».
+
+**Masquage des secrets** — dans le terminal :
+
+```
+docker exec transcendence-frontend sh -c 'echo "DEMO GET /auth/callback?accessToken=FAUX123&refreshToken=FAUX456 password=FAUX789" >> /var/log/app/frontend.log'
+```
+
+Dans Discover, chercher `DEMO` : `accessToken=[REDACTED]&refreshToken=[REDACTED] password=[REDACTED]`, pas de champ `event.original`. Chercher `FAUX123` : aucun résultat (le secret n'est stocké nulle part).
+
+### 2. Rétention : suppression automatique en direct
+
+La vraie politique supprime les index après 30 jours : impossible à attendre. On crée une politique **identique avec 1 minute**, sur un index **de test** (les vrais logs ne sont pas touchés), et on réduit temporairement l'intervalle de vérification ILM (10 minutes par défaut).
+
+```
+docker exec -it transcendence-elasticsearch bash
+E="curl -s -u elastic:$ELASTIC_PASSWORD -H Content-Type:application/json localhost:9200"
+
+# a. verification ILM toutes les 10 s (au lieu de 10 min) - temporaire
+$E/_cluster/settings -X PUT -d '{"persistent":{"indices.lifecycle.poll_interval":"10s"}}'
+
+# b. meme politique que docker-logs-retention, mais 1 minute au lieu de 30 jours
+$E/_ilm/policy/demo-retention -X PUT -d '{"policy":{"phases":{"delete":{"min_age":"1m","actions":{"delete":{}}}}}}'
+
+# c. index de test rattache a cette politique, avec un log dedans
+$E/demo-logs-1 -X PUT -d '{"settings":{"index.lifecycle.name":"demo-retention","number_of_replicas":0}}'
+$E/demo-logs-1/_doc?refresh=true -X POST -d '{"message":"log de demonstration"}'
+
+# d. montrer qu'il existe, et son age / sa phase
+$E/_cat/indices/demo-logs-*?v
+$E/demo-logs-1/_ilm/explain?pretty
+
+# e. attendre 1 a 2 minutes, puis relancer : l'index a disparu tout seul
+$E/_cat/indices/demo-logs-*?v
+```
+
+Testé le 15/10/2026 : index `demo-logs-1` supprimé automatiquement **88 secondes** après sa création (1 minute de `min_age` + le délai de vérification ILM).
+
+À dire : « personne ne l'a supprimé à la main : c'est la politique ILM. La vraie (`docker-logs-retention`) fait la même chose à 30 jours, rattachée automatiquement à chaque nouvel index par le modèle `docker-logs`. »
+
+Montrer aussi la vraie politique : `$E/_ilm/policy/docker-logs-retention?pretty`.
+
+### 3. Archivage : snapshot déclenché en direct
+
+Le snapshot automatique tourne chaque nuit à 1h30 ; on le déclenche immédiatement :
+
+```
+$E/_slm/policy/daily-logs-archive/_execute -X POST
+$E/_cat/snapshots/logs-archive?v
+```
+
+Résultat attendu : une ligne `logs-AAAA.MM.JJ-…` avec le statut `SUCCESS` (testé le 15/10/2026 : 3 index archivés en 0,2 s). À dire : « les snapshots sont gardés 1 an (`expire_after: 365d`) sur le volume `es_snapshots` : la rétention supprime les index actifs à 30 jours, l'archive permet de les restaurer pendant 1 an ».
+
+### 4. Sécurité des accès
+
+| Démonstration | Commande / action | Résultat |
+| --- | --- | --- |
+| Kibana uniquement via le WAF, en HTTPS | `curl -m 3 http://localhost:5601` | connexion refusée |
+| Elasticsearch fermé à l'extérieur | `curl -m 3 http://localhost:9200` | connexion refusée |
+| Elasticsearch exige un mot de passe, même en interne | `docker exec transcendence-elasticsearch curl -s -o /dev/null -w "%{http_code}\n" localhost:9200` | `401` |
+| Kibana exige une connexion | ouvrir `https://localhost:8443/kibana/` dans une fenêtre privée | page de login |
+| Moindre privilège | `$E/_security/role/logstash_writer?pretty` | `create_index`, `write` seulement (pas de suppression) |
+
+### Nettoyage après la démo (important)
+
+```
+$E/demo-logs-1 -X DELETE                       # si l'index existe encore
+$E/_ilm/policy/demo-retention -X DELETE
+$E/_cluster/settings -X PUT -d '{"persistent":{"indices.lifecycle.poll_interval":null}}'   # retour aux 10 min par defaut
+exit
+```
+
+Le `poll_interval` à 10 s fait travailler Elasticsearch inutilement : ne pas l'oublier.
+
 ## **Prochaines étapes (ELK)**
 
 - [ ]  Tester la stack sur une machine Docker Engine réelle (idéalement macOS), pour confirmer la portabilité — validé pour l'instant uniquement sur Linux/Podman
 - [x]  **Politique de rétention/archivage des logs** (exigence du sujet) — configurée dans `elasticsearch/init.sh` (ILM 30 jours + SLM snapshot quotidien gardé 1 an), voir section Rétention et archivage
-- [ ]  **Démo de rétention** : politique de test (`min_age: "1m"`) sur un index de test, `indices.lifecycle.poll_interval` réduit temporairement, + déclenchement manuel d'un snapshot (`_slm/policy/daily-logs-archive/_execute`)
+- [x]  **Démo de rétention et d'archivage** — procédure testée le 15/10/2026, voir section Démo pour la soutenance
+- [x]  Démarrage fiable sous podman (dépendances sur conteneurs jetables) — fait le 15/10/2026 (commit `db534dec`)
 - [x]  Filtrer/masquer les données sensibles (mots de passe, tokens) dans le pipeline Logstash avant indexation — fait le 10/10/2026 (filtre `mutate/gsub` + suppression de `event.original`), plus champ `service`
 - [x]  Supprimer les anciens index contenant encore des tokens en clair (indexés avant le filtre) — fait le 13/10/2026
 - [x]  Volume pour la position de lecture de Logstash (`/usr/share/logstash/data`) — fait le 13/10/2026 (`logstash_data`)
@@ -388,7 +534,7 @@ Test décisif pour isoler le WAF : contourner temporairement (port direct), comp
 - [ ]  TLS interne complet (chiffrement, pas juste authentification) entre Elasticsearch/Kibana/Logstash — actuellement HTTP en clair sur le réseau Docker isolé
 - [x]  Revoir l'exposition de Kibana (`5601:5601` publié directement sur l'hôte) — fait le 10/10/2026 : Kibana passe derrière le WAF en HTTPS sur `/kibana/`, port `5601` retiré
 - [x]  Un premier dashboard Kibana, importé automatiquement par `kibana-init` — fait le 13/10/2026
-- [ ]  Enrichir le dashboard (erreurs par service, répartition des codes HTTP), puis réexporter `kibana/export.ndjson`
+- [x]  Enrichir le dashboard (codes de réponse, temps de réponse p95, échecs de connexion) — 15/10/2026 ; ⚠️ vérifier qu'il est **enregistré** dans Kibana et **réexporté** dans `kibana/export.ndjson`
 - [ ]  Logs PostgreSQL plus utiles (`log_connections`, `log_min_duration_statement`, `log_statement=ddl`)
 - [ ]  Rotation de `waf.log` et des autres fichiers de `app_logs` (ils grossissent sans limite)
 - [ ]  Corriger le commentaire faux `# pas d authentification` sur `xpack.security.enabled: "true"` dans `docker-compose.yml`, et `LOGSTASH_PASSWORD=change_me_locally` dans `.env.example`
