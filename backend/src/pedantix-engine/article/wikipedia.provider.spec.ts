@@ -91,6 +91,33 @@ describe('WikipediaProvider', () => {
       expect(article?.paragraphs[0]).toBe('Paragraph 1.');
       expect(article?.paragraphs[11]).toBe('Paragraph 12.');
     });
+
+    it('passes the abort signal to fetch', async () => {
+      const controller = new AbortController();
+
+      fetchMock.mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => ({
+          id: 123,
+          key: 'Jupiter',
+          title: 'Jupiter',
+          html: `
+            <p>First paragraph.</p>
+            <p>Second paragraph.</p>
+            <p>Third paragraph.</p>
+          `,
+        }),
+      } as Response);
+
+      await provider.getArticle('Jupiter', controller.signal);
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      const requestOptions = fetchMock.mock.calls[0][1];
+
+      expect(requestOptions?.signal).toBe(controller.signal);
+    });
   });
 
   describe('getRandomArticleCandidates', () => {
@@ -195,5 +222,34 @@ describe('WikipediaProvider', () => {
        expect(requestedUrl).toContain('grnminsize=50000');
        expect(requestedUrl).toContain('grnlimit=10');
     });
+    it('passes the abort signal to fetch', async () => {
+      const controller = new AbortController();
+
+      fetchMock.mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => ({
+          query: {
+            pages: {
+              '123': {
+                pageid: 123,
+                ns: 0,
+                title: 'Jupiter',
+              },
+            },
+          },
+        }),
+      } as Response);
+
+      await provider.getRandomArticleCandidates(controller.signal);
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      const requestOptions = fetchMock.mock.calls[0][1];
+
+      expect(requestOptions?.signal).toBe(controller.signal);
+    });
+
+
   });
 });
