@@ -199,35 +199,87 @@ export class UserService {
     }));
   }
 
+  // async getActiveGame(userId: string) {
+  //   const roomPlayer = await this.prisma.roomPlayer.findFirst({
+  //     where: {
+  //       user_id: BigInt(userId),
+  //       room: {
+  //         status: {
+  //           in: [RoomStatus.STARTING, RoomStatus.IN_GAME],
+  //         },
+  //       },
+  //     },
+  //     include: {
+  //       room: {
+  //         include: {
+  //           games_hosted: {
+  //             where: {
+  //               status: {
+  //                 in: [GameStatus.COUNTDOWN, GameStatus.RUNNING],
+  //               },
+  //               player: {
+  //                 some: {
+  //                   user_id: BigInt(userId),
+  //                 },
+  //               },
+  //             },
+  //             orderBy: { game_id: 'desc' },
+  //             take: 1,
+  //           },
+  //         },
+  //       },
+  //     },
+  //   });
+
+  //   const game = roomPlayer?.room.games_hosted[0];
+  //   if (!roomPlayer || !game) {
+  //     return null;
+  //   }
+
+  //   return {
+  //     roomId: roomPlayer.room.room_id.toString(),
+  //     gameId: game.game_id.toString(),
+  //   };
+  // }
   async getActiveGame(userId: string) {
-    const roomPlayer = await this.prisma.roomPlayer.findFirst({
-      where: {
-        user_id: BigInt(userId),
-        room: { status: RoomStatus.IN_GAME },
+  const userIdBig = BigInt(userId);
+  const activeGameFilter = {
+    status: { in: [GameStatus.COUNTDOWN, GameStatus.RUNNING] },
+    player: { some: { user_id: userIdBig } },
+  };
+
+  const roomPlayer = await this.prisma.roomPlayer.findFirst({
+    where: {
+      user_id: userIdBig,
+      room: {
+        status: { in: [RoomStatus.STARTING, RoomStatus.IN_GAME] },
+        games_hosted: { some: activeGameFilter },
       },
-      include: {
-        room: {
-          include: {
-            games_hosted: {
-              where: { status: GameStatus.RUNNING },
-              orderBy: { started_at: 'desc' },
-              take: 1,
-            },
+    },
+    include: {
+      room: {
+        include: {
+          games_hosted: {
+            where: activeGameFilter,
+            orderBy: { game_id: 'desc' },
+            take: 1,
           },
         },
       },
-    });
+    },
+    orderBy: { room_id: 'desc' },
+  });
 
-    const game = roomPlayer?.room.games_hosted[0];
-    if (!roomPlayer || !game) {
-      return null;
-    }
-
-    return {
-      roomId: roomPlayer.room.room_id.toString(),
-      gameId: game.game_id.toString(),
-    };
+  const game = roomPlayer?.room.games_hosted[0];
+  if (!roomPlayer || !game) {
+    return null;
   }
+
+  return {
+    roomId: roomPlayer.room.room_id.toString(),
+    gameId: game.game_id.toString(),
+  };
+}
 
   async addFriend(userId: string, friendId: string) {
     const ownerId = BigInt(userId);
@@ -420,3 +472,5 @@ export class UserService {
     return { message: 'Password updated' };
   }
 }
+
+

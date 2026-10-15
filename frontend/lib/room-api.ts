@@ -9,6 +9,7 @@ export type RoomPlayer = {
 export type Room = {
   id: string;
   hostId: string;
+  code: string;
   status: string;
   minPlayers: number;
   maxPlayers: number;
@@ -57,6 +58,13 @@ export function getRoom(roomId: string) {
 export function joinRoom(roomId: string) {
   return roomRequest<Room>(`/rooms/${encodeURIComponent(roomId)}/join`, {
     method: "POST",
+  });
+}
+
+export function joinRoomByCode(code: string) {
+  return roomRequest<Room>("/rooms/join-by-code", {
+    method: "POST",
+    body: JSON.stringify({ code }),
   });
 }
 

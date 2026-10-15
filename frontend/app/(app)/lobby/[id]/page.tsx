@@ -39,6 +39,14 @@ export default function LobbyPage({
   const [invitedFriendIds, setInvitedFriendIds] = useState<Set<string>>(new Set());
   const [addingFriendId, setAddingFriendId] = useState<string | null>(null);
   const [sentFriendRequestIds, setSentFriendRequestIds] = useState<Set<string>>(new Set());
+  const [codeCopied, setCodeCopied] = useState(false);
+
+  async function handleCopyCode() {
+    if (!room) return;
+    await navigator.clipboard.writeText(room.code);
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2000);
+  }
 
   useEffect(() => {
     void Promise.all([getFriends(), getFriendRequests()])
@@ -88,7 +96,6 @@ export default function LobbyPage({
   });
 
   return () => {
-    socket?.emit("room:leave", { roomId: id });
     socket?.disconnect();
   };
 }, [id, router]);
@@ -154,11 +161,30 @@ export default function LobbyPage({
       variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
       className="space-y-6"
     >
-      <motion.div variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }}>
-        <h1 className="text-2xl font-semibold text-zinc-950">Game lobby</h1>
-        <p className="text-sm text-zinc-500">
-          Waiting for players · Room #{room.id} · {room.players.length}/{room.maxPlayers}
-        </p>
+      <motion.div
+        variants={fadeUp}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div>
+          <h1 className="text-2xl font-semibold text-zinc-950">Game lobby</h1>
+          <p className="text-sm text-zinc-500">
+            Waiting for players · Room #{room.id} · {room.players.length}/{room.maxPlayers}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => void handleCopyCode()}
+          title="Copy room code"
+          className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-2 hover:bg-zinc-50"
+        >
+          <div className="text-left">
+            <span className="block text-xs text-zinc-400">Room code</span>
+            <strong className="font-mono text-lg tracking-widest text-violet-700">{room.code}</strong>
+          </div>
+          <span className="text-xs font-medium text-zinc-400">{codeCopied ? "Copied!" : "Copy"}</span>
+        </button>
       </motion.div>
 
       <motion.div

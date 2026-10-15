@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
+import type { Socket } from "socket.io-client";
+
 import { motion } from "framer-motion";
 import { useCurrentUser } from "@/lib/current-user-context";
 import type { RoomPlayer } from "@/lib/room-api";
+import type { GameState, GuessResult } from "@/lib/game-socket";
 
 
 const TEAMMATE_COLORS = ["bg-violet-500", "bg-violet-300", "bg-violet-400", "bg-zinc-400"];
@@ -12,95 +15,19 @@ const TEAMMATE_COLORS = ["bg-violet-500", "bg-violet-300", "bg-violet-400", "bg-
 function buildInitialAttempts(players: RoomPlayer[], you: RoomPlayer | undefined) {
   const teammates = players.filter((player) => player.id !== you?.id);
 
-  return [
-    { username: "You", avatarUrl: you?.avatarUrl ?? null, word: "tower", proximity: 1000, color: "bg-lime-400" },
-    ...teammates.map((teammate, index) => ({
+  return teammates.map((teammate, index) => ({
       username: teammate.username,
       avatarUrl: teammate.avatarUrl,
       word: "—",
       proximity: 0,
       color: TEAMMATE_COLORS[index % TEAMMATE_COLORS.length],
-    })),
-  ];
+    }));
 }
 
-const ARTICLE_PARAGRAPHS: ArticleWord[][] = [
-  [
-    { label: "The", status: "found" },
-    { label: "Eiffel", status: "hidden" },
-    { label: "Tower", status: "hidden" },
-    { label: "is", status: "found" },
-    { label: "a", status: "hidden" },
-    { label: "wrought-iron", status: "hidden" },
-    { label: "lattice", status: "hidden" },
-    { label: "tower", status: "found" },
-    { label: "and", status: "hidden" },
-    { label: "landmark", status: "found" },
-    { label: "of", status: "hidden" },
-    { label: "Paris", status: "hidden" },
-    { label: "in", status: "hidden" },
-    { label: "France", status: "hidden" },
-    { label: ".", status: "found" },
-  ],
-  [
-    { label: "Built", status: "hidden" },
-    { label: "for", status: "hidden" },
-    { label: "the", status: "hidden" },
-    { label: "1889", status: "hidden" },
-    { label: "World's", status: "hidden" },
-    { label: "Fair", status: "hidden" },
-    { label: ",", status: "found" },
-    { label: "it", status: "found" },
-    { label: "is", status: "hidden" },
-    { label: "named", status: "hidden" },
-    { label: "after", status: "hidden" },
-    { label: "the", status: "hidden" },
-    { label: "engineer", status: "hidden" },
-    { label: "Gustave", status: "hidden" },
-    { label: "Eiffel", status: "hidden" },
-    { label: ".", status: "found" },
-  ],
-  [
-    { label: "Standing", status: "hidden" },
-    { label: "330", status: "hidden" },
-    { label: "meters", status: "hidden" },
-    { label: "tall", status: "hidden" },
-    { label: ",", status: "found" },
-    { label: "it", status: "found" },
-    { label: "was", status: "hidden" },
-    { label: "for", status: "hidden" },
-    { label: "a", status: "hidden" },
-    { label: "long", status: "hidden" },
-    { label: "time", status: "hidden" },
-    { label: "the", status: "hidden" },
-    { label: "tallest", status: "hidden" },
-    { label: "structure", status: "hidden" },
-    { label: "in", status: "hidden" },
-    { label: "the", status: "hidden" },
-    { label: "world", status: "hidden" },
-    { label: ".", status: "found" },
-  ],
-];
-
-const WORD_SCORES: Record<string, number> = {
-  eiffel: 1000,
-  tower: 1000,
-  "eiffel tower": 1000,
-  iron: 615,
-  paris: 540,
-  monument: 488,
-  steel: 430,
-  france: 322,
+type ArticleWord = {
+  label: string;
+  status: "found" | "hidden";
 };
-
-function getProximity(word: string) {
-  const normalizedWord = word.trim().toLowerCase();
-  return WORD_SCORES[normalizedWord] ?? Math.max(70, 400 - normalizedWord.length * 19);
-}
-
-type ArticleWordStatus = "found" | "hidden";
-
-type ArticleWord = { label: string; status: ArticleWordStatus };
 
 function ArticleText({ paragraph }: { paragraph: ArticleWord[] }) {
   return (
@@ -126,24 +53,76 @@ const fadeUp = {
   visible: { opacity: 1, y: 0 },
 };
 
-export function GameBoard({ gameId, players }: { gameId: string; players: RoomPlayer[] }) {
+function articleParagraphs(gameState: GameState | null): ArticleWord[][] {
+  return (
+    gameState?.article?.paragraphs.map((paragraph) =>
+      paragraph.tokens.map((token) => ({
+        label: token.type === "separator"
+          ? token.display
+          : token.status === "revealed"
+            ? token.display
+            : "",
+        status: token.type === "word" && token.status === "revealed"
+          ? "found"
+          : "hidden",
+      })),
+    ) ?? []
+  );
+}
+
+export function GameBoard({
+  gameId,
+  players,
+  gameState,
+  socket,
+  lastGuess,
+}: {
+  gameId: string;
+  players: RoomPlayer[];
+  gameState: GameState | null;
+  socket: Socket | null;
+  lastGuess: GuessResult | null;
+}) {
   const { user } = useCurrentUser();
   const you = players.find((player) => player.id === user?.id);
 
   const [guess, setGuess] = useState("");
   const [attempts, setAttempts] = useState(() => buildInitialAttempts(players, you));
-  const [discoveredCount, setDiscoveredCount] = useState(3);
   const [isSolved, setIsSolved] = useState(false);
   const [notice, setNotice] = useState("Find the word closest to the secret article.");
-  const [bestScore, setBestScore] = useState(() =>
-    Math.max(
-      ...buildInitialAttempts(players, you)
-        .filter((attempt) => attempt.username === "You")
-        .map((attempt) => attempt.proximity),
-    ),
-  );
-  const [attemptCount, setAttemptCount] = useState(0);
+  const [bestScore, setBestScore] = useState(0);
 
+  useEffect(() => {
+    if (!lastGuess || lastGuess.userId !== you?.id) return;
+    const timeout = setTimeout(() => {
+      setAttempts((currentAttempts) => [
+        {
+          username: "You",
+          avatarUrl: you?.avatarUrl ?? null,
+          word: lastGuess.guess,
+          proximity: lastGuess.score,
+          color: "bg-lime-400",
+        },
+        ...currentAttempts.filter((attempt) => attempt.word !== lastGuess.guess),
+      ]);
+      setBestScore((currentBest) => Math.max(currentBest, lastGuess.score));
+      setGuess("");
+      setIsSolved(lastGuess.correct);
+      setNotice(
+        lastGuess.correct
+          ? "Well done, you found the secret article!"
+          : "That guess was not the answer. Try again.",
+      );
+    }, 0);
+
+    return () => clearTimeout(timeout);
+  }, [lastGuess, you?.avatarUrl, you?.id]);
+  const currentScore = gameState?.scores[user?.id ?? ""] ?? bestScore;
+  const currentAttemptCount = gameState?.attempts[user?.id ?? ""] ?? 0;
+  const paragraphs = articleParagraphs(gameState);
+  const discoveredCount = paragraphs
+    .flat()
+    .filter((word) => word.status === "found").length;
   const [previousPlayers, setPreviousPlayers] = useState(players);
   if (players !== previousPlayers) {
     setPreviousPlayers(players);
@@ -178,25 +157,17 @@ export function GameBoard({ gameId, players }: { gameId: string; players: RoomPl
       return;
     }
 
-    const proximity = getProximity(word);
-    const isCorrect = word.toLowerCase() === "eiffel" || word.toLowerCase() === "eiffel tower";
-
-    setAttempts((currentAttempts) => [
-      { username: "You", avatarUrl: you?.avatarUrl ?? null, word, proximity, color: "bg-lime-400" },
-      ...currentAttempts.filter((attempt) => attempt.username !== "You"),
-    ]);
-    setBestScore((currentBest: number) => Math.max(currentBest, proximity));
-    setAttemptCount((count: number) => count + 1);
-    setGuess("");
-
-    if (isCorrect) {
-      setIsSolved(true);
-      setNotice("Well done, you found the secret article!");
+    if (!socket) {
+      setNotice("The game connection is not ready.");
       return;
     }
 
-    setDiscoveredCount((count) => Math.min(12, count + (proximity > 500 ? 1 : 0)));
-    setNotice(proximity > 500 ? "You're very close. Keep going in that direction." : "Still a bit cold, try a different angle.");
+    if (gameState?.status !== "running" || !gameState.article) {
+      setNotice("The article is still being prepared. Try again when the game starts.");
+      return;
+    }
+
+    socket.emit("game:guess", { gameId, guess: word });
   }
 
   return (
@@ -214,7 +185,11 @@ export function GameBoard({ gameId, players }: { gameId: string; players: RoomPl
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
             <span className="h-2 w-2 rounded-full bg-lime-500" />
-            Game in progress · #{gameId}
+            {gameState?.status === "countdown"
+              ? `Starting in ${gameState.countdownRemaining}s`
+              : gameState?.status === "finished"
+                ? "Game finished"
+                : "Game in progress"} · #{gameId}
           </div>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">The secret word</h1>
           <p className="mt-1 text-sm text-zinc-500">One Wikipedia article, 12 visible clues, only one right answer.</p>
@@ -222,7 +197,13 @@ export function GameBoard({ gameId, players }: { gameId: string; players: RoomPl
         <div className="flex items-center gap-3 text-sm">
           <div className="rounded-lg border border-zinc-200 bg-white px-4 py-2">
             <span className="block text-xs text-zinc-400">Time</span>
-            <strong className="font-mono text-zinc-900">04:28</strong>
+            <strong className="font-mono text-zinc-900">
+              {gameState?.status === "countdown"
+                ? `${gameState.countdownRemaining}s`
+                : gameState?.status === "running"
+                  ? "In progress"
+                  : "—"}
+            </strong>
           </div>
           <div className="rounded-lg border border-zinc-200 bg-white px-4 py-2">
             <span className="block text-xs text-zinc-400">Players</span>
@@ -247,7 +228,9 @@ export function GameBoard({ gameId, players }: { gameId: string; players: RoomPl
                 <h3 className="mt-2 text-2xl font-semibold text-zinc-950">Encyclopedia article</h3>
               </div>
               <div className="max-w-4xl space-y-5">
-                {ARTICLE_PARAGRAPHS.map((paragraph, index) => (
+                {paragraphs.length === 0 ? (
+                  <p className="text-sm text-zinc-500">Waiting for the game article...</p>
+                ) : paragraphs.map((paragraph, index) => (
                   <ArticleText key={index} paragraph={paragraph} />
                 ))}
               </div>
@@ -266,8 +249,13 @@ export function GameBoard({ gameId, players }: { gameId: string; players: RoomPl
                   placeholder="Enter a word..."
                   className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-950 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
                   autoComplete="off"
+                  disabled={gameState?.status !== "running" || !gameState.article}
                 />
-                <button className="rounded-lg bg-violet-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-violet-800" type="submit">
+                <button
+                  className="rounded-lg bg-violet-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-violet-800 disabled:cursor-not-allowed disabled:bg-zinc-400"
+                  type="submit"
+                  disabled={gameState?.status !== "running" || !gameState.article}
+                >
                   Guess
                 </button>
               </form>
@@ -278,12 +266,12 @@ export function GameBoard({ gameId, players }: { gameId: string; players: RoomPl
           <motion.section variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-xl border border-zinc-200 bg-white p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Best score</p>
-              <p className="mt-2 text-2xl font-semibold text-zinc-950">{bestScore.toLocaleString("en-US")}</p>
+              <p className="mt-2 text-2xl font-semibold text-zinc-950">{currentScore.toLocaleString("en-US")}</p>
               <p className="mt-1 text-xs text-lime-700">Your best word</p>
             </div>
             <div className="rounded-xl border border-zinc-200 bg-white p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Attempts</p>
-              <p className="mt-2 text-2xl font-semibold text-zinc-950">{attemptCount}</p>
+              <p className="mt-2 text-2xl font-semibold text-zinc-950">{currentAttemptCount}</p>
               <p className="mt-1 text-xs text-zinc-500">This game</p>
             </div>
             <div className="rounded-xl border border-zinc-200 bg-white p-5">
