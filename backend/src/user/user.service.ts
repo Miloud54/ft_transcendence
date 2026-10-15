@@ -203,14 +203,27 @@ export class UserService {
     const roomPlayer = await this.prisma.roomPlayer.findFirst({
       where: {
         user_id: BigInt(userId),
-        room: { status: RoomStatus.IN_GAME },
+        room: {
+          status: {
+            in: [RoomStatus.STARTING, RoomStatus.IN_GAME],
+          },
+        },
       },
       include: {
         room: {
           include: {
             games_hosted: {
-              where: { status: GameStatus.RUNNING },
-              orderBy: { started_at: 'desc' },
+              where: {
+                status: {
+                  in: [GameStatus.COUNTDOWN, GameStatus.RUNNING],
+                },
+                player: {
+                  some: {
+                    user_id: BigInt(userId),
+                  },
+                },
+              },
+              orderBy: { game_id: 'desc' },
               take: 1,
             },
           },

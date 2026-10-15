@@ -282,9 +282,7 @@ export class GameService {
 
       return true;
     });
-<<<<<<< HEAD
     await this.emitState(gameId);
-=======
 
     if (!finished) {
       return;
@@ -341,7 +339,6 @@ export class GameService {
         wins: entry.wins,
         gamesPlayed: entry.games,
       }));
->>>>>>> main
   }
 }
 

@@ -80,6 +80,7 @@ export class GameGateway
     @ConnectedSocket() client: GameSocket,
     @MessageBody() payload: GamePayload,
   ) {
+    this.requireUser(client);
     const gameId = this.requireGameId(payload);
     await client.leave(gameSocketName(gameId));
   }
@@ -94,6 +95,21 @@ export class GameGateway
 
     if (!payload || typeof payload.guess !== 'string') {
       throw new WsException('A guess is required');
+    }
+    if (!client.rooms.has(gameSocketName(gameId))) {
+      throw new WsException('Socket has not joined this game');
+    }
+
+    const state = await this.gameService.getState(gameId);
+    if (state.status !== 'running') {
+      throw new WsException(
+        state.status === 'countdown'
+          ? 'The game is still preparing the article'
+          : 'The game is not accepting guesses',
+      );
+    }
+    if (!state.article) {
+      throw new WsException('The article is not ready yet');
     }
 
     const result = await this.gameService.submitGuess(

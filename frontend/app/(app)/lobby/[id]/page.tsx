@@ -64,7 +64,6 @@ export default function LobbyPage({
   });
 
   return () => {
-    socket?.emit("room:leave", { roomId: id });
     socket?.disconnect();
   };
 }, [id, router]);

@@ -12,23 +12,52 @@ export function ActiveGameButton() {
   const { user } = useCurrentUser();
   const pathname = usePathname();
   const [activeGame, setActiveGame] = useState<ActiveGame>(null);
+  const [activeGameError, setActiveGameError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.status !== "IN_GAME") {
+      setActiveGame(null);
+      setActiveGameError(null);
       return;
     }
 
     const token = localStorage.getItem("accessToken");
-    fetch(`${API_URL}/users/me/active-game`, {
+    void fetch(`${API_URL}/users/me/active-game`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((response) => (response.ok ? response.json() : null))
-      .then(setActiveGame)
-      .catch(() => setActiveGame(null));
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(
+            typeof data?.message === "string"
+              ? data.message
+              : "Could not restore the active game.",
+          );
+        }
+        return data as ActiveGame;
+      })
+      .then((game) => {
+        setActiveGame(game);
+        setActiveGameError(null);
+      })
+      .catch((requestError: unknown) => {
+        setActiveGame(null);
+        setActiveGameError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Could not restore the active game.",
+        );
+      });
   }, [user?.status]);
 
-  if (user?.status !== "IN_GAME" || !activeGame || pathname.startsWith("/game/")) {
+  if (user?.status !== "IN_GAME" || pathname.startsWith("/game/")) {
     return null;
+  }
+
+  if (!activeGame) {
+    return activeGameError ? (
+      <span className="text-xs text-lime-200">{activeGameError}</span>
+    ) : null;
   }
 
   return (

@@ -42,8 +42,20 @@ function toGameResponse(game: { game_id: bigint; status: GameStatus }) {
     };
 }
 
+type RoomChatMessage = {
+    id: string;
+    roomId: string;
+    userId: string;
+    username: string;
+    avatar: string;
+    text: string;
+    createdAt: string;
+};
+
 @Injectable()
 export class RoomService {
+    private readonly chatMessages = new Map<string, RoomChatMessage[]>();
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly gameService: GameService,
@@ -119,7 +131,7 @@ export class RoomService {
             throw new NotFoundException('User not found');
         }
 
-        return {
+        const message = {
             id: `${Date.now()}-${userId}`,
             roomId,
             userId,
@@ -128,6 +140,15 @@ export class RoomService {
             text,
             createdAt: new Date().toISOString(),
         };
+        const messages = this.chatMessages.get(roomId) ?? [];
+        messages.push(message);
+        this.chatMessages.set(roomId, messages.slice(-100));
+        return message;
+    }
+
+    async getChatMessages(roomId: string, userId: string) {
+        await this.assertMember(roomId, userId);
+        return this.chatMessages.get(roomId) ?? [];
     }
 
     async create(userId: string, dto: CreateRoomDto) {
@@ -426,6 +447,11 @@ export class RoomService {
             data: {
                 room_id: room.room_id,
                 status: GameStatus.COUNTDOWN,
+                player: {
+                    create: room.players.map((player) => ({
+                        user_id: player.user_id,
+                    })),
+                },
             },
         });
 

@@ -92,6 +92,8 @@ export class RoomGateway
     await client.join(roomSocketName(roomId));
 
     const room = await this.roomService.find(roomId);
+    const messages = await this.roomService.getChatMessages(roomId, user.userId);
+    client.emit('chat:history', messages);
     this.server.to(roomSocketName(roomId)).emit('room:state', room);
   }
 
@@ -114,6 +116,9 @@ export class RoomGateway
   ) {
     const user = this.requireUser(client);
     const roomId = this.requireRoomId(payload);
+    if (!client.rooms.has(roomSocketName(roomId))) {
+      throw new WsException('Socket has not joined this room');
+    }
 
     if (typeof payload.text !== 'string') {
       throw new WsException('Message text is required');

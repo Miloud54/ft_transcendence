@@ -28,12 +28,16 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
   }, [roomId]);
 
   useEffect(() => {
-    const socket = connectToGame(id, setGameState, setError, setLastGuess);
-    setGameSocket(socket);
+    const socket = connectToGame(
+      id,
+      setGameState,
+      setError,
+      setLastGuess,
+      setError,
+      setGameSocket,
+    );
     return () => {
-      socket?.emit("game:leave", { gameId: id });
       socket?.disconnect();
-      setGameSocket(null);
     };
   }, [id]);
 
