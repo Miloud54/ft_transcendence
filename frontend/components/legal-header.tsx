@@ -6,6 +6,7 @@ import { MainNav } from "@/components/main-nav";
 import { AccountMenu } from "@/components/account-menu";
 import { CurrentUserBadge } from "@/components/current-user-badge";
 import { GuestHeader } from "@/components/guest-header";
+import { Logo } from "@/components/logo";
 
 const NAV_ITEMS = [
   { href: "/home", label: "Home" },
@@ -23,7 +24,7 @@ export function LegalHeader() {
       <header className="flex items-center justify-between gap-6 bg-violet-700 px-6 py-2">
         <div className="flex items-center gap-8">
           <Link href="/home" className="flex items-center" aria-label="Transcendix">
-            <video autoPlay loop muted playsInline className="h-14 w-auto lg:h-[4.5rem]" src="/logo-violet.mp4" />
+            <Logo className="h-14 w-auto lg:h-[4.5rem]" />
           </Link>
           <MainNav items={NAV_ITEMS} />
         </div>

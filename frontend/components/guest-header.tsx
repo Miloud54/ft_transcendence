@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { Logo } from "@/components/logo";
 
 export function GuestHeader() {
   return (
     <header className="flex items-center justify-between bg-violet-700 px-6 py-1.5">
       <Link href="/" className="flex items-center" aria-label="Transcendix">
-        <video autoPlay loop muted playsInline className="h-14 w-auto lg:h-[4.5rem]" src="/logo-violet.mp4" />
+        <Logo className="h-14 w-auto lg:h-[4.5rem]" />
       </Link>
 
       <div className="flex items-center gap-3">

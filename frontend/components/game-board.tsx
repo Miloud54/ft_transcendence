@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import type { Socket } from "socket.io-client";
+
+import { motion } from "framer-motion";
 import { useCurrentUser } from "@/lib/current-user-context";
 import type { RoomPlayer } from "@/lib/room-api";
 import type { GameState, GuessResult } from "@/lib/game-socket";
@@ -45,6 +47,11 @@ function ArticleText({ paragraph }: { paragraph: ArticleWord[] }) {
     </p>
   );
 }
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0 },
+};
 
 function articleParagraphs(gameState: GameState | null): ArticleWord[][] {
   return (
@@ -161,8 +168,17 @@ export function GameBoard({
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <header className="flex flex-col gap-4 border-b border-zinc-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={{ visible: { transition: { staggerChildren: 0.12 } } }}
+      className="mx-auto max-w-7xl space-y-6"
+    >
+      <motion.header
+        variants={fadeUp}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="flex flex-col gap-4 border-b border-zinc-200 pb-5 sm:flex-row sm:items-end sm:justify-between"
+      >
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
             <span className="h-2 w-2 rounded-full bg-lime-500" />
@@ -191,11 +207,11 @@ export function GameBoard({
             <strong className="text-zinc-900">{players.length} online</strong>
           </div>
         </div>
-      </header>
+      </motion.header>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <main className="space-y-6">
-          <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+          <motion.section variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 sm:px-7">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Scrambled article</p>
@@ -242,9 +258,9 @@ export function GameBoard({
               </form>
               <p className="mt-3 text-xs text-zinc-500" aria-live="polite">{notice}</p>
             </div>
-          </section>
+          </motion.section>
 
-          <section className="grid gap-4 sm:grid-cols-3">
+          <motion.section variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-xl border border-zinc-200 bg-white p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Best score</p>
               <p className="mt-2 text-2xl font-semibold text-zinc-950">{currentScore.toLocaleString("en-US")}</p>
@@ -260,11 +276,11 @@ export function GameBoard({
               <p className="mt-2 text-2xl font-semibold text-zinc-950">x3</p>
               <p className="mt-1 text-xs text-zinc-500">Words discovered</p>
             </div>
-          </section>
+          </motion.section>
         </main>
 
         <aside className="space-y-6">
-          <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <motion.section variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-zinc-950">Temperature</h2>
               <span className="text-xs text-zinc-400">proximity</span>
@@ -277,9 +293,9 @@ export function GameBoard({
               <p className="text-xs font-semibold uppercase tracking-wide text-lime-800">Latest hint</p>
               <p className="mt-1 text-sm font-medium text-lime-950">Words related to materials are close.</p>
             </div>
-          </section>
+          </motion.section>
 
-          <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <motion.section variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-zinc-950">Live leaderboard</h2>
               <span className="h-2 w-2 rounded-full bg-lime-500" />
@@ -297,23 +313,23 @@ export function GameBoard({
                 </div>
               ))}
             </div>
-          </section>
+          </motion.section>
 
           {isSolved ? (
-            <div className="rounded-2xl border border-lime-300 bg-lime-50 p-5">
+            <motion.div variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="rounded-2xl border border-lime-300 bg-lime-50 p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-lime-800">Article found</p>
               <p className="mt-1 text-lg font-semibold text-lime-950">The Eiffel Tower</p>
               <Link href={`/results/${gameId}`} className="mt-4 block rounded-lg bg-lime-400 px-4 py-2.5 text-center text-sm font-semibold text-violet-950 hover:bg-lime-300">View results</Link>
-            </div>
+            </motion.div>
           ) : (
-            <div className="rounded-2xl bg-violet-700 p-5 text-white">
+            <motion.div variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="rounded-2xl bg-violet-700 p-5 text-white">
               <p className="text-xs font-semibold uppercase tracking-wide text-violet-200">Bonus objective</p>
               <p className="mt-2 text-lg font-semibold">Find the article in under 10 words.</p>
               <p className="mt-2 text-sm leading-6 text-violet-100">Each hot word gradually reveals the original text.</p>
-            </div>
+            </motion.div>
           )}
         </aside>
       </div>
-    </div>
+    </motion.div>
   );
 }

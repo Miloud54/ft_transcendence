@@ -1,10 +1,16 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { connectToRoom } from "@/lib/room-socket";
 import { useRouter } from "next/navigation";
 import { getFriends, inviteFriendToRoom, startRoom, type Friend, type Room } from "@/lib/room-api";
 import { useCurrentUser } from "@/lib/current-user-context";
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0 },
+};
 
 export default function LobbyPage({
   params,
@@ -108,43 +114,58 @@ export default function LobbyPage({
   const roomPlayerIds = new Set(room.players.map((player) => player.id));
 
   return (
-    <div className="space-y-6">
-      <div>
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
+      className="space-y-6"
+    >
+      <motion.div variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }}>
         <h1 className="text-2xl font-semibold text-zinc-950">Game lobby</h1>
         <p className="text-sm text-zinc-500">
           Waiting for players · Room #{room.id} · {room.players.length}/{room.maxPlayers}
         </p>
-      </div>
+      </motion.div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={{ visible: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } } }}
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      >
         {slots.map((player, index) =>
           player ? (
-            <div
+            <motion.div
               key={player.id}
+              variants={fadeUp}
+              whileHover={{ y: -4 }}
               className="flex flex-col items-center gap-2 rounded-xl border border-zinc-200 bg-white p-6"
             >
               <img src={player.avatarUrl} alt={player.username} className="h-12 w-12 rounded-full bg-violet-100 object-cover" />
               <span className="text-sm font-medium text-zinc-950">{player.username}</span>
-              <span
-                className="text-xs font-medium text-zinc-400"
-              >
+              <span className="text-xs font-medium text-zinc-400">
                 {index === 0 ? "Host" : "In lobby"}
               </span>
-            </div>
+            </motion.div>
           ) : (
-            <div
+            <motion.div
               key={`empty-${index}`}
+              variants={fadeUp}
               className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-300 p-6 text-zinc-400"
             >
               <span className="text-xl">+</span>
               <span className="text-sm">Invite</span>
-            </div>
+            </motion.div>
           )
         )}
-      </div>
+      </motion.div>
 
       {isHost && (
-        <section className="rounded-xl border border-violet-100 bg-violet-50/60 p-4">
+        <motion.section
+          variants={fadeUp}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="rounded-xl border border-violet-100 bg-violet-50/60 p-4"
+        >
           <h2 className="text-sm font-semibold text-violet-950">Invite friends</h2>
           <p className="mt-1 text-xs text-violet-700">
             Add friends from your friend list to this game.
@@ -200,21 +221,23 @@ export default function LobbyPage({
               })
             )}
           </div>
-        </section>
+        </motion.section>
       )}
 
-      <button
-        type="button"
-        onClick={handleStart}
-        disabled={
-          isStarting ||
-          room.status !== "open" ||
-          room.players.length < room.minPlayers
-        }
-        className="w-full rounded-md bg-lime-400 py-3 text-sm font-semibold text-violet-900 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-8"
-      >
-        {isStarting ? "Starting..." : "Start game"}
-      </button>
-    </div>
+      <motion.div variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }}>
+        <button
+          type="button"
+          onClick={handleStart}
+          disabled={
+            isStarting ||
+            room.status !== "open" ||
+            room.players.length < room.minPlayers
+          }
+          className="w-full rounded-md bg-lime-400 py-3 text-sm font-semibold text-violet-900 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-8"
+        >
+          {isStarting ? "Starting..." : "Start game"}
+        </button>
+      </motion.div>
+    </motion.div>
   );
 }
