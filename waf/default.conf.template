@@ -26,10 +26,6 @@ upstream backend_upstream {
     server backend:3000;
 }
 
-upstream kibana_upstream {
-    server kibana:5601;
-}
-
 upstream grafana_upstream {
     server grafana:3000;
 }
@@ -80,7 +76,13 @@ server {
     }
 
     location /kibana/ {
-        proxy_pass http://kibana_upstream;
+        # Kibana est un outil d'administration, pas une partie du site : le WAF ne l'attend pas
+        # au demarrage (pas de bloc upstream, pas de depends_on). L'adresse est resolue a chaque
+        # requete via la variable : si Kibana est absent, seul /kibana/ repond 502, le site reste
+        # disponible. Frontend et backend, eux, sont indispensables : le WAF les attend.
+        
+        set $kibana_backend http://kibana:5601;
+        proxy_pass $kibana_backend;
         proxy_buffering off;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto https;

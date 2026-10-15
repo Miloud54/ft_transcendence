@@ -163,7 +163,7 @@ services:
 
     environment:
       discovery.type: single-node         # une seule instance, pas de cluster
-      xpack.security.enabled: "true"     # pas d authentification (réseau déjà isolé)
+      xpack.security.enabled: "true"    
       ES_JAVA_OPTS: "-Xms512m -Xmx512m"   # limite la RAM utilisée à 512 Mo
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       xpack.security.http.ssl.enabled: "false" # HTTP simple + mot de passe (réseau interne déjà isolé, pas de HTTPS pour éviter la gestion de certificats)
@@ -219,8 +219,8 @@ services:
       LOGSTASH_PASSWORD: ${LOGSTASH_PASSWORD}
 
     depends_on:
-      es-init:
-        condition: service_completed_successfully
+      elasticsearch:
+        condition: service_healthy
 
     volumes:
       - ./logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:Z
@@ -237,8 +237,8 @@ services:
     container_name: transcendence-kibana
 
     depends_on:
-      es-init:
-        condition: service_completed_successfully
+      elasticsearch:
+        condition: service_healthy
 
     environment:
        ELASTICSEARCH_HOSTS: http://elasticsearch:9200        # où aller chercher les données
@@ -456,8 +456,6 @@ services:
         condition: service_started
       backend:
         condition: service_healthy
-      kibana:
-        condition: service_started
     
     environment:
       MODSEC_RULE_ENGINE: "On" 
