@@ -4,7 +4,17 @@ import { use, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { connectToRoom } from "@/lib/room-socket";
 import { useRouter } from "next/navigation";
-import { getFriends, inviteFriendToRoom, startRoom, type Friend, type Room } from "@/lib/room-api";
+import Link from "next/link";
+import {
+  addFriend,
+  getFriendRequests,
+  getFriends,
+  inviteFriendToRoom,
+  startRoom,
+  type Friend,
+  type FriendRequest,
+  type Room,
+} from "@/lib/room-api";
 import { useCurrentUser } from "@/lib/current-user-context";
 
 const fadeUp = {
@@ -22,15 +32,23 @@ export default function LobbyPage({
   const { user } = useCurrentUser();
   const [room, setRoom] = useState<Room | null>(null);
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [invitingFriendId, setInvitingFriendId] = useState<string | null>(null);
   const [invitedFriendIds, setInvitedFriendIds] = useState<Set<string>>(new Set());
+  const [addingFriendId, setAddingFriendId] = useState<string | null>(null);
+  const [sentFriendRequestIds, setSentFriendRequestIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    void getFriends().then(setFriends).catch(() => {
-      setError("Could not load your friends.");
-    });
+    void Promise.all([getFriends(), getFriendRequests()])
+      .then(([loadedFriends, loadedRequests]) => {
+        setFriends(loadedFriends);
+        setFriendRequests(loadedRequests);
+      })
+      .catch(() => {
+        setError("Could not load your friends.");
+      });
   }, []);
 
   useEffect(() => {
@@ -110,9 +128,24 @@ export default function LobbyPage({
     }
   }
 
+  async function handleAddFriend(player: Room["players"][number]) {
+    setError(null);
+    setAddingFriendId(player.id);
+    try {
+      await addFriend(player.id);
+      setSentFriendRequestIds((current) => new Set(current).add(player.id));
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Could not add friend");
+    } finally {
+      setAddingFriendId(null);
+    }
+  }
+
   const slots = Array.from({ length: room.maxPlayers }, (_, index) => room.players[index] ?? null);
   const isHost = user?.id === room.hostId;
   const roomPlayerIds = new Set(room.players.map((player) => player.id));
+  const friendIds = new Set(friends.map((friend) => friend.id));
+  const incomingRequestIds = new Set(friendRequests.map((request) => request.id));
 
   return (
     <motion.div
@@ -142,11 +175,33 @@ export default function LobbyPage({
               whileHover={{ y: -4 }}
               className="flex flex-col items-center gap-2 rounded-xl border border-zinc-200 bg-white p-6"
             >
-              <img src={player.avatarUrl} alt={player.username} className="h-12 w-12 rounded-full bg-violet-100 object-cover" />
-              <span className="text-sm font-medium text-zinc-950">{player.username}</span>
-              <span className="text-xs font-medium text-zinc-400">
-                {index === 0 ? "Host" : "In lobby"}
-              </span>
+              <Link href={`/dashboard?user=${encodeURIComponent(player.id)}`} className="flex flex-col items-center gap-2 hover:underline">
+                <img src={player.avatarUrl} alt={player.username} className="h-12 w-12 rounded-full bg-violet-100 object-cover" />
+                <span className="text-sm font-medium text-zinc-950">{player.username}</span>
+                <span className="text-xs font-medium text-zinc-400">
+                  {index === 0 ? "Host" : "In lobby"}
+                </span>
+              </Link>
+              {user?.id !== player.id && !friendIds.has(player.id) && (
+                <button
+                  type="button"
+                  disabled={
+                    addingFriendId !== null ||
+                    sentFriendRequestIds.has(player.id) ||
+                    incomingRequestIds.has(player.id)
+                  }
+                  onClick={() => void handleAddFriend(player)}
+                  className="mt-1 rounded-md border border-violet-200 px-3 py-1.5 text-xs font-semibold text-violet-700 transition-colors hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {sentFriendRequestIds.has(player.id)
+                    ? "Friend request sent"
+                    : incomingRequestIds.has(player.id)
+                      ? "Request pending"
+                      : addingFriendId === player.id
+                        ? "Adding..."
+                        : "Add friend"}
+                </button>
+              )}
             </motion.div>
           ) : (
             <motion.div
