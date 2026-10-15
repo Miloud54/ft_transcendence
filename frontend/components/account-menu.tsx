@@ -162,7 +162,7 @@ export function AccountMenu() {
       const formData = new FormData();
       formData.append("avatar", file);
 
-      const response = await fetch("http://localhost:3001/users/me/avatar", {
+      const response = await fetch(`${API_URL}/users/me/avatar`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,

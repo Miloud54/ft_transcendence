@@ -1,6 +1,11 @@
 import { io, type Socket } from "socket.io-client";
 
-const SOCKET_URL = "http://localhost:3001/games";
+function getSocketOrigin() {
+  return window.location.port === "3000"
+    ? "http://localhost:3001"
+    : window.location.origin;
+}
+
 
 export type GameState = {
   gameId: string;
@@ -40,7 +45,7 @@ export function connectToGame(
     onAuthError?.("Your session has expired. Please log in again.");
     return null;
   }
-  const socket = io(SOCKET_URL, { auth: { token }, reconnection: true });
+  const socket = io(`${getSocketOrigin()}/games`, { auth: { token }, reconnection: true });
   socket.on("connect", () => socket.emit("game:join", { gameId }));
   socket.on("connect", () => onConnected?.(socket));
   socket.on("game:state", onState);
