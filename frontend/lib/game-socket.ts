@@ -1,0 +1,74 @@
+import { io, type Socket } from "socket.io-client";
+
+const SOCKET_URL = "http://localhost:3001/games";
+
+export type GameState = {
+  gameId: string;
+  status: "countdown" | "running" | "finished" | string;
+  countdownRemaining: number;
+  article?: {
+    title: { tokens: ArticleToken[] };
+    paragraphs: { tokens: ArticleToken[] }[];
+  };
+  scores: Record<string, number>;
+  attempts: Record<string, number>;
+};
+
+export type ArticleToken =
+  | { type: "word"; status: "hidden"; length: number }
+  | { type: "word"; status: "revealed"; length: number; display: string }
+  | { type: "separator"; display: string };
+
+export type GuessResult = {
+  gameId: string;
+  userId: string;
+  guess: string;
+  score: number;
+  correct: boolean;
+};
+
+export function connectToGame(
+  gameId: string,
+  onState: (state: GameState) => void,
+  onAuthError?: (message: string) => void,
+  onGuessResult?: (result: GuessResult) => void,
+  onError?: (message: string) => void,
+  onConnected?: (socket: Socket) => void,
+): Socket | null {
+  const token = localStorage.getItem("accessToken");
+  if (!token) {
+    onAuthError?.("Your session has expired. Please log in again.");
+    return null;
+  }
+  const socket = io(SOCKET_URL, { auth: { token }, reconnection: true });
+  socket.on("connect", () => socket.emit("game:join", { gameId }));
+  socket.on("connect", () => onConnected?.(socket));
+  socket.on("game:state", onState);
+  if (onGuessResult) {
+    socket.on("game:guess-result", onGuessResult);
+  }
+  socket.on("auth:error", (error: { message?: string }) => {
+    onAuthError?.(error.message ?? "Your session has expired. Please log in again.");
+    socket.disconnect();
+  });
+  socket.on("connect_error", (error) => onError?.(error.message));
+  socket.io.on("reconnect_attempt", () => {
+    const latestToken = localStorage.getItem("accessToken");
+    if (latestToken) {
+      socket.auth = { token: latestToken };
+    }
+  });
+  socket.io.on("reconnect_error", (error) => onError?.(error.message));
+  socket.on("disconnect", (reason) => {
+    if (reason !== "io client disconnect") {
+      onError?.(`Game connection closed: ${reason}`);
+    }
+  });
+  const handleSocketError = (error: { message?: string } | string) => {
+    const message = typeof error === "string" ? error : error.message;
+    onError?.(message ?? "Game request failed");
+  };
+  socket.on("game:error", handleSocketError);
+  socket.on("exception", handleSocketError);
+  return socket;
+}

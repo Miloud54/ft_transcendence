@@ -179,6 +179,33 @@ the post-discovery countdown has expired
 
 The exact end-condition implementation remains to be finalized.
 
+## 7. WebSocket transport
+
+Gameplay uses the authenticated Socket.IO `/games` namespace. A client must
+send its access token in the handshake and must be a participant of the Game
+before it can join the corresponding Socket.IO room.
+
+Client events:
+
+| Event | Payload | Purpose |
+|---|---|---|
+| `game:join` | `{ gameId }` | Join a game and receive its current state |
+| `game:guess` | `{ gameId, guess }` | Submit a server-validated guess |
+| `game:leave` | `{ gameId }` | Leave the game room |
+
+Server events:
+
+| Event | Payload | Purpose |
+|---|---|---|
+| `game:state` | `GameState` | Current status, countdown, article view, scores, and attempts |
+| `game:guess-result` | `{ gameId, userId, guess, score, correct }` | Result of a submitted guess |
+| `auth:error` | `{ message }` | Invalid or expired WebSocket authentication |
+
+The backend remains authoritative. Clients must not calculate scores or
+transition the Game status locally. Scores and attempts are currently held in
+memory for the live game; persistence and the final-results model remain
+separate follow-up work.
+
 ---
 
 ## 7. Results & ranking

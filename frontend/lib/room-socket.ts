@@ -25,6 +25,7 @@ export type RoomSocketStatus =
 
 type RoomSocketOptions = {
   onChatMessage?: (message: RoomMessage) => void;
+  onChatHistory?: (messages: RoomMessage[]) => void;
   onStatus?: (status: RoomSocketStatus, message?: string) => void;
   onAuthError?: (message: string) => void;
 };
@@ -58,6 +59,9 @@ export function connectToRoom(
 
   socket.on("room:state", onRoomState);
   socket.on("room:started", onRoomStarted);
+  socket.on("chat:history", (messages: RoomMessage[]) => {
+    options.onChatHistory?.(messages);
+  });
   if (options.onChatMessage) {
     socket.on("chat:message", options.onChatMessage);
   }
@@ -72,6 +76,10 @@ export function connectToRoom(
 
   socket.io.on("reconnect_attempt", () => {
     options.onStatus?.("reconnecting");
+    const latestToken = localStorage.getItem("accessToken");
+    if (latestToken) {
+      socket.auth = { token: latestToken };
+    }
   });
 
   socket.io.on("reconnect", () => {
@@ -90,6 +98,9 @@ export function connectToRoom(
       );
       socket.disconnect();
     }
+  });
+  socket.on("exception", (error: { message?: string }) => {
+    options.onStatus?.("error", error.message ?? "Room request failed");
   });
 
   socket.on("disconnect", (reason) => {

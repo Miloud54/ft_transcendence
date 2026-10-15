@@ -1,15 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState, type FormEvent } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { connectToRoom, type RoomMessage } from "@/lib/room-socket";
 
 export function RoomChat() {
+  return (
+    <Suspense fallback={null}>
+      <RoomChatResolver />
+    </Suspense>
+  );
+}
+
+function RoomChatResolver() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const roomId = pathname.startsWith("/lobby/")
     ? pathname.split("/")[2] ?? null
-    : pathname.startsWith("/game/") && typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("room")
+    : pathname.startsWith("/game/")
+      ? searchParams.get("room")
       : null;
 
   return <RoomChatContent key={roomId ?? "no-room"} roomId={roomId} />;
@@ -52,9 +61,23 @@ function RoomChatContent({ roomId }: { roomId: string | null }) {
       () => {},
       () => {},
       {
+        onChatHistory: (history) => {
+          setMessages((current) => {
+            const messagesById = new Map(
+              [...history, ...current].map((message) => [message.id, message]),
+            );
+            return [...messagesById.values()].sort((left, right) =>
+              left.createdAt.localeCompare(right.createdAt),
+            );
+          });
+        },
         onChatMessage: (message) => {
           if (message.roomId !== roomId) return;
-          setMessages((current) => [...current, message]);
+          setMessages((current) =>
+            current.some((existing) => existing.id === message.id)
+              ? current
+              : [...current, message],
+          );
           setUnreadCount((count) => (isOpenRef.current ? count : count + 1));
         },
         onStatus: (status, message) => {
@@ -74,7 +97,6 @@ function RoomChatContent({ roomId }: { roomId: string | null }) {
     );
 
     return () => {
-      socketRef.current?.emit("room:leave", { roomId });
       socketRef.current?.disconnect();
       socketRef.current = null;
     };
