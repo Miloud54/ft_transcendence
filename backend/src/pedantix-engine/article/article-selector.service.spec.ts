@@ -1,13 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
+
 import { Article } from './article';
 import { ArticleProvider } from './article.provider';
+import { CuratedArticleProvider } from './curated/curated-article.provider';
 import { ArticleSelectorService } from './article-selector.service';
 
 describe('ArticleSelectorService', () => {
   let service: ArticleSelectorService;
+
   let articleProvider: {
     getRandomArticleCandidates: jest.Mock;
     getArticle: jest.Mock;
+  };
+
+  let curatedArticleProvider: {
+    getRandomArticle: jest.Mock;
   };
 
   const article: Article = {
@@ -21,10 +28,27 @@ describe('ArticleSelectorService', () => {
     ],
   };
 
+  const curatedArticle: Article = {
+    id: 456,
+    url: 'https://en.wikipedia.org/wiki/Mars',
+    title: 'Mars',
+    paragraphs: [
+      'Mars is the fourth planet from the Sun.',
+      'Mars is a terrestrial planet with a thin atmosphere.',
+      'Mars has two small moons, Phobos and Deimos.',
+    ],
+  };
+
   beforeEach(async () => {
+    jest.useRealTimers();
+
     articleProvider = {
       getRandomArticleCandidates: jest.fn(),
       getArticle: jest.fn(),
+    };
+
+    curatedArticleProvider = {
+      getRandomArticle: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -34,13 +58,23 @@ describe('ArticleSelectorService', () => {
           provide: ArticleProvider,
           useValue: articleProvider,
         },
+        {
+          provide: CuratedArticleProvider,
+          useValue: curatedArticleProvider,
+        },
       ],
     }).compile();
 
-    service = module.get<ArticleSelectorService>(ArticleSelectorService);
+    service = module.get<ArticleSelectorService>(
+      ArticleSelectorService,
+    );
   });
 
-  it('returns the first playable article', async () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('returns the first playable Wikipedia article', async () => {
     articleProvider.getRandomArticleCandidates.mockResolvedValue([
       {
         id: 123,
@@ -54,8 +88,7 @@ describe('ArticleSelectorService', () => {
       },
     ]);
 
-    articleProvider.getArticle
-      .mockResolvedValueOnce(article);
+    articleProvider.getArticle.mockResolvedValueOnce(article);
 
     await expect(service.selectArticle()).resolves.toEqual(article);
 
@@ -64,7 +97,14 @@ describe('ArticleSelectorService', () => {
     ).toHaveBeenCalledTimes(1);
 
     expect(articleProvider.getArticle).toHaveBeenCalledTimes(1);
-    expect(articleProvider.getArticle).toHaveBeenCalledWith('Jupiter');
+    expect(articleProvider.getArticle).toHaveBeenCalledWith(
+      'Jupiter',
+      expect.any(AbortSignal),
+    );
+
+    expect(
+      curatedArticleProvider.getRandomArticle,
+    ).not.toHaveBeenCalled();
   });
 
   it('skips disambiguation candidates', async () => {
@@ -85,12 +125,11 @@ describe('ArticleSelectorService', () => {
 
     await expect(service.selectArticle()).resolves.toEqual(article);
 
-    expect(
-      articleProvider.getRandomArticleCandidates,
-    ).toHaveBeenCalledTimes(1);
-
     expect(articleProvider.getArticle).toHaveBeenCalledTimes(1);
-    expect(articleProvider.getArticle).toHaveBeenCalledWith('Jupiter');
+    expect(articleProvider.getArticle).toHaveBeenCalledWith(
+      'Jupiter',
+      expect.any(AbortSignal),
+    );
   });
 
   it('skips candidates for which no article can be retrieved', async () => {
@@ -113,24 +152,22 @@ describe('ArticleSelectorService', () => {
 
     await expect(service.selectArticle()).resolves.toEqual(article);
 
-    expect(
-      articleProvider.getRandomArticleCandidates,
-    ).toHaveBeenCalledTimes(1);
-
     expect(articleProvider.getArticle).toHaveBeenCalledTimes(2);
 
     expect(articleProvider.getArticle).toHaveBeenNthCalledWith(
       1,
       'Unavailable article',
+      expect.any(AbortSignal),
     );
 
     expect(articleProvider.getArticle).toHaveBeenNthCalledWith(
       2,
       'Jupiter',
+      expect.any(AbortSignal),
     );
   });
 
-  it('throws when none of the candidates is playable', async () => {
+  it('falls back to the curated library when no Wikipedia candidate is playable', async () => {
     articleProvider.getRandomArticleCandidates.mockResolvedValue([
       {
         id: 999,
@@ -141,8 +178,86 @@ describe('ArticleSelectorService', () => {
 
     articleProvider.getArticle.mockResolvedValue(null);
 
+    curatedArticleProvider.getRandomArticle.mockResolvedValue(
+      curatedArticle,
+    );
+
+    await expect(service.selectArticle()).resolves.toEqual(
+      curatedArticle,
+    );
+
+    expect(
+      curatedArticleProvider.getRandomArticle,
+    ).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to the curated library when Wikipedia fails', async () => {
+    articleProvider.getRandomArticleCandidates.mockRejectedValue(
+      new Error('Wikipedia API returned HTTP 429'),
+    );
+
+    curatedArticleProvider.getRandomArticle.mockResolvedValue(
+      curatedArticle,
+    );
+
+    await expect(service.selectArticle()).resolves.toEqual(
+      curatedArticle,
+    );
+
+    expect(
+      curatedArticleProvider.getRandomArticle,
+    ).toHaveBeenCalledTimes(1);
+  });
+
+  it('aborts the Wikipedia request and falls back when the timeout expires', async () => {
+    jest.useFakeTimers();
+
+    let capturedSignal: AbortSignal | undefined;
+
+    articleProvider.getRandomArticleCandidates.mockImplementation(
+      (signal?: AbortSignal) => {
+        capturedSignal = signal;
+
+        return new Promise(() => {});
+      },
+    );
+
+    curatedArticleProvider.getRandomArticle.mockResolvedValue(
+      curatedArticle,
+    );
+
+    const selectionPromise = service.selectArticle();
+
+    // Laisse selectArticle démarrer et transmettre son signal.
+    await Promise.resolve();
+
+    expect(capturedSignal).toBeDefined();
+    expect(capturedSignal?.aborted).toBe(false);
+
+    // Le délai global de Wikipedia est de 5 secondes.
+    await jest.advanceTimersByTimeAsync(5000);
+
+    await expect(selectionPromise).resolves.toEqual(curatedArticle);
+
+    // Le contrôleur doit avoir annulé la tentative Wikipedia.
+    expect(capturedSignal?.aborted).toBe(true);
+
+    expect(
+      curatedArticleProvider.getRandomArticle,
+    ).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws an explicit error when Wikipedia and the curated library fail', async () => {
+    articleProvider.getRandomArticleCandidates.mockRejectedValue(
+      new Error('Wikipedia API returned HTTP 429'),
+    );
+
+    curatedArticleProvider.getRandomArticle.mockRejectedValue(
+      new Error('Curated article library is empty'),
+    );
+
     await expect(service.selectArticle()).rejects.toThrow(
-      'Unable to find a playable article among the 10 candidates',
+      'Unable to select an article from Wikipedia or the curated library',
     );
   });
 
@@ -155,8 +270,12 @@ describe('ArticleSelectorService', () => {
       },
     ]);
 
-    await expect(service.selectArticle()).rejects.toThrow(
-      'Unable to find a playable article among the 10 candidates',
+    curatedArticleProvider.getRandomArticle.mockResolvedValue(
+      curatedArticle,
+    );
+
+    await expect(service.selectArticle()).resolves.toEqual(
+      curatedArticle,
     );
 
     expect(articleProvider.getArticle).not.toHaveBeenCalled();
