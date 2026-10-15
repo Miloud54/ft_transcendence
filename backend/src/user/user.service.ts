@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { FriendshipStatus, UserStatus } from '../../generated/prisma';
+import { FriendshipStatus, GameResult, GameStatus, RoomStatus, UserStatus } from '../../generated/prisma';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 
@@ -23,10 +23,16 @@ type UserRecord = {
   last_seen_at: Date;
 };
 
-function toPublicUser(
-  user: UserRecord,
-  online = user.status !== UserStatus.OFFLINE && isOnline(user.last_seen_at),
-) {
+function toPublicUser(user: UserRecord) {
+  const live = isOnline(user.last_seen_at);
+  const status = !live
+    ? 'OFFLINE'
+    : user.status === UserStatus.IN_GAME
+      ? 'IN_GAME'
+      : user.status === UserStatus.OFFLINE
+        ? 'OFFLINE'
+        : 'ONLINE';
+
   return {
     id: user.user_id.toString(),
     username: user.username,
@@ -34,7 +40,7 @@ function toPublicUser(
     avatar: user.avatar,
     xp: Number(user.xp),
     lvl: Number(user.lvl),
-    status: online ? 'ONLINE' : 'OFFLINE',
+    status,
   };
 }
 
@@ -109,6 +115,118 @@ export class UserService {
     });
 
     return friendships.map(({ friend }) => toPublicUser(friend));
+  }
+
+    async getStats(userId: string) {
+    const userIdBig = BigInt(userId);
+
+    const user = await this.prisma.user.findUnique({
+      where: { user_id: userIdBig },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const results = await this.prisma.gamePlayer.findMany({
+      where: { user_id: userIdBig, result: { not: null } },
+      select: { result: true, score: true, rank: true },
+    });
+
+    const gamesPlayed = results.length;
+    const wins = results.filter((entry) => entry.result === GameResult.WIN).length;
+    const losses = results.filter((entry) => entry.result === GameResult.LOSS).length;
+    const winRate = gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0;
+
+    const scores = results
+      .map((entry) => entry.score)
+      .filter((score): score is number => score !== null);
+    const averageScore =
+      scores.length > 0
+        ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
+        : 0;
+
+    const bestRank = results.reduce<number | null>((best, entry) => {
+      if (entry.rank === null) return best;
+      return best === null ? entry.rank : Math.min(best, entry.rank);
+    }, null);
+
+    const achievements = [
+      { id: 'first-win', label: 'First victory', description: 'Win your first game', earned: wins >= 1 },
+      { id: 'veteran', label: 'Veteran', description: 'Play 5 games', earned: gamesPlayed >= 5 },
+      { id: 'champion', label: 'Champion', description: 'Finish 1st in a game', earned: bestRank === 1 },
+      { id: 'on-a-roll', label: 'On a roll', description: 'Win 5 games', earned: wins >= 5 },
+    ];
+
+    return {
+      gamesPlayed,
+      wins,
+      losses,
+      winRate,
+      averageScore,
+      bestRank,
+      level: Number(user.lvl),
+      xp: Number(user.xp),
+      achievements,
+    };
+  }
+
+  async getMatchHistory(userId: string, limit = 20) {
+    const userIdBig = BigInt(userId);
+
+    const entries = await this.prisma.gamePlayer.findMany({
+      where: { user_id: userIdBig, result: { not: null } },
+      include: {
+        game: {
+          include: {
+            player: { include: { users: true } },
+          },
+        },
+      },
+      orderBy: { game: { ended_at: 'desc' } },
+      take: limit,
+    });
+
+    return entries.map((entry) => ({
+      id: entry.game.game_id.toString(),
+      articleTitle: entry.game.article_title,
+      result: entry.result === GameResult.WIN ? 'win' : 'loss',
+      score: entry.score,
+      rank: entry.rank,
+      playedAt: entry.game.ended_at,
+      opponents: entry.game.player
+        .filter((player) => player.user_id !== userIdBig)
+        .map((player) => player.users.username),
+    }));
+  }
+
+  async getActiveGame(userId: string) {
+    const roomPlayer = await this.prisma.roomPlayer.findFirst({
+      where: {
+        user_id: BigInt(userId),
+        room: { status: RoomStatus.IN_GAME },
+      },
+      include: {
+        room: {
+          include: {
+            games_hosted: {
+              where: { status: GameStatus.RUNNING },
+              orderBy: { started_at: 'desc' },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    const game = roomPlayer?.room.games_hosted[0];
+    if (!roomPlayer || !game) {
+      return null;
+    }
+
+    return {
+      roomId: roomPlayer.room.room_id.toString(),
+      gameId: game.game_id.toString(),
+    };
   }
 
   async addFriend(userId: string, friendId: string) {
@@ -214,14 +332,22 @@ export class UserService {
   }
 
   async updatePresence(userId: string) {
-    return this.setPresence(userId, 'ONLINE');
+    return this.touchLastSeen(userId);
   }
 
-  async setPresence(userId: string, status: 'ONLINE' | 'OFFLINE') {
+  async touchLastSeen(userId: string) {
+    const user = await this.prisma.user.update({
+      where: { user_id: BigInt(userId) },
+      data: { last_seen_at: new Date() },
+    });
+    return toPublicUser(user);
+  }
+
+  async setPresence(userId: string, status: 'ONLINE' | 'OFFLINE' | 'IN_GAME') {
     const user = await this.prisma.user.update({
       where: { user_id: BigInt(userId) },
       data: {
-        status: status === 'ONLINE' ? UserStatus.ONLINE : UserStatus.OFFLINE,
+        status: UserStatus[status],
         last_seen_at: new Date(),
       },
     });

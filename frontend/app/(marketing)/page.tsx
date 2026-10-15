@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { GuestOnly } from "@/components/guest-only";
 import { LandingContent } from "@/components/landing-content";
 
 export const metadata: Metadata = {
@@ -7,9 +6,5 @@ export const metadata: Metadata = {
 };
 
 export default function LandingPage() {
-  return (
-    <GuestOnly>
-      <LandingContent />
-    </GuestOnly>
-  );
+  return <LandingContent />;
 }

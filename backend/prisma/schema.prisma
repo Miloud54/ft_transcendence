@@ -44,6 +44,11 @@ enum GameStatus {
   FINISHED
 }
 
+enum GameResult {
+  WIN
+  LOSS
+}
+
 enum FriendshipStatus {
   PENDING
   ACCEPTED
@@ -126,11 +131,12 @@ model Room {
 }
 
 model Game {
-  game_id     BigInt @id @default(autoincrement())
+  game_id       BigInt @id @default(autoincrement())
   //wikipage_id BigInt
-  status      GameStatus
-  started_at  DateTime?
-  ended_at    DateTime?
+  status        GameStatus
+  started_at    DateTime?
+  ended_at      DateTime?
+  article_title String?
 
   room_id     BigInt
   room        Room @relation(fields: [room_id], references: [room_id])
@@ -161,6 +167,10 @@ model GamePlayer {
 
   user_id BigInt
   users   User @relation(fields: [user_id], references: [user_id])
+
+  result  GameResult?
+  score   Int?
+  rank    Int?
 
     @@unique([game_id, user_id])
 	@@map("Game_players")

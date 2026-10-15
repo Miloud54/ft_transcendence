@@ -52,6 +52,7 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
 
       presenceSocket.on("presence:update", (update: { id: string; status: string }) => {
         window.dispatchEvent(new CustomEvent("presence:update", { detail: update }));
+        setUser((current) => (current && current.id === update.id ? { ...current, status: update.status } : current));
       });
       presenceSocket.on("friend-request:received", (requester: unknown) => {
         window.dispatchEvent(new CustomEvent("friend-request:received", { detail: requester }));

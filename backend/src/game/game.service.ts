@@ -7,10 +7,10 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { PedantixEngineService } from 'src/pedantix-engine/pedantix-engine.service';
 
-import {
-  GameStatus,
-  RoomStatus,
-} from 'generated/prisma';
+import { GameResult, GameStatus, RoomStatus } from 'generated/prisma';
+
+import { UserService } from 'src/user/user.service';
+import { PresenceGateway } from 'src/user/presence.gateway';
 
 export type GameState = {
   gameId: string;
@@ -43,6 +43,8 @@ export class GameService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly pedantixEngine: PedantixEngineService,
+    private readonly userService: UserService,
+    private readonly presenceGateway: PresenceGateway,
   ) {}
 
   onStateChange(listener: (gameId: string, state: GameState) => void) {
@@ -147,7 +149,7 @@ export class GameService {
       throw new ConflictException('Game preparation is not complete');
     }
 
-    await this.prisma.$transaction(async (transaction) => {
+    const transitioned = await this.prisma.$transaction(async (transaction) => {
       const updatedGame = await transaction.game.updateMany({
         where: {
           game_id: game.game_id,
@@ -159,7 +161,7 @@ export class GameService {
       });
 
       if (updatedGame.count === 0) {
-        return;
+        return false;
       }
 
       await transaction.room.update({
@@ -170,8 +172,26 @@ export class GameService {
           status: RoomStatus.IN_GAME,
         },
       });
+
+      return true;
     });
     await this.emitState(gameId);
+
+    if (!transitioned) {
+      return;
+    }
+
+    const roomPlayers = await this.prisma.roomPlayer.findMany({
+      where: { room_id: game.room_id },
+    });
+
+    await Promise.all(
+      roomPlayers.map(async (roomPlayer) => {
+        const userId = roomPlayer.user_id.toString();
+        await this.userService.setPresence(userId, 'IN_GAME');
+        this.presenceGateway.broadcastPresence(userId, 'IN_GAME');
+      }),
+    );
   }
 
   async startCountdown(gameId: string): Promise<void> {
@@ -236,7 +256,7 @@ export class GameService {
       throw new ConflictException('Game is not RUNNING');
     }
 
-    await this.prisma.$transaction(async (transaction) => {
+    const finished = await this.prisma.$transaction(async (transaction) => {
       const updatedGame = await transaction.game.updateMany({
         where: {
           game_id: game.game_id,
@@ -248,7 +268,7 @@ export class GameService {
       });
 
       if (updatedGame.count === 0) {
-        return;
+        return false;
       }
 
       await transaction.room.update({
@@ -259,8 +279,69 @@ export class GameService {
           status: RoomStatus.OPEN,
         },
       });
+
+      return true;
     });
+<<<<<<< HEAD
     await this.emitState(gameId);
+=======
+
+    if (!finished) {
+      return;
+    }
+
+    const roomPlayers = await this.prisma.roomPlayer.findMany({
+      where: { room_id: game.room_id },
+    });
+
+    await Promise.all(
+      roomPlayers.map(async (roomPlayer) => {
+        const userId = roomPlayer.user_id.toString();
+        await this.userService.setPresence(userId, 'ONLINE');
+        this.presenceGateway.broadcastPresence(userId, 'ONLINE');
+      }),
+    );
+  }
+
+  async getLeaderboard(limit = 20) {
+    const players = await this.prisma.gamePlayer.findMany({
+      where: { result: { not: null } },
+      include: { users: true },
+    });
+
+    const statsByUser = new Map<
+      string,
+      { user: { user_id: bigint; username: string; avatar: string; lvl: bigint }; wins: number; games: number }
+    >();
+
+    for (const player of players) {
+      const key = player.user_id.toString();
+      const existing = statsByUser.get(key);
+      if (existing) {
+        existing.games += 1;
+        if (player.result === GameResult.WIN) existing.wins += 1;
+      } else {
+        statsByUser.set(key, {
+          user: player.users,
+          wins: player.result === GameResult.WIN ? 1 : 0,
+          games: 1,
+        });
+      }
+    }
+
+    return Array.from(statsByUser.values())
+      .sort((a, b) => b.wins - a.wins)
+      .slice(0, limit)
+      .map((entry, index) => ({
+        rank: index + 1,
+        id: entry.user.user_id.toString(),
+        username: entry.user.username,
+        avatar: entry.user.avatar,
+        level: Number(entry.user.lvl),
+        wins: entry.wins,
+        gamesPlayed: entry.games,
+      }));
+>>>>>>> main
   }
 }
 

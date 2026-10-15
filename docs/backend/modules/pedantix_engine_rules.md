@@ -702,10 +702,12 @@ docker compose exec backend npx jest src/pedantix-engine/article/article-selecto
 Pour les lancer tous :
 docker compose exec backend npx jest --runInBand --verbose
 
-Pour exclure les spects de Room :
+Pour exclure les specs de Room :
+
 docker compose exec backend npx jest \
   src/pedantix-engine/article/wikipedia.provider.spec.ts \
   src/pedantix-engine/article/article-selector.service.spec.ts \
+  src/pedantix-engine/article/curated/curated-article.provider.spec.ts \
   src/game/game.service.spec.ts \
   src/pedantix-engine/pedantix-engine.service.spec.ts \
   src/pedantix-engine/article-view/article-view.service.spec.ts \
@@ -714,3 +716,14 @@ docker compose exec backend npx jest \
 
 Pour lancer le script de tests :
 docker compose exec backend node /app/test-wikipedia.js
+
+
+---------------
+
+Pour lancer le script de collect d'articles :
+docker compose exec backend npx tsx scripts/collect-wikipedia-articles.ts
+
+
+Test :
+docker compose exec backend npx jest --runInBand src/pedantix-engine/article/curated/curated-article.provider.spec.ts
+

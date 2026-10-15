@@ -38,18 +38,21 @@ export class WikipediaProvider extends ArticleProvider {
     private readonly minParagraphs = 3;
     private readonly maxParagraphs = 12;
 
-    async getArticle(title: string): Promise<Article | null> {
+    async getArticle(
+      title: string,
+      signal?: AbortSignal,
+    ): Promise<Article | null> {
         const encodedTitle = encodeURIComponent(title.replace(/ /g, '_'));
 
         const response = await fetch(
-            `${this.wikipediaApiUrl}/page/${encodedTitle}/with_html`,
-            {
-                headers: {
-                    'User-Agent': this.userAgent,
-                },
+          `${this.wikipediaApiUrl}/page/${encodedTitle}/with_html`,
+          {
+            headers: {
+              'User-Agent': this.userAgent,
             },
+            signal,
+          },
         );
-
         if (response.status === 404) {
             return null;
         }
@@ -112,7 +115,9 @@ export class WikipediaProvider extends ArticleProvider {
         return paragraphs;
     }        
 
-    async getRandomArticleCandidates(): Promise<ArticleCandidate[]> {
+    async getRandomArticleCandidates(
+      signal?: AbortSignal,
+    ): Promise<ArticleCandidate[]> {
       const url =
         'https://en.wikipedia.org/w/api.php' +
         '?action=query' +
@@ -129,6 +134,7 @@ export class WikipediaProvider extends ArticleProvider {
         headers: {
           'User-Agent': this.userAgent,
         },
+        signal,
       });
 
       if (!response.ok) {

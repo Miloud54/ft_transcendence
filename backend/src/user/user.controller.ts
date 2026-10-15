@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Body, Controller, ConflictException, Delete, Get, Param, Patch, Post, Query, Req, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -9,6 +9,7 @@ import { PresenceGateway } from './presence.gateway';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import type { Request } from 'express';
+import { UpdateStatusDto } from './dto/update-status.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('users')
@@ -40,6 +41,24 @@ export class UserController {
   getFriendRequests(@Req() req: Request) {
     const { userId } = req.user as { userId: string };
     return this.userService.getFriendRequests(userId);
+  }
+
+  @Get('me/stats')
+  getStats(@Req() req: Request) {
+    const { userId } = req.user as { userId: string };
+    return this.userService.getStats(userId);
+  }
+
+  @Get('me/matches')
+  getMatchHistory(@Req() req: Request) {
+    const { userId } = req.user as { userId: string };
+    return this.userService.getMatchHistory(userId);
+  }
+
+  @Get('me/active-game')
+  getActiveGame(@Req() req: Request) {
+    const { userId } = req.user as { userId: string };
+    return this.userService.getActiveGame(userId);
   }
 
   @Post('me/friends/:friendId')
@@ -83,6 +102,18 @@ export class UserController {
   updatePresence(@Req() req: Request) {
     const { userId } = req.user as { userId: string };
     return this.userService.updatePresence(userId);
+  }
+
+  @Patch('me/status')
+  async setStatus(@Req() req: Request, @Body() dto: UpdateStatusDto) {
+    const { userId } = req.user as { userId: string };
+    const current = await this.userService.findById(userId);
+    if (current.status === 'IN_GAME') {
+      throw new ConflictException('Cannot change status while in a game');
+    }
+    const result = await this.userService.setPresence(userId, dto.status);
+    this.presenceGateway.broadcastPresence(userId, dto.status);
+    return result;
   }
 
   @Patch('me')

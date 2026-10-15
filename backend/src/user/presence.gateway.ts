@@ -71,11 +71,19 @@ export class PresenceGateway
     }
 
     this.connections.delete(userId);
-    await this.userService.setPresence(userId, 'OFFLINE');
+    try {
+      await this.userService.setPresence(userId, 'OFFLINE');
+    } catch {
+      return;
+    }
     this.server.emit('presence:update', { id: userId, status: 'OFFLINE' });
   }
 
   notifyUser(userId: string, event: string, payload: unknown) {
     this.server.to(this.userRoom(userId)).emit(event, payload);
+  }
+
+  broadcastPresence(userId: string, status: 'ONLINE' | 'OFFLINE' | 'IN_GAME') {
+    this.server.emit('presence:update', { id: userId, status });
   }
 }
