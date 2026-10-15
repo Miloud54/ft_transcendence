@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { joinRoom } from "@/lib/room-api";
+import { joinRoomByCode } from "@/lib/room-api";
 
 export function JoinRoomForm() {
   const [code, setCode] = useState("");
@@ -22,7 +22,7 @@ export function JoinRoomForm() {
     setIsSubmitting(true);
 
     try {
-      const room = await joinRoom(roomId);
+      const room = await joinRoomByCode(roomId);
       router.push(`/lobby/${room.id}`);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Could not join room");

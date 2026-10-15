@@ -114,6 +114,7 @@ model RoomInvitation {
 
 model Room {
   room_id     BigInt @id @default(autoincrement())
+  code        String @unique
   status      RoomStatus 
   min_players Int
   max_players Int

@@ -20,10 +20,21 @@ type RoomWithPlayers = Prisma.RoomGetPayload<{
   };
 }>;
 
+const ROOM_CODE_CHARACTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function generateRoomCode(length = 6): string {
+  let code = '';
+  for (let i = 0; i < length; i++) {
+    code += ROOM_CODE_CHARACTERS[Math.floor(Math.random() * ROOM_CODE_CHARACTERS.length)];
+  }
+  return code;
+}
+
 function toRoomResponse(room: RoomWithPlayers) {
   return {
     id: room.room_id.toString(),
     hostId: room.creator_id.toString(),
+    code: room.code,
     status: room.status.toLowerCase(),
     minPlayers: room.min_players,
     maxPlayers: room.max_players,
@@ -135,28 +146,56 @@ export class RoomService {
             throw new BadRequestException('minPlayers cannot be greater than maxPlayers',);
         }
 
-        const room = await this.prisma.room.create({
-            data: {
-                creator_id: BigInt(userId),
-                status: RoomStatus.OPEN,
-                min_players: dto.minPlayers,
-                max_players: dto.maxPlayers,
-                players: {
-                    create: {
-                        user_id: BigInt(userId),
+        const MAX_ATTEMPTS = 5;
+
+        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            try {
+                const room = await this.prisma.room.create({
+                    data: {
+                        creator_id: BigInt(userId),
+                        status: RoomStatus.OPEN,
+                        min_players: dto.minPlayers,
+                        max_players: dto.maxPlayers,
+                        code: generateRoomCode(),
+                        players: {
+                            create: {
+                                user_id: BigInt(userId),
+                            },
+                        },
                     },
-                },
-            },
-            include: {
-                players: {
                     include: {
-                        users: true,
+                        players: {
+                            include: {
+                                users: true,
+                            },
+                        },
                     },
-                },
-            },
+                });
+
+                return toRoomResponse(room);
+            } catch (error) {
+                const isCodeCollision =
+                    error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+                if (isCodeCollision && attempt < MAX_ATTEMPTS - 1) {
+                    continue;
+                }
+                throw error;
+            }
+        }
+
+        throw new ConflictException('Could not generate a unique room code, please try again');
+    }
+
+    async joinByCode(code: string, userId: string) {
+        const room = await this.prisma.room.findUnique({
+            where: { code: code.trim().toUpperCase() },
         });
 
-        return toRoomResponse(room);
+        if (!room) {
+            throw new NotFoundException('Invalid room code');
+        }
+
+        return this.join(room.room_id.toString(), userId);
     }
 
     async join(roomId: string, userId: string) {
