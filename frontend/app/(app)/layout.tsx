@@ -8,6 +8,7 @@ import { RoomChat } from "@/components/room-chat";
 import { MobileNav } from "@/components/mobile-nav";
 import { NotificationCenter } from "@/components/notification-center";
 import { ActiveGameButton } from "@/components/active-game-button";
+import { Logo } from "@/components/logo";
 
 const NAV_ITEMS = [
   { href: "/home", label: "Home" },
@@ -28,7 +29,7 @@ export default function AppLayout({
         <header className="flex items-center justify-between gap-6 bg-violet-700 px-6 py-1.5">
           <div className="flex items-center gap-8">
             <Link href="/home" className="flex items-center" aria-label="Transcendix">
-              <video autoPlay loop muted playsInline className="h-14 w-auto lg:h-[4.5rem]" src="/logo-violet.mp4" />
+              <Logo className="h-14 w-auto lg:h-[4.5rem]" />
             </Link>
             <MainNav items={NAV_ITEMS} />
           </div>
