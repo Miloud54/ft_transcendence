@@ -87,26 +87,29 @@ export function GameBoard({
 
   useEffect(() => {
     if (!lastGuess || lastGuess.userId !== you?.id) return;
+    const timeout = setTimeout(() => {
+      setAttempts((currentAttempts) => [
+        {
+          username: "You",
+          avatarUrl: you?.avatarUrl ?? null,
+          word: lastGuess.guess,
+          proximity: lastGuess.score,
+          color: "bg-lime-400",
+        },
+        ...currentAttempts.filter((attempt) => attempt.word !== lastGuess.guess),
+      ]);
+      setBestScore((currentBest) => Math.max(currentBest, lastGuess.score));
+      setGuess("");
+      setIsSolved(lastGuess.correct);
+      setNotice(
+        lastGuess.correct
+          ? "Well done, you found the secret article!"
+          : "That guess was not the answer. Try again.",
+      );
+    }, 0);
 
-    setAttempts((currentAttempts) => [
-      {
-        username: "You",
-        avatarUrl: you?.avatarUrl ?? null,
-        word: lastGuess.guess,
-        proximity: lastGuess.score,
-        color: "bg-lime-400",
-      },
-      ...currentAttempts.filter((attempt) => attempt.word !== lastGuess.guess),
-    ]);
-    setBestScore((currentBest) => Math.max(currentBest, lastGuess.score));
-    setGuess("");
-    setIsSolved(lastGuess.correct);
-    setNotice(
-      lastGuess.correct
-        ? "Well done, you found the secret article!"
-        : "That guess was not the answer. Try again.",
-    );
-  }, [lastGuess, you?.id]);
+    return () => clearTimeout(timeout);
+  }, [lastGuess, you?.avatarUrl, you?.id]);
   const currentScore = gameState?.scores[user?.id ?? ""] ?? bestScore;
   const currentAttemptCount = gameState?.attempts[user?.id ?? ""] ?? 0;
   const paragraphs = articleParagraphs(gameState);
