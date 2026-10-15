@@ -133,6 +133,13 @@ export function getFriends() {
   return roomRequest<Friend[]>("/users/me/friends");
 }
 
+export function addFriend(friendId: string) {
+  return roomRequest<Friend & { relationship: "PENDING_SENT" }>(
+    `/users/me/friends/${encodeURIComponent(friendId)}`,
+    { method: "POST" },
+  );
+}
+
 export type StartRoomResponse = {
   room: {
     id: string;

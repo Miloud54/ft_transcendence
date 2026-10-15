@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { StatTile } from "@/components/stat-tile";
 import { LineChart } from "@/components/charts/line-chart";
@@ -43,10 +44,15 @@ const fadeUp = {
 };
 
 export default function ProfilePage() {
-  const { user: profile, isLoading: isLoadingProfile, setUser } = useCurrentUser();
+  const searchParams = useSearchParams();
+  const profileId = searchParams.get("user");
+  const { user: currentUser, isLoading: isLoadingProfile, setUser } = useCurrentUser();
+  const [loadedProfile, setLoadedProfile] = useState<typeof currentUser>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const isOwnProfile = !profileId || profileId === currentUser?.id;
+  const profile = isOwnProfile ? currentUser : loadedProfile;
 
   async function handleStatusChange(status: "ONLINE" | "OFFLINE") {
     try {
@@ -73,12 +79,12 @@ export default function ProfilePage() {
     const headers = { Authorization: `Bearer ${token}` };
 
     Promise.all([
-      fetch(`${API_URL}/users/me/stats`, { headers }).then((r) => {
-        if (!r.ok) throw new Error("Could not load your stats.");
+      fetch(`${API_URL}/users/${encodeURIComponent(profileId ?? "me")}/stats`, { headers }).then((r) => {
+        if (!r.ok) throw new Error("Could not load this profile's stats.");
         return r.json();
       }),
-      fetch(`${API_URL}/users/me/matches`, { headers }).then((r) => {
-        if (!r.ok) throw new Error("Could not load your match history.");
+      fetch(`${API_URL}/users/${encodeURIComponent(profileId ?? "me")}/matches`, { headers }).then((r) => {
+        if (!r.ok) throw new Error("Could not load this profile's match history.");
         return r.json();
       }),
     ])
@@ -87,14 +93,24 @@ export default function ProfilePage() {
         setMatches(matchesData);
       })
       .catch((err: Error) => setError(err.message));
-  }, []);
+    if (profileId && profileId !== currentUser?.id) {
+      fetch(`${API_URL}/users/${encodeURIComponent(profileId)}`, { headers })
+        .then((r) => {
+          if (!r.ok) throw new Error("Could not load this profile.");
+          return r.json();
+        })
+        .then(setLoadedProfile)
+        .catch((err: Error) => setError(err.message));
+    } else {
+    }
+  }, [currentUser, profileId]);
 
   if (error) {
     return <p className="text-sm text-[#d03b3b]">{error}</p>;
   }
 
   if (isLoadingProfile || !profile || !stats) {
-    return <p className="text-sm text-zinc-500">Loading your dashboard...</p>;
+    return <p className="text-sm text-zinc-500">Loading dashboard...</p>;
   }
 
   const scoreProgression = [...matches].reverse().map((match) => match.score ?? 0);
@@ -107,8 +123,12 @@ export default function ProfilePage() {
       className="space-y-6"
     >
       <motion.div variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }}>
-        <h1 className="text-2xl font-semibold text-zinc-950">Dashboard</h1>
-        <p className="text-sm text-zinc-500">Your profile and stats on Transcendix.</p>
+        <h1 className="text-2xl font-semibold text-zinc-950">
+          {isOwnProfile ? "Dashboard" : `${profile.username}'s dashboard`}
+        </h1>
+        <p className="text-sm text-zinc-500">
+          {isOwnProfile ? "Your profile and stats on Transcendix." : "Profile and stats on Transcendix."}
+        </p>
       </motion.div>
 
       <motion.div variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="grid gap-4 lg:grid-cols-3">
@@ -142,7 +162,7 @@ export default function ProfilePage() {
                     <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
                     In game
                   </span>
-                ) : (
+                ) : isOwnProfile ? (
                   <button
                     type="button"
                     onClick={() => void handleStatusChange(profile.status === "ONLINE" ? "OFFLINE" : "ONLINE")}
@@ -155,6 +175,11 @@ export default function ProfilePage() {
                     <span className={`h-1.5 w-1.5 rounded-full ${profile.status === "ONLINE" ? "bg-lime-500" : "bg-zinc-400"}`} />
                     {profile.status === "ONLINE" ? "Online" : "Offline"}
                   </button>
+                ) : (
+                  <span className="mt-0.5 inline-flex items-center gap-1.5 rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-semibold text-zinc-700">
+                    <span className={`h-1.5 w-1.5 rounded-full ${profile.status === "ONLINE" ? "bg-lime-500" : "bg-zinc-400"}`} />
+                    {profile.status === "ONLINE" ? "Online" : "Offline"}
+                  </span>
                 )}
               </dd>
             </div>

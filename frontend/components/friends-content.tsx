@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { API_URL } from "@/lib/room-api";
 
 type Friend = {
@@ -345,12 +346,12 @@ export function FriendsContent() {
                 }`}
               />
             </div>
-            <div>
+            <Link href={`/dashboard?user=${encodeURIComponent(friend.id)}`} className="min-w-0 hover:underline">
               <p className="text-sm font-medium text-zinc-950">{friend.username}</p>
               <p className="text-xs text-zinc-400">
                 {friend.status === "ONLINE" ? "Online" : friend.status === "IN_GAME" ? "In game" : "Offline"}
               </p>
-            </div>
+            </Link>
             <button
               type="button"
               onClick={() => void removeFriend(friend)}

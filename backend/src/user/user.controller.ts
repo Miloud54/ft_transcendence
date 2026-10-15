@@ -25,6 +25,11 @@ export class UserController {
     return this.userService.findById(userId);
   }
 
+  @Get(':profileId')
+  getProfile(@Param('profileId') profileId: string) {
+    return this.userService.findById(profileId);
+  }
+
   @Get('search')
   search(@Req() req: Request, @Query('q') query = '') {
     const { userId } = req.user as { userId: string };
@@ -49,10 +54,20 @@ export class UserController {
     return this.userService.getStats(userId);
   }
 
+  @Get(':profileId/stats')
+  getProfileStats(@Param('profileId') profileId: string) {
+    return this.userService.getStats(profileId);
+  }
+
   @Get('me/matches')
   getMatchHistory(@Req() req: Request) {
     const { userId } = req.user as { userId: string };
     return this.userService.getMatchHistory(userId);
+  }
+
+  @Get(':profileId/matches')
+  getProfileMatchHistory(@Param('profileId') profileId: string) {
+    return this.userService.getMatchHistory(profileId);
   }
 
   @Get('me/active-game')
