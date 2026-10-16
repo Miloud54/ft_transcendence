@@ -53,9 +53,7 @@ export class PedantixEngineService {
     return this.games.get(gameId)?.tokenizedArticle;
   }
 
-  getInitialArticleView(
-    gameId: string,
-  ): InitialArticleView | undefined {
+  getInitialArticleView(gameId: string): InitialArticleView | undefined {
     const tokenizedArticle = this.games.get(gameId)?.tokenizedArticle;
 
     if (!tokenizedArticle) {

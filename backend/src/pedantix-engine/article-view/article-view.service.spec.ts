@@ -64,9 +64,7 @@ describe('ArticleViewService', () => {
       ...result.paragraphs.flatMap((paragraph) => paragraph.tokens),
     ];
 
-    const hiddenWords = tokens.filter(
-      (token) => token.type === 'word',
-    );
+    const hiddenWords = tokens.filter((token) => token.type === 'word');
 
     for (const token of hiddenWords) {
       expect(token).not.toHaveProperty('text');

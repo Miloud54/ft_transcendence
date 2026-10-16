@@ -65,9 +65,7 @@ describe('ArticleSelectorService', () => {
       ],
     }).compile();
 
-    service = module.get<ArticleSelectorService>(
-      ArticleSelectorService,
-    );
+    service = module.get<ArticleSelectorService>(ArticleSelectorService);
   });
 
   afterEach(() => {
@@ -92,9 +90,7 @@ describe('ArticleSelectorService', () => {
 
     await expect(service.selectArticle()).resolves.toEqual(article);
 
-    expect(
-      articleProvider.getRandomArticleCandidates,
-    ).toHaveBeenCalledTimes(1);
+    expect(articleProvider.getRandomArticleCandidates).toHaveBeenCalledTimes(1);
 
     expect(articleProvider.getArticle).toHaveBeenCalledTimes(1);
     expect(articleProvider.getArticle).toHaveBeenCalledWith(
@@ -102,9 +98,7 @@ describe('ArticleSelectorService', () => {
       expect.any(AbortSignal),
     );
 
-    expect(
-      curatedArticleProvider.getRandomArticle,
-    ).not.toHaveBeenCalled();
+    expect(curatedArticleProvider.getRandomArticle).not.toHaveBeenCalled();
   });
 
   it('skips disambiguation candidates', async () => {
@@ -178,17 +172,11 @@ describe('ArticleSelectorService', () => {
 
     articleProvider.getArticle.mockResolvedValue(null);
 
-    curatedArticleProvider.getRandomArticle.mockResolvedValue(
-      curatedArticle,
-    );
+    curatedArticleProvider.getRandomArticle.mockResolvedValue(curatedArticle);
 
-    await expect(service.selectArticle()).resolves.toEqual(
-      curatedArticle,
-    );
+    await expect(service.selectArticle()).resolves.toEqual(curatedArticle);
 
-    expect(
-      curatedArticleProvider.getRandomArticle,
-    ).toHaveBeenCalledTimes(1);
+    expect(curatedArticleProvider.getRandomArticle).toHaveBeenCalledTimes(1);
   });
 
   it('falls back to the curated library when Wikipedia fails', async () => {
@@ -196,17 +184,11 @@ describe('ArticleSelectorService', () => {
       new Error('Wikipedia API returned HTTP 429'),
     );
 
-    curatedArticleProvider.getRandomArticle.mockResolvedValue(
-      curatedArticle,
-    );
+    curatedArticleProvider.getRandomArticle.mockResolvedValue(curatedArticle);
 
-    await expect(service.selectArticle()).resolves.toEqual(
-      curatedArticle,
-    );
+    await expect(service.selectArticle()).resolves.toEqual(curatedArticle);
 
-    expect(
-      curatedArticleProvider.getRandomArticle,
-    ).toHaveBeenCalledTimes(1);
+    expect(curatedArticleProvider.getRandomArticle).toHaveBeenCalledTimes(1);
   });
 
   it('aborts the Wikipedia request and falls back when the timeout expires', async () => {
@@ -222,9 +204,7 @@ describe('ArticleSelectorService', () => {
       },
     );
 
-    curatedArticleProvider.getRandomArticle.mockResolvedValue(
-      curatedArticle,
-    );
+    curatedArticleProvider.getRandomArticle.mockResolvedValue(curatedArticle);
 
     const selectionPromise = service.selectArticle();
 
@@ -242,9 +222,7 @@ describe('ArticleSelectorService', () => {
     // Le contrôleur doit avoir annulé la tentative Wikipedia.
     expect(capturedSignal?.aborted).toBe(true);
 
-    expect(
-      curatedArticleProvider.getRandomArticle,
-    ).toHaveBeenCalledTimes(1);
+    expect(curatedArticleProvider.getRandomArticle).toHaveBeenCalledTimes(1);
   });
 
   it('throws an explicit error when Wikipedia and the curated library fail', async () => {
@@ -270,13 +248,9 @@ describe('ArticleSelectorService', () => {
       },
     ]);
 
-    curatedArticleProvider.getRandomArticle.mockResolvedValue(
-      curatedArticle,
-    );
+    curatedArticleProvider.getRandomArticle.mockResolvedValue(curatedArticle);
 
-    await expect(service.selectArticle()).resolves.toEqual(
-      curatedArticle,
-    );
+    await expect(service.selectArticle()).resolves.toEqual(curatedArticle);
 
     expect(articleProvider.getArticle).not.toHaveBeenCalled();
   });

@@ -34,9 +34,7 @@ export class TokenizerService {
 
     if (!parts) {
       return {
-        tokens: text
-          ? [{ text, type: 'separator' }]
-          : [],
+        tokens: text ? [{ text, type: 'separator' }] : [],
       };
     }
 
@@ -55,9 +53,8 @@ export class TokenizerService {
       tokens.push({
         text: word,
         type: 'word',
-        length: [...word].filter((character) =>
-          /[\p{L}\p{N}]/u.test(character),
-        ).length,
+        length: [...word].filter((character) => /[\p{L}\p{N}]/u.test(character))
+          .length,
       });
 
       position = wordPosition + word.length;
