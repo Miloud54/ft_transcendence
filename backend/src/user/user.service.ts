@@ -432,7 +432,7 @@ export class UserService {
   }
 
   async updateAvatar(userId: string, filename: string) {
-    const avatarUrl = `http://localhost:3001/uploads/avatars/${filename}`;
+    const avatarUrl = `https://localhost:8443/api/uploads/avatars/${filename}`;
 
     const user = await this.prisma.user.update({
       where: { user_id: BigInt(userId) },
