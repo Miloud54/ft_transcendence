@@ -24,7 +24,7 @@ const STEPS = [
   },
   {
     number: "2",
-    title: "Guess words, not the title",
+    title: "Guess words to uncover the article",
     description: "Every word you submit reveals how close it is to the hidden Wikipedia article.",
   },
   {
