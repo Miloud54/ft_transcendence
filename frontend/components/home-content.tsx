@@ -1,10 +1,13 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { mockOpenRooms } from "@/lib/mock-data";
 import { JoinRoomForm } from "@/components/join-room-form";
 import { CreateRoomForm } from "@/components/create-room-form";
+import { useCurrentUser } from "@/lib/current-user-context";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -12,6 +15,19 @@ const fadeUp = {
 };
 
 export function HomeContent() {
+  const { user, isLoading } = useCurrentUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/");
+    }
+  }, [isLoading, user, router]);
+
+  if (isLoading || !user) {
+    return null;
+  }
+
   return (
     <motion.div
       initial="hidden"

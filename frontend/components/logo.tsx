@@ -17,10 +17,14 @@ export function Logo({ className }: { className?: string }) {
 
     tryPlay();
 
+    video.addEventListener("loadeddata", tryPlay);
+    video.addEventListener("canplay", tryPlay);
     document.addEventListener("visibilitychange", tryPlay);
     window.addEventListener("pointerdown", tryPlay, { once: true });
 
     return () => {
+      video.removeEventListener("loadeddata", tryPlay);
+      video.removeEventListener("canplay", tryPlay);
       document.removeEventListener("visibilitychange", tryPlay);
       window.removeEventListener("pointerdown", tryPlay);
     };
