@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { UserService } from 'src/user/user.service';
 import { CreateRoomDto } from './create.room.dto';
 import {
   FriendshipStatus,
@@ -72,6 +73,7 @@ export class RoomService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly gameService: GameService,
+    private readonly userService: UserService,
   ) {}
 
   async find(roomId: string) {
@@ -214,6 +216,45 @@ export class RoomService {
     );
   }
 
+    async listFriendsOpenRooms(userId: string) {
+        const userIdBig = BigInt(userId);
+
+        const friendships = await this.prisma.friendship.findMany({
+            where: {
+                status: FriendshipStatus.ACCEPTED,
+                OR: [{ user_id: userIdBig }, { friend_id: userIdBig }],
+            },
+        });
+
+        const friendIds = friendships.map((friendship) =>
+            friendship.user_id === userIdBig ? friendship.friend_id : friendship.user_id,
+        );
+
+        if (friendIds.length === 0) {
+            return [];
+        }
+
+        const rooms = await this.prisma.room.findMany({
+            where: {
+                status: RoomStatus.OPEN,
+                creator_id: { in: friendIds },
+                players: { none: { user_id: userIdBig } },
+            },
+            include: {
+                creator: true,
+                players: true,
+            },
+            orderBy: { created_at: 'desc' },
+        });
+
+        return rooms.map((room) => ({
+            id: room.room_id.toString(),
+            hostUsername: room.creator.username,
+            playerCount: room.players.length,
+            maxPlayers: room.max_players,
+        }));
+    }
+
   async joinByCode(code: string, userId: string) {
     const room = await this.prisma.room.findUnique({
       where: { code: code.trim().toUpperCase() },
@@ -237,6 +278,11 @@ export class RoomService {
 
     if (room.status !== RoomStatus.OPEN) {
       throw new ConflictException('Room is not open');
+    }
+
+    const requester = await this.userService.findById(userId);
+    if (requester.status === 'IN_GAME') {
+        throw new ConflictException('You cannot join another room while you are in a game');
     }
 
     const alreadyJoined = room.players.some(
