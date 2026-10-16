@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { mockOpenRooms } from "@/lib/mock-data";
 import { JoinRoomForm } from "@/components/join-room-form";
 import { CreateRoomForm } from "@/components/create-room-form";
 import { useCurrentUser } from "@/lib/current-user-context";
+import { getFriendsOpenRooms, joinRoom, type OpenRoom } from "@/lib/room-api";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -17,12 +16,34 @@ const fadeUp = {
 export function HomeContent() {
   const { user, isLoading } = useCurrentUser();
   const router = useRouter();
+  const [openRooms, setOpenRooms] = useState<OpenRoom[]>([]);
+  const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && !user) {
       router.replace("/");
     }
   }, [isLoading, user, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    void getFriendsOpenRooms()
+      .then(setOpenRooms)
+      .catch(() => undefined);
+  }, [user]);
+
+  async function handleJoin(room: OpenRoom) {
+    setError(null);
+    setJoiningRoomId(room.id);
+    try {
+      await joinRoom(room.id);
+      router.push(`/lobby/${room.id}`);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Could not join room");
+      setJoiningRoomId(null);
+    }
+  }
 
   if (isLoading || !user) {
     return null;
@@ -75,32 +96,39 @@ export function HomeContent() {
 
         <div className="mt-6 border-t border-white/15 pt-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-violet-200">Open games</p>
+          {error && <p className="mt-2 text-xs text-red-200">{error}</p>}
           <motion.div
             initial="hidden"
             animate="visible"
             variants={{ visible: { transition: { staggerChildren: 0.06, delayChildren: 0.25 } } }}
             className="mt-3 space-y-2"
           >
-            {mockOpenRooms.map((room) => (
-              <motion.div
-                key={room.id}
-                variants={fadeUp}
-                whileHover={{ x: 4 }}
-                className="flex items-center justify-between rounded-lg bg-white/10 px-4 py-2.5"
-              >
-                <span className="min-w-0 flex-1 truncate text-sm">
-                  <strong>{room.hostUsername}</strong>&apos;s room · {room.playerCount}/{room.maxPlayers} players
-                </span>
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Link
-                    href={`/lobby/${room.id}`}
-                    className="rounded-md bg-white/15 px-3 py-1.5 text-xs font-semibold hover:bg-white/25"
+            {openRooms.length === 0 ? (
+              <p className="text-sm text-violet-200">None of your friends have an open room right now.</p>
+            ) : (
+              openRooms.map((room) => (
+                <motion.div
+                  key={room.id}
+                  variants={fadeUp}
+                  whileHover={{ x: 4 }}
+                  className="flex items-center justify-between rounded-lg bg-white/10 px-4 py-2.5"
+                >
+                  <span className="min-w-0 flex-1 truncate text-sm">
+                    <strong>{room.hostUsername}</strong>&apos;s room · {room.playerCount}/{room.maxPlayers} players
+                  </span>
+                  <motion.button
+                    type="button"
+                    disabled={joiningRoomId !== null}
+                    onClick={() => void handleJoin(room)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="rounded-md bg-white/15 px-3 py-1.5 text-xs font-semibold hover:bg-white/25 disabled:opacity-60"
                   >
-                    Join
-                  </Link>
+                    {joiningRoomId === room.id ? "Joining..." : "Join"}
+                  </motion.button>
                 </motion.div>
-              </motion.div>
-            ))}
+              ))
+            )}
           </motion.div>
         </div>
       </motion.section>

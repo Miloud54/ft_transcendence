@@ -61,6 +61,17 @@ export function joinRoom(roomId: string) {
   });
 }
 
+export type OpenRoom = {
+  id: string;
+  hostUsername: string;
+  playerCount: number;
+  maxPlayers: number;
+};
+
+export function getFriendsOpenRooms() {
+  return roomRequest<OpenRoom[]>("/rooms/open/friends");
+}
+
 export function joinRoomByCode(code: string) {
   return roomRequest<Room>("/rooms/join-by-code", {
     method: "POST",

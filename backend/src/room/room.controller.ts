@@ -28,6 +28,12 @@ export class RoomController {
         return this.roomService.getPendingInvitations(request.user.userId);
     }
 
+    @Get('open/friends')
+    @UseGuards(JwtAuthGuard)
+    getFriendsOpenRooms(@Req() request: AuthenticatedRequest) {
+        return this.roomService.listFriendsOpenRooms(request.user.userId);
+    }
+
     @Get(':roomId')
     @UseGuards(JwtAuthGuard)
     get(@Param('roomId') roomId: string) {
