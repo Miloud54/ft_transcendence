@@ -34,7 +34,7 @@ const roomSocketName = (roomId: string) => `room:${roomId}`;
 @WebSocketGateway({
   namespace: '/rooms',
   cors: {
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL ?? 'https://localhost:8443',
     credentials: true,
   },
 })

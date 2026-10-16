@@ -15,7 +15,7 @@ type PresenceSocket = Socket & {
 @WebSocketGateway({
   namespace: '/presence',
   cors: {
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL ?? 'https://localhost:8443',
     credentials: true,
   },
 })
