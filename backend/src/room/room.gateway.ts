@@ -9,17 +9,20 @@ import {
   WsException,
 } from '@nestjs/websockets';
 import { JwtService } from '@nestjs/jwt';
-import type { Server, Socket } from 'socket.io';
+import type { DefaultEventsMap, Server, Socket } from 'socket.io';
 import { RoomService } from './room.service';
 
-type AuthenticatedSocket = Socket & {
-  data: {
+type AuthenticatedSocket = Socket<
+  DefaultEventsMap,
+  DefaultEventsMap,
+  DefaultEventsMap,
+  {
     user?: {
       userId: string;
       email: string;
     };
-  };
-};
+  }
+>;
 
 type RoomPayload = {
   roomId: string;
@@ -38,9 +41,7 @@ const roomSocketName = (roomId: string) => `room:${roomId}`;
     credentials: true,
   },
 })
-export class RoomGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
-{
+export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   private server!: Server;
 
@@ -50,7 +51,11 @@ export class RoomGateway
   ) {}
 
   handleConnection(client: AuthenticatedSocket) {
-    const token = client.handshake.auth?.token;
+    const auth: unknown = client.handshake.auth;
+    const token =
+      typeof auth === 'object' && auth !== null && 'token' in auth
+        ? auth.token
+        : undefined;
 
     if (typeof token !== 'string' || token.length === 0) {
       client.emit('auth:error', {
@@ -92,7 +97,10 @@ export class RoomGateway
     await client.join(roomSocketName(roomId));
 
     const room = await this.roomService.find(roomId);
-    const messages = await this.roomService.getChatMessages(roomId, user.userId);
+    const messages = await this.roomService.getChatMessages(
+      roomId,
+      user.userId,
+    );
     client.emit('chat:history', messages);
     this.server.to(roomSocketName(roomId)).emit('room:state', room);
   }

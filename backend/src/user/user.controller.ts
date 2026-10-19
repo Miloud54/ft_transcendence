@@ -1,4 +1,18 @@
-import { Body, Controller, ConflictException, Delete, Get, Param, Patch, Post, Query, Req, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ConflictException,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -81,7 +95,11 @@ export class UserController {
     const { userId } = req.user as { userId: string };
     const result = await this.userService.addFriend(userId, friendId);
     const requester = await this.userService.findById(userId);
-    this.presenceGateway.notifyUser(friendId, 'friend-request:received', requester);
+    this.presenceGateway.notifyUser(
+      friendId,
+      'friend-request:received',
+      requester,
+    );
     return result;
   }
 
@@ -95,18 +113,34 @@ export class UserController {
   }
 
   @Patch('me/friend-requests/:requesterId/accept')
-  async acceptFriendRequest(@Req() req: Request, @Param('requesterId') requesterId: string) {
+  async acceptFriendRequest(
+    @Req() req: Request,
+    @Param('requesterId') requesterId: string,
+  ) {
     const { userId } = req.user as { userId: string };
-    const result = await this.userService.acceptFriendRequest(userId, requesterId);
+    const result = await this.userService.acceptFriendRequest(
+      userId,
+      requesterId,
+    );
     const acceptedBy = await this.userService.findById(userId);
-    this.presenceGateway.notifyUser(requesterId, 'friend-request:accepted', acceptedBy);
+    this.presenceGateway.notifyUser(
+      requesterId,
+      'friend-request:accepted',
+      acceptedBy,
+    );
     return result;
   }
 
   @Post('me/friend-requests/:requesterId/decline')
-  async declineFriendRequest(@Req() req: Request, @Param('requesterId') requesterId: string) {
+  async declineFriendRequest(
+    @Req() req: Request,
+    @Param('requesterId') requesterId: string,
+  ) {
     const { userId } = req.user as { userId: string };
-    const result = await this.userService.declineFriendRequest(userId, requesterId);
+    const result = await this.userService.declineFriendRequest(
+      userId,
+      requesterId,
+    );
     this.presenceGateway.notifyUser(requesterId, 'friend-request:declined', {
       id: userId,
     });
@@ -153,8 +187,11 @@ export class UserController {
           callback(null, dir);
         },
         filename: (req, file, callback) => {
-          const { userId } = (req as Request).user as { userId: string };
-          callback(null, `${userId}-${Date.now()}${extname(file.originalname)}`);
+          const { userId } = req.user as { userId: string };
+          callback(
+            null,
+            `${userId}-${Date.now()}${extname(file.originalname)}`,
+          );
         },
       }),
       limits: { fileSize: 2 * 1024 * 1024 },

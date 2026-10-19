@@ -5,12 +5,15 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { JwtService } from '@nestjs/jwt';
-import type { Server, Socket } from 'socket.io';
+import type { DefaultEventsMap, Server, Socket } from 'socket.io';
 import { UserService } from './user.service';
 
-type PresenceSocket = Socket & {
-  data: { userId?: string };
-};
+type PresenceSocket = Socket<
+  DefaultEventsMap,
+  DefaultEventsMap,
+  DefaultEventsMap,
+  { userId?: string }
+>;
 
 @WebSocketGateway({
   namespace: '/presence',
@@ -37,7 +40,12 @@ export class PresenceGateway
   ) {}
 
   async handleConnection(client: PresenceSocket) {
-    const token = client.handshake.auth?.token;
+    const auth: unknown = client.handshake.auth;
+    const token =
+      typeof auth === 'object' && auth !== null && 'token' in auth
+        ? auth.token
+        : undefined;
+
     if (typeof token !== 'string' || token.length === 0) {
       client.disconnect(true);
       return;
@@ -51,13 +59,14 @@ export class PresenceGateway
       this.connections.set(payload.sub, count);
       if (count === 1) {
         await this.userService.setPresence(payload.sub, 'ONLINE');
-        this.server.emit('presence:update', { id: payload.sub, status: 'ONLINE' });
+        this.server.emit('presence:update', {
+          id: payload.sub,
+          status: 'ONLINE',
+        });
       }
-
     } catch {
       client.disconnect(true);
     }
-
   }
 
   async handleDisconnect(client: PresenceSocket) {

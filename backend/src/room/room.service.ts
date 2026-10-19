@@ -216,44 +216,46 @@ export class RoomService {
     );
   }
 
-    async listFriendsOpenRooms(userId: string) {
-        const userIdBig = BigInt(userId);
+  async listFriendsOpenRooms(userId: string) {
+    const userIdBig = BigInt(userId);
 
-        const friendships = await this.prisma.friendship.findMany({
-            where: {
-                status: FriendshipStatus.ACCEPTED,
-                OR: [{ user_id: userIdBig }, { friend_id: userIdBig }],
-            },
-        });
+    const friendships = await this.prisma.friendship.findMany({
+      where: {
+        status: FriendshipStatus.ACCEPTED,
+        OR: [{ user_id: userIdBig }, { friend_id: userIdBig }],
+      },
+    });
 
-        const friendIds = friendships.map((friendship) =>
-            friendship.user_id === userIdBig ? friendship.friend_id : friendship.user_id,
-        );
+    const friendIds = friendships.map((friendship) =>
+      friendship.user_id === userIdBig
+        ? friendship.friend_id
+        : friendship.user_id,
+    );
 
-        if (friendIds.length === 0) {
-            return [];
-        }
-
-        const rooms = await this.prisma.room.findMany({
-            where: {
-                status: RoomStatus.OPEN,
-                creator_id: { in: friendIds },
-                players: { none: { user_id: userIdBig } },
-            },
-            include: {
-                creator: true,
-                players: true,
-            },
-            orderBy: { created_at: 'desc' },
-        });
-
-        return rooms.map((room) => ({
-            id: room.room_id.toString(),
-            hostUsername: room.creator.username,
-            playerCount: room.players.length,
-            maxPlayers: room.max_players,
-        }));
+    if (friendIds.length === 0) {
+      return [];
     }
+
+    const rooms = await this.prisma.room.findMany({
+      where: {
+        status: RoomStatus.OPEN,
+        creator_id: { in: friendIds },
+        players: { none: { user_id: userIdBig } },
+      },
+      include: {
+        creator: true,
+        players: true,
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    return rooms.map((room) => ({
+      id: room.room_id.toString(),
+      hostUsername: room.creator.username,
+      playerCount: room.players.length,
+      maxPlayers: room.max_players,
+    }));
+  }
 
   async joinByCode(code: string, userId: string) {
     const room = await this.prisma.room.findUnique({
@@ -282,7 +284,9 @@ export class RoomService {
 
     const requester = await this.userService.findById(userId);
     if (requester.status === 'IN_GAME') {
-        throw new ConflictException('You cannot join another room while you are in a game');
+      throw new ConflictException(
+        'You cannot join another room while you are in a game',
+      );
     }
 
     const alreadyJoined = room.players.some(
