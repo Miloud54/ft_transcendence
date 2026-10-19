@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RoomService } from './room.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { GameService } from 'src/game/game.service';
 import { UserService } from 'src/user/user.service';
+import { GameService } from 'src/game/game.service';
 
 jest.mock('src/game/game.service', () => ({
   GameService: class MockGameService {},
@@ -12,9 +12,6 @@ describe('RoomService', () => {
   let service: RoomService;
 
   beforeEach(async () => {
-    const { GameService: MockGameService } =
-      jest.requireMock('src/game/game.service');
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RoomService,
@@ -23,7 +20,7 @@ describe('RoomService', () => {
           useValue: {},
         },
         {
-          provide: MockGameService,
+          provide: GameService,
           useValue: {},
         },
         {

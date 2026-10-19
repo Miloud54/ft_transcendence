@@ -28,19 +28,12 @@ describe('RoomController', () => {
   let controller: RoomController;
 
   beforeEach(async () => {
-    const { RoomService: MockRoomService } =
-      jest.requireMock('./room.service');
-    const { RoomGateway: MockRoomGateway } =
-      jest.requireMock('./room.gateway');
-    const { PresenceGateway: MockPresenceGateway } =
-      jest.requireMock('src/user/presence.gateway');
-
     const module: TestingModule = await Test.createTestingModule({
       controllers: [RoomController],
       providers: [
-        { provide: MockRoomService, useValue: {} },
-        { provide: MockRoomGateway, useValue: {} },
-        { provide: MockPresenceGateway, useValue: {} },
+        { provide: RoomService, useValue: {} },
+        { provide: RoomGateway, useValue: {} },
+        { provide: PresenceGateway, useValue: {} },
       ],
     }).compile();
 

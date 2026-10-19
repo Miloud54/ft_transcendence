@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GameController } from './game.controller';
+import { GameService } from './game.service';
 
 jest.mock('./game.service', () => ({
   GameService: class MockGameService {},
@@ -17,8 +18,6 @@ describe('GameController', () => {
   let controller: GameController;
 
   beforeEach(async () => {
-    const { GameService } = jest.requireMock('./game.service');
-
     const module: TestingModule = await Test.createTestingModule({
       controllers: [GameController],
       providers: [
