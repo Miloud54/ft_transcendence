@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService, OAuthProfile } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -43,7 +51,9 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   async googleCallback(@Req() req: Request, @Res() res: Response) {
-    const result = await this.authService.loginWithOAuth(req.user as OAuthProfile);
+    const result = await this.authService.loginWithOAuth(
+      req.user as OAuthProfile,
+    );
     this.redirectWithTokens(res, result);
   }
 
@@ -54,7 +64,9 @@ export class AuthController {
   @Get('discord/callback')
   @UseGuards(DiscordAuthGuard)
   async discordCallback(@Req() req: Request, @Res() res: Response) {
-    const result = await this.authService.loginWithOAuth(req.user as OAuthProfile);
+    const result = await this.authService.loginWithOAuth(
+      req.user as OAuthProfile,
+    );
     this.redirectWithTokens(res, result);
   }
 

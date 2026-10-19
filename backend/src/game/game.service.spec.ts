@@ -1,8 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 
 import { GameService } from './game.service';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -81,7 +78,7 @@ describe('GameService', () => {
     presenceGateway = {
       broadcastPresence: jest.fn(),
     };
- 
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GameService,
@@ -341,8 +338,14 @@ describe('GameService', () => {
 
       expect(userService.setPresence).toHaveBeenCalledWith('1', 'IN_GAME');
       expect(userService.setPresence).toHaveBeenCalledWith('2', 'IN_GAME');
-      expect(presenceGateway.broadcastPresence).toHaveBeenCalledWith('1', 'IN_GAME');
-      expect(presenceGateway.broadcastPresence).toHaveBeenCalledWith('2', 'IN_GAME');
+      expect(presenceGateway.broadcastPresence).toHaveBeenCalledWith(
+        '1',
+        'IN_GAME',
+      );
+      expect(presenceGateway.broadcastPresence).toHaveBeenCalledWith(
+        '2',
+        'IN_GAME',
+      );
     });
   });
 });

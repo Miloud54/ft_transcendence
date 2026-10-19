@@ -10,10 +10,15 @@ import {
 } from '@nestjs/websockets';
 import { OnModuleInit } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import type { Server, Socket } from 'socket.io';
 import { GameService } from './game.service';
+import type { DefaultEventsMap, Server, Socket } from 'socket.io';
 
-type GameSocket = Socket & { data: { userId?: string } };
+type GameSocket = Socket<
+  DefaultEventsMap,
+  DefaultEventsMap,
+  DefaultEventsMap,
+  { userId?: string }
+>;
 type GamePayload = { gameId: string };
 type GuessPayload = GamePayload & { guess: string };
 
@@ -44,9 +49,15 @@ export class GameGateway
   }
 
   handleConnection(client: GameSocket) {
-    const token = client.handshake.auth?.token;
+    const auth: unknown = client.handshake.auth;
+    const token =
+      typeof auth === 'object' && auth !== null && 'token' in auth
+        ? auth.token
+        : undefined;
     if (typeof token !== 'string' || token.length === 0) {
-      client.emit('auth:error', { message: 'Authentication token is required' });
+      client.emit('auth:error', {
+        message: 'Authentication token is required',
+      });
       client.disconnect(true);
       return;
     }
@@ -54,7 +65,9 @@ export class GameGateway
       const payload = this.jwtService.verify<{ sub: string }>(token);
       client.data.userId = payload.sub;
     } catch {
-      client.emit('auth:error', { message: 'Authentication token is invalid or expired' });
+      client.emit('auth:error', {
+        message: 'Authentication token is invalid or expired',
+      });
       client.disconnect(true);
     }
   }
@@ -129,7 +142,11 @@ export class GameGateway
   }
 
   private requireGameId(payload: GamePayload) {
-    if (!payload || typeof payload.gameId !== 'string' || !/^\d+$/.test(payload.gameId)) {
+    if (
+      !payload ||
+      typeof payload.gameId !== 'string' ||
+      !/^\d+$/.test(payload.gameId)
+    ) {
       throw new WsException('A valid game ID is required');
     }
     return payload.gameId;

@@ -6,7 +6,13 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { FriendshipStatus, GameResult, GameStatus, RoomStatus, UserStatus } from '../../generated/prisma';
+import {
+  FriendshipStatus,
+  GameResult,
+  GameStatus,
+  RoomStatus,
+  UserStatus,
+} from '../../generated/prisma';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 
@@ -82,8 +88,14 @@ export class UserService {
     const relationships = await this.prisma.friendship.findMany({
       where: {
         OR: [
-          { user_id: BigInt(userId), friend_id: { in: users.map((user) => user.user_id) } },
-          { friend_id: BigInt(userId), user_id: { in: users.map((user) => user.user_id) } },
+          {
+            user_id: BigInt(userId),
+            friend_id: { in: users.map((user) => user.user_id) },
+          },
+          {
+            friend_id: BigInt(userId),
+            user_id: { in: users.map((user) => user.user_id) },
+          },
         ],
       },
     });
@@ -91,7 +103,8 @@ export class UserService {
     return users.map((user) => {
       const relationship = relationships.find(
         (item) =>
-          (item.user_id === BigInt(userId) && item.friend_id === user.user_id) ||
+          (item.user_id === BigInt(userId) &&
+            item.friend_id === user.user_id) ||
           (item.friend_id === BigInt(userId) && item.user_id === user.user_id),
       );
       return {
@@ -117,7 +130,7 @@ export class UserService {
     return friendships.map(({ friend }) => toPublicUser(friend));
   }
 
-    async getStats(userId: string) {
+  async getStats(userId: string) {
     const userIdBig = BigInt(userId);
 
     const user = await this.prisma.user.findUnique({
@@ -133,16 +146,23 @@ export class UserService {
     });
 
     const gamesPlayed = results.length;
-    const wins = results.filter((entry) => entry.result === GameResult.WIN).length;
-    const losses = results.filter((entry) => entry.result === GameResult.LOSS).length;
-    const winRate = gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0;
+    const wins = results.filter(
+      (entry) => entry.result === GameResult.WIN,
+    ).length;
+    const losses = results.filter(
+      (entry) => entry.result === GameResult.LOSS,
+    ).length;
+    const winRate =
+      gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0;
 
     const scores = results
       .map((entry) => entry.score)
       .filter((score): score is number => score !== null);
     const averageScore =
       scores.length > 0
-        ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
+        ? Math.round(
+            scores.reduce((sum, score) => sum + score, 0) / scores.length,
+          )
         : 0;
 
     const bestRank = results.reduce<number | null>((best, entry) => {
@@ -151,10 +171,30 @@ export class UserService {
     }, null);
 
     const achievements = [
-      { id: 'first-win', label: 'First victory', description: 'Win your first game', earned: wins >= 1 },
-      { id: 'veteran', label: 'Veteran', description: 'Play 5 games', earned: gamesPlayed >= 5 },
-      { id: 'champion', label: 'Champion', description: 'Finish 1st in a game', earned: bestRank === 1 },
-      { id: 'on-a-roll', label: 'On a roll', description: 'Win 5 games', earned: wins >= 5 },
+      {
+        id: 'first-win',
+        label: 'First victory',
+        description: 'Win your first game',
+        earned: wins >= 1,
+      },
+      {
+        id: 'veteran',
+        label: 'Veteran',
+        description: 'Play 5 games',
+        earned: gamesPlayed >= 5,
+      },
+      {
+        id: 'champion',
+        label: 'Champion',
+        description: 'Finish 1st in a game',
+        earned: bestRank === 1,
+      },
+      {
+        id: 'on-a-roll',
+        label: 'On a roll',
+        description: 'Win 5 games',
+        earned: wins >= 5,
+      },
     ];
 
     return {
@@ -242,44 +282,44 @@ export class UserService {
   //   };
   // }
   async getActiveGame(userId: string) {
-  const userIdBig = BigInt(userId);
-  const activeGameFilter = {
-    status: { in: [GameStatus.COUNTDOWN, GameStatus.RUNNING] },
-    player: { some: { user_id: userIdBig } },
-  };
+    const userIdBig = BigInt(userId);
+    const activeGameFilter = {
+      status: { in: [GameStatus.COUNTDOWN, GameStatus.RUNNING] },
+      player: { some: { user_id: userIdBig } },
+    };
 
-  const roomPlayer = await this.prisma.roomPlayer.findFirst({
-    where: {
-      user_id: userIdBig,
-      room: {
-        status: { in: [RoomStatus.STARTING, RoomStatus.IN_GAME] },
-        games_hosted: { some: activeGameFilter },
+    const roomPlayer = await this.prisma.roomPlayer.findFirst({
+      where: {
+        user_id: userIdBig,
+        room: {
+          status: { in: [RoomStatus.STARTING, RoomStatus.IN_GAME] },
+          games_hosted: { some: activeGameFilter },
+        },
       },
-    },
-    include: {
-      room: {
-        include: {
-          games_hosted: {
-            where: activeGameFilter,
-            orderBy: { game_id: 'desc' },
-            take: 1,
+      include: {
+        room: {
+          include: {
+            games_hosted: {
+              where: activeGameFilter,
+              orderBy: { game_id: 'desc' },
+              take: 1,
+            },
           },
         },
       },
-    },
-    orderBy: { room_id: 'desc' },
-  });
+      orderBy: { room_id: 'desc' },
+    });
 
-  const game = roomPlayer?.room.games_hosted[0];
-  if (!roomPlayer || !game) {
-    return null;
+    const game = roomPlayer?.room.games_hosted[0];
+    if (!roomPlayer || !game) {
+      return null;
+    }
+
+    return {
+      roomId: roomPlayer.room.room_id.toString(),
+      gameId: game.game_id.toString(),
+    };
   }
-
-  return {
-    roomId: roomPlayer.room.room_id.toString(),
-    gameId: game.game_id.toString(),
-  };
-}
 
   async addFriend(userId: string, friendId: string) {
     const ownerId = BigInt(userId);
@@ -298,7 +338,11 @@ export class UserService {
     await this.prisma.$transaction([
       this.prisma.friendship.upsert({
         where: { user_id_friend_id: { user_id: ownerId, friend_id: targetId } },
-        create: { user_id: ownerId, friend_id: targetId, status: FriendshipStatus.PENDING },
+        create: {
+          user_id: ownerId,
+          friend_id: targetId,
+          status: FriendshipStatus.PENDING,
+        },
         update: { status: FriendshipStatus.PENDING },
       }),
     ]);
@@ -334,7 +378,8 @@ export class UserService {
       },
     });
 
-    const friend = friendship.user_id === ownerId ? friendship.friend : friendship.user;
+    const friend =
+      friendship.user_id === ownerId ? friendship.friend : friendship.user;
     return toPublicUser(friend);
   }
 
@@ -364,8 +409,14 @@ export class UserService {
         data: { status: FriendshipStatus.ACCEPTED },
       }),
       this.prisma.friendship.upsert({
-        where: { user_id_friend_id: { user_id: ownerId, friend_id: requester } },
-        create: { user_id: ownerId, friend_id: requester, status: FriendshipStatus.ACCEPTED },
+        where: {
+          user_id_friend_id: { user_id: ownerId, friend_id: requester },
+        },
+        create: {
+          user_id: ownerId,
+          friend_id: requester,
+          status: FriendshipStatus.ACCEPTED,
+        },
         update: { status: FriendshipStatus.ACCEPTED },
       }),
     ]);
@@ -374,12 +425,19 @@ export class UserService {
 
   async declineFriendRequest(userId: string, requesterId: string) {
     const request = await this.prisma.friendship.findUnique({
-      where: { user_id_friend_id: { user_id: BigInt(requesterId), friend_id: BigInt(userId) } },
+      where: {
+        user_id_friend_id: {
+          user_id: BigInt(requesterId),
+          friend_id: BigInt(userId),
+        },
+      },
     });
     if (!request || request.status !== FriendshipStatus.PENDING) {
       throw new NotFoundException('Friend request not found');
     }
-    await this.prisma.friendship.delete({ where: { friendship_id: request.friendship_id } });
+    await this.prisma.friendship.delete({
+      where: { friendship_id: request.friendship_id },
+    });
     return { message: 'Friend request declined' };
   }
 
@@ -472,5 +530,3 @@ export class UserService {
     return { message: 'Password updated' };
   }
 }
-
-
