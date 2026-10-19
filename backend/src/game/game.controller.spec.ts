@@ -1,12 +1,32 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GameController } from './game.controller';
 
+jest.mock('./game.service', () => ({
+  GameService: class MockGameService {},
+}));
+
+jest.mock('src/auth/guards/jwt-auth.guard', () => ({
+  JwtAuthGuard: class MockJwtAuthGuard {
+    canActivate() {
+      return true;
+    }
+  },
+}));
+
 describe('GameController', () => {
   let controller: GameController;
 
   beforeEach(async () => {
+    const { GameService } = jest.requireMock('./game.service');
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [GameController],
+      providers: [
+        {
+          provide: GameService,
+          useValue: {},
+        },
+      ],
     }).compile();
 
     controller = module.get<GameController>(GameController);
