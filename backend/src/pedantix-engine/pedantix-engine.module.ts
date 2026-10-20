@@ -7,6 +7,11 @@ import { ArticleSelectorService } from './article/article-selector.service';
 import { PedantixEngineService } from './pedantix-engine.service';
 import { TokenizerService } from './tokenizer/tokenizer.service';
 import { ArticleViewService } from './article-view/article-view.service';
+import { LemmatizerService } from './linguistics/lemmatizer.service';
+import { VectorStoreService } from './proximity/vector-store.service';
+import { ArticleIndexService } from './matching/article-index';
+import { ProximityService } from './proximity/proximity.service';
+import { GuessEngineService } from './guess/guess-engine.service';
 
 @Module({
   providers: [
@@ -20,6 +25,11 @@ import { ArticleViewService } from './article-view/article-view.service';
     PedantixEngineService,
     TokenizerService,
     ArticleViewService,
+    LemmatizerService,
+    VectorStoreService, 
+    ArticleIndexService,
+    ProximityService,
+    GuessEngineService,
   ],
   exports: [ArticleProvider, PedantixEngineService],
 })

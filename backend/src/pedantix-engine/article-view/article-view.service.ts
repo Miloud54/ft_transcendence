@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 
 import { ArticleTokenized, ArticleToken } from '../tokenizer/article-tokenized';
+import { BoardState } from '../matching/article-index';
 
 import { ArticleViewToken, InitialArticleView } from './initial-article-view';
+import { BoardView, BoardViewToken } from './board-view';
 
 @Injectable()
 export class ArticleViewService {
@@ -13,6 +15,40 @@ export class ArticleViewService {
       },
       paragraphs: article.paragraphs.map((paragraph) => ({
         tokens: paragraph.tokens.map((token) => this.toPublicToken(token)),
+      })),
+    };
+  }
+
+  /**
+   * Current shared board. Word ids are assigned in reading order (title, then
+   * paragraphs), exactly like ArticleIndexService, so both stay aligned.
+   * Hidden words only expose their length and, if close, a 1..4 grade.
+   */
+  buildBoardView(
+    article: ArticleTokenized,
+    board: BoardState,
+    revealAll = false,
+  ): BoardView {
+    let nextId = 0;
+    const convert = (token: ArticleToken): BoardViewToken => {
+      if (token.type === 'separator') {
+        return { type: 'separator', display: token.text };
+      }
+      const id = nextId++;
+      const length = token.length ?? 0;
+      if (revealAll || board.revealed.has(id)) {
+        return { type: 'word', status: 'revealed', length, display: token.text };
+      }
+      const grade = board.grades.get(id);
+      return grade
+        ? { type: 'word', status: 'hidden', length, grade }
+        : { type: 'word', status: 'hidden', length };
+    };
+
+    return {
+      title: { tokens: article.title.tokens.map(convert) },
+      paragraphs: article.paragraphs.map((paragraph) => ({
+        tokens: paragraph.tokens.map(convert),
       })),
     };
   }

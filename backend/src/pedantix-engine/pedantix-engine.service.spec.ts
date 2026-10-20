@@ -7,6 +7,8 @@ import { TokenizerService } from './tokenizer/tokenizer.service';
 import { ArticleTokenized } from './tokenizer/article-tokenized';
 import { ArticleViewService } from './article-view/article-view.service';
 import { InitialArticleView } from './article-view/initial-article-view';
+import { ArticleIndexService } from './matching/article-index';
+import { GuessEngineService } from './guess/guess-engine.service';
 
 describe('PedantixEngineService', () => {
   let service: PedantixEngineService;
@@ -93,6 +95,14 @@ describe('PedantixEngineService', () => {
         {
           provide: ArticleViewService,
           useValue: articleView,
+        },
+        {
+          provide: ArticleIndexService,
+          useValue: { build: jest.fn() },
+        },
+        {
+          provide: GuessEngineService,
+          useValue: { run: jest.fn() },
         },
       ],
     }).compile();
