@@ -24,6 +24,14 @@ function buildInitialAttempts(players: RoomPlayer[], you: RoomPlayer | undefined
     }));
 }
 
+type Attempt = {
+  username: string;
+  avatarUrl: string | null;
+  word: string;
+  proximity: number;
+  color: string;
+};
+
 type ArticleWord = {
   kind: "word" | "separator";
   label: string;
@@ -128,7 +136,7 @@ export function GameBoard({
   const you = players.find((player) => player.id === user?.id);
 
   const [guess, setGuess] = useState("");
-  const [attempts, setAttempts] = useState(() => buildInitialAttempts(players, you));
+  const [attempts, setAttempts] = useState<Attempt[]>(() => buildInitialAttempts(players, you));
   const [notice, setNotice] = useState("Find the word closest to the secret article.");
   const [bestScore, setBestScore] = useState(0);
 
