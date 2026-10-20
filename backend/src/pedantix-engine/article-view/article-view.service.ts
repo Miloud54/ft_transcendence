@@ -40,9 +40,17 @@ export class ArticleViewService {
         return { type: 'word', status: 'revealed', length, display: token.text };
       }
       const grade = board.grades.get(id);
-      return grade
-        ? { type: 'word', status: 'hidden', length, grade }
-        : { type: 'word', status: 'hidden', length };
+      if (!grade) {
+        return { type: 'word', status: 'hidden', length };
+      }
+      const closestGuess = board.bestGuesses.get(id);
+      return {
+        type: 'word',
+        status: 'hidden',
+        length,
+        grade,
+        ...(closestGuess ? { closestGuess } : {}),
+      };
     };
 
     return {

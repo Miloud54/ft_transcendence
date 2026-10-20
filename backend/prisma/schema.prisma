@@ -172,7 +172,8 @@ model GamePlayer {
   result  GameResult?
   score   Int?
   rank    Int?
-
+  discovery_rank Int?
+  
     @@unique([game_id, user_id])
 	@@map("Game_players")
 }

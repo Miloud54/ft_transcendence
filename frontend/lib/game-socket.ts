@@ -22,7 +22,7 @@ export type GameState = {
 
 export type ArticleToken =
   // grade: 1..4 when a hidden word is semantically close to a past guess
-  | { type: "word"; status: "hidden"; length: number; grade?: number }
+  | { type: "word"; status: "hidden"; length: number; grade?: number; closestGuess?: string }
   | { type: "word"; status: "revealed"; length: number; display: string }
   | { type: "separator"; display: string };
 

@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { GameService } from './game.service';
 
@@ -8,7 +8,12 @@ export class GameController {
   constructor(private readonly gameService: GameService) {}
 
   @Get('leaderboard')
-  getLeaderboard() {
-    return this.gameService.getLeaderboard();
+  getLeaderboard(@Query('sortBy') sortBy?: string) {
+    return this.gameService.getLeaderboard(20, sortBy === 'points' ? 'points' : 'wins');
+  }
+
+  @Get(':gameId/results')
+  getResults(@Param('gameId') gameId: string) {
+    return this.gameService.getResults(gameId);
   }
 }
