@@ -40,7 +40,8 @@ export interface BoardState {
   revealed: Set<number>;
   /** word id -> highest proximity grade received (1..4) */
   grades: Map<number, number>;
-  /** normalized guesses already played (shared by every player) */
+  /** word id -> the guess that produced the current best grade */
+  bestGuesses: Map<number, string>;
   guessed: Set<string>;
   finished: boolean;
 }
@@ -49,6 +50,7 @@ export function createBoard(): BoardState {
   return {
     revealed: new Set(),
     grades: new Map(),
+    bestGuesses: new Map(),
     guessed: new Set(),
     finished: false,
   };

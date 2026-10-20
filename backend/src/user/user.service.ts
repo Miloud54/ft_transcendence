@@ -232,6 +232,7 @@ export class UserService {
       result: entry.result === GameResult.WIN ? 'win' : 'loss',
       score: entry.score,
       rank: entry.rank,
+      discoveryRank: entry.discovery_rank,
       playedAt: entry.game.ended_at,
       opponents: entry.game.player
         .filter((player) => player.user_id !== userIdBig)

@@ -93,6 +93,7 @@ async function main() {
       max_players: 6,
       created_at: minutesAgo(5),
       creator_id: users.alice.user_id,
+      code: 'ALICE1',
     },
   });
 
@@ -103,6 +104,7 @@ async function main() {
       max_players: 4,
       created_at: minutesAgo(30),
       creator_id: users.bob.user_id,
+      code: 'BOBGAM1',
     },
   });
 
@@ -113,6 +115,7 @@ async function main() {
       max_players: 8,
       created_at: minutesAgo(2),
       creator_id: users.grace.user_id,
+      code: 'GRACE1',
     },
   });
 
@@ -124,6 +127,7 @@ async function main() {
       created_at: minutesAgo(180),
       closed_at: minutesAgo(120),
       creator_id: users.eve.user_id,
+      code: 'EVECLOSD',
     },
   });
 
@@ -174,12 +178,12 @@ async function main() {
   });
 
   const finishedGamesData = [
-    { article: "Napoleon Bonaparte", daysAgo: 1, winner: "alice", others: ["bob", "charlie"] },
-    { article: "Great Wall of China", daysAgo: 2, winner: "diana", others: ["eve", "frank", "grace"] },
-    { article: "Marie Curie", daysAgo: 3, winner: "bob", others: ["alice"] },
-    { article: "The Beatles", daysAgo: 4, winner: "grace", others: ["heidi", "ivan"] },
-    { article: "Mount Everest", daysAgo: 5, winner: "alice", others: ["diana", "frank"] },
-    { article: "William Shakespeare", daysAgo: 6, winner: "charlie", others: ["bob", "eve", "grace"] },
+    { article: "Napoleon Bonaparte", daysAgo: 1, winner: "alice", others: ["bob", "charlie"], discoveryOrder: ["alice", "bob", "charlie"] },
+    { article: "Great Wall of China", daysAgo: 2, winner: "diana", others: ["eve", "frank", "grace"], discoveryOrder: ["frank", "diana", "grace", "eve"] },
+    { article: "Marie Curie", daysAgo: 3, winner: "bob", others: ["alice"], discoveryOrder: ["bob", "alice"] },
+    { article: "The Beatles", daysAgo: 4, winner: "grace", others: ["heidi", "ivan"], discoveryOrder: ["heidi", "grace", "ivan"] },
+    { article: "Mount Everest", daysAgo: 5, winner: "alice", others: ["diana", "frank"], discoveryOrder: ["alice", "frank", "diana"] },
+    { article: "William Shakespeare", daysAgo: 6, winner: "charlie", others: ["bob", "eve", "grace"], discoveryOrder: ["charlie", "bob", "eve", "grace"] },
   ];
 
   const finishedGames = [];
@@ -214,7 +218,11 @@ async function main() {
     ],
   });
 
-  for (const { game, winner, others } of finishedGames) {
+  for (const { game, winner, others, discoveryOrder } of finishedGames) {
+    const discoveryRankByUsername = new Map<string, number>(
+      discoveryOrder.map((username, index) => [username, index + 1]),
+    );
+
     await prisma.gamePlayer.create({
       data: {
         game_id: game.game_id,
@@ -222,6 +230,7 @@ async function main() {
         result: "WIN",
         score: 1000,
         rank: 1,
+        discovery_rank: discoveryRankByUsername.get(winner),
       },
     });
 
@@ -233,6 +242,7 @@ async function main() {
           result: "LOSS",
           score: 850 - index * 120,
           rank: index + 2,
+          discovery_rank: discoveryRankByUsername.get(username),
         },
       });
     }

@@ -46,7 +46,10 @@ export class ProximityService {
       if (grade === 0) continue;
       best = Math.max(best, grade);
       for (const id of hidden) {
-        if (grade > (board.grades.get(id) ?? 0)) board.grades.set(id, grade);
+        if (grade > (board.grades.get(id) ?? 0)) {
+          board.grades.set(id, grade);
+          board.bestGuesses.set(id, normalizedGuess);
+        }
       }
     }
     return best;

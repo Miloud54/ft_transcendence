@@ -38,15 +38,16 @@ type ArticleWord = {
   status: "found" | "hidden";
   length: number;
   grade: number;
+  closestGuess: string | null;
 };
 
 // Hidden words get warmer as they get closer to a previous guess (grade 1..4).
 const GRADE_CLASSES = [
   "bg-zinc-100",
-  "bg-violet-100",
+  "bg-lime-200",
+  "bg-lime-400",
   "bg-violet-200",
-  "bg-violet-300",
-  "bg-violet-500",
+  "bg-violet-400",
 ];
 
 function ArticleText({
@@ -72,12 +73,20 @@ function ArticleText({
         return (
           <span
             key={index}
-            aria-label={word.grade > 0 ? "Hidden word, close to a guess" : "Hidden word"}
+            aria-label={
+              word.closestGuess
+                ? `Hidden word, closest guess: ${word.closestGuess}`
+                : word.grade > 0
+                  ? "Hidden word, close to a guess"
+                  : "Hidden word"
+            }
             style={{ minWidth: `${Math.max(word.length, 2) * 0.6}em` }}
-            className={`mx-0.5 inline-block h-6 select-none rounded align-middle text-[0] ${
+            className={`mx-0.5 inline-flex h-6 items-center justify-center rounded px-1 align-middle text-xs font-medium text-zinc-400 ${
               GRADE_CLASSES[Math.min(word.grade, 4)]
             }`}
-          />
+          >
+            {word.closestGuess ?? ""}
+          </span>
         );
       })}
     </p>
@@ -104,10 +113,17 @@ function toArticleWords(
 ): ArticleWord[] {
   return tokens.map((token) =>
     token.type === "separator"
-      ? { kind: "separator", label: token.display, status: "hidden", length: 0, grade: 0 }
+      ? { kind: "separator", label: token.display, status: "hidden", length: 0, grade: 0, closestGuess: null }
       : token.status === "revealed"
-        ? { kind: "word", label: token.display, status: "found", length: token.length, grade: 0 }
-        : { kind: "word", label: "", status: "hidden", length: token.length, grade: token.grade ?? 0 },
+        ? { kind: "word", label: token.display, status: "found", length: token.length, grade: 0, closestGuess: null }
+        : {
+            kind: "word",
+            label: "",
+            status: "hidden",
+            length: token.length,
+            grade: token.grade ?? 0,
+            closestGuess: token.closestGuess ?? null,
+          },
   );
 }
 
@@ -186,9 +202,14 @@ export function GameBoard({
   const titleWords = articleTitle(gameState);
   const bodyWords = paragraphs.flat().filter((word) => word.kind === "word");
   const discoveredCount = bodyWords.filter((word) => word.status === "found").length;
+  const hottestGrade = Math.max(0, ...bodyWords.map((word) => word.grade));
+  const temperaturePercent = Math.round((hottestGrade / 4) * 100);  
   const isSolved = gameState?.status === "finished";
   const titleText = titleWords.map((word) => word.label).join("");
   const winner = players.find((player) => player.id === gameState?.winnerId);
+  const getAttemptScore = (attempt: Attempt) =>
+    gameState?.scores[(attempt.username === "You" ? you : players.find((player) => player.username === attempt.username))?.id ?? ""] ?? 0;
+  const sortedAttempts = [...attempts].sort((a, b) => getAttemptScore(b) - getAttemptScore(a));  
   const [previousPlayers, setPreviousPlayers] = useState(players);
   if (players !== previousPlayers) {
     setPreviousPlayers(players);
@@ -297,17 +318,13 @@ export function GameBoard({
                   <h3 className="mt-2 text-2xl font-semibold text-zinc-950">Encyclopedia article</h3>
                 )}
               </div>
-              <div className="max-w-4xl space-y-5">
+              <div className="max-h-[420px] max-w-4xl space-y-5 overflow-y-auto pr-3">
                 {paragraphs.length === 0 ? (
                   <p className="text-sm text-zinc-500">Waiting for the game article...</p>
                 ) : paragraphs.map((paragraph, index) => (
-                  <ArticleText key={index} paragraph={paragraph} />
+                  <ArticleText key={index} paragraph={paragraph} className="text-sm leading-7 text-zinc-700" />
                 ))}
               </div>
-              <details className="max-w-4xl rounded-lg border border-dashed border-zinc-200 px-4 py-3 text-sm text-zinc-500">
-                <summary className="cursor-pointer font-medium text-zinc-700">View structural hints</summary>
-                <p className="mt-2 leading-6">The text contains information about the construction, history, and dimensions of the monument.</p>
-              </details>
             </div>
             <div className="border-t border-zinc-100 bg-zinc-50 px-5 py-4 sm:px-7">
               <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
@@ -359,7 +376,7 @@ export function GameBoard({
               <span className="text-xs text-zinc-400">proximity</span>
             </div>
             <div className="mt-5 h-3 overflow-hidden rounded-full bg-gradient-to-r from-lime-400 to-violet-700">
-              <div className="h-full w-[68%] border-r-2 border-white" />
+              <div className="h-full border-r-2 border-white" style={{ width: `${temperaturePercent}%` }} />
             </div>
             <div className="mt-2 flex justify-between text-[11px] text-zinc-400"><span>Cold</span><span>Scorching</span></div>
             <div className="mt-5 rounded-lg bg-lime-50 p-4">
@@ -374,7 +391,7 @@ export function GameBoard({
               <span className="h-2 w-2 rounded-full bg-lime-500" />
             </div>
             <div className="mt-4 space-y-3">
-              {attempts.map((attempt, index) => (
+              {sortedAttempts.map((attempt, index) => (
                 <div key={`${attempt.username}-${attempt.word}-${index}`} className="flex items-center gap-3">
                   {attempt.avatarUrl ? (
                     <img src={attempt.avatarUrl} alt={attempt.username} className="h-8 w-8 rounded-full bg-zinc-100" />
@@ -383,7 +400,7 @@ export function GameBoard({
                   )}
                   <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-zinc-800">{attempt.username}</p><p className="truncate text-xs text-zinc-400">{attempt.word}</p></div>
                   <span className="font-mono text-sm font-semibold text-zinc-700">
-                    {gameState?.scores[(attempt.username === "You" ? you : players.find((player) => player.username === attempt.username))?.id ?? ""] ?? 0}
+                    {getAttemptScore(attempt)}
                   </span>
                 </div>
               ))}

@@ -433,7 +433,7 @@ export class GameService {
     }
   }
 
-  async getLeaderboard(limit = 20) {
+   async getLeaderboard(limit = 20, sortBy: 'wins' | 'points' = 'wins') {
     const players = await this.prisma.gamePlayer.findMany({
       where: { result: { not: null } },
       include: { users: true },
@@ -441,35 +441,29 @@ export class GameService {
 
     const statsByUser = new Map<
       string,
-      {
-        user: {
-          user_id: bigint;
-          username: string;
-          avatar: string;
-          lvl: bigint;
-        };
-        wins: number;
-        games: number;
-      }
+      { user: { user_id: bigint; username: string; avatar: string; lvl: bigint }; wins: number; games: number; totalScore: number }
     >();
 
     for (const player of players) {
       const key = player.user_id.toString();
+      const score = player.score ?? 0;
       const existing = statsByUser.get(key);
       if (existing) {
         existing.games += 1;
+        existing.totalScore += score;
         if (player.result === GameResult.WIN) existing.wins += 1;
       } else {
         statsByUser.set(key, {
           user: player.users,
           wins: player.result === GameResult.WIN ? 1 : 0,
           games: 1,
+          totalScore: score,
         });
       }
     }
 
     return Array.from(statsByUser.values())
-      .sort((a, b) => b.wins - a.wins)
+      .sort((a, b) => (sortBy === 'points' ? b.totalScore - a.totalScore : b.wins - a.wins))
       .slice(0, limit)
       .map((entry, index) => ({
         rank: index + 1,
@@ -479,7 +473,38 @@ export class GameService {
         level: Number(entry.user.lvl),
         wins: entry.wins,
         gamesPlayed: entry.games,
+        totalScore: entry.totalScore,
       }));
+  }
+
+  async getResults(gameId: string) {
+    const game = await this.prisma.game.findUnique({
+      where: { game_id: BigInt(gameId) },
+      include: {
+        player: { include: { users: true } },
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    const players = game.player.map((player) => ({
+      userId: player.user_id.toString(),
+      username: player.users.username,
+      avatar: player.users.avatar,
+      result: player.result,
+      score: player.score,
+      rank: player.rank,
+      discoveryRank: player.discovery_rank,
+    }));
+
+    return {
+      gameId: game.game_id.toString(),
+      articleTitle: game.article_title,
+      byScore: [...players].sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity)),
+      byDiscovery: [...players].sort((a, b) => (a.discoveryRank ?? Infinity) - (b.discoveryRank ?? Infinity)),
+    };
   }
 }
 
