@@ -130,10 +130,14 @@ export class GameGateway
       userId,
       payload.guess,
     );
-    this.server.to(gameSocketName(gameId)).emit('game:guess-result', result);
-    this.server
-      .to(gameSocketName(gameId))
-      .emit('game:state', await this.gameService.getState(gameId));
+    // The board is shared: valid guesses are announced to the whole game.
+    // Rejected ones (not a word, duplicate...) only concern the sender.
+    // The new game state is emitted by GameService through onStateChange.
+    if (result.valid) {
+      this.server.to(gameSocketName(gameId)).emit('game:guess-result', result);
+    } else {
+      client.emit('game:guess-result', result);
+    }
   }
 
   private requireUser(client: GameSocket) {

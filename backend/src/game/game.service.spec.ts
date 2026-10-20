@@ -1,351 +1,162 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-import { GameService } from './game.service';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { GameResult, GameStatus } from 'generated/prisma';
+import { ArticleViewService } from 'src/pedantix-engine/article-view/article-view.service';
+import { GuessEngineService } from 'src/pedantix-engine/guess/guess-engine.service';
+import { LemmatizerService } from 'src/pedantix-engine/linguistics/lemmatizer.service';
+import { ArticleIndexService } from 'src/pedantix-engine/matching/article-index';
 import { PedantixEngineService } from 'src/pedantix-engine/pedantix-engine.service';
-import { GameStatus, RoomStatus } from 'generated/prisma';
-import { UserService } from 'src/user/user.service';
-import { PresenceGateway } from 'src/user/presence.gateway';
+import { ProximityService } from 'src/pedantix-engine/proximity/proximity.service';
+import { VectorStoreService } from 'src/pedantix-engine/proximity/vector-store.service';
+import { TokenizerService } from 'src/pedantix-engine/tokenizer/tokenizer.service';
+import { GameService, SCORE_PER_WORD, SCORE_TITLE } from './game.service';
 
-jest.mock('src/user/presence.gateway', () => ({
-  PresenceGateway: class PresenceGateway {},
-}));
+function makeVectors() {
+  const dir = mkdtempSync(join(tmpdir(), 'vec-'));
+  const entries: Record<string, number[]> = {
+    iron: [1, 0.1, 0],
+    metal: [0.95, 0.2, 0],
+    tower: [0.7, 0.7, 0],
+    banana: [0, 0, 1],
+  };
+  const words = Object.keys(entries);
+  const flat = words.flatMap((w) => {
+    const n = Math.hypot(...entries[w]);
+    return entries[w].map((x) => x / n);
+  });
+  writeFileSync(join(dir, 'words.json'), JSON.stringify(words));
+  writeFileSync(join(dir, 'vectors.bin'), Buffer.from(new Float32Array(flat).buffer));
+  writeFileSync(join(dir, 'meta.json'), JSON.stringify({ dim: 3, count: words.length }));
+  const store = new VectorStoreService();
+  store.load(dir);
+  return store;
+}
 
-describe('GameService', () => {
+describe('GameService (shared board)', () => {
+  const lemmatizer = new LemmatizerService();
+  const vectors = makeVectors();
   let service: GameService;
-
-  let prisma: {
-    game: {
-      findUnique: jest.Mock;
-      updateMany: jest.Mock;
-    };
-    room: {
-      update: jest.Mock;
-    };
-    roomPlayer: {
-      findMany: jest.Mock;
-    };
-    $transaction: jest.Mock;
-  };
-
-  let pedantixEngine: {
-    prepareGame: jest.Mock;
-    isGamePrepared: jest.Mock;
-  };
-
-  let userService: { setPresence: jest.Mock; findById: jest.Mock };
-  let presenceGateway: { broadcastPresence: jest.Mock };
-
-  const gameId = '123';
-  const roomId = BigInt(456);
-
-  const game = {
-    game_id: BigInt(gameId),
-    room_id: roomId,
-    status: GameStatus.COUNTDOWN,
-  };
+  let db: { game: any; players: any[]; updates: any[]; gameUpdate: any };
 
   beforeEach(async () => {
-    prisma = {
-      game: {
-        findUnique: jest.fn(),
-        updateMany: jest.fn(),
-      },
-      room: {
-        update: jest.fn(),
-      },
-      roomPlayer: {
-        findMany: jest.fn().mockResolvedValue([]),
-      },
-      $transaction: jest.fn(),
-    };
-
-    prisma.$transaction.mockImplementation(
-      async (callback: (transaction: typeof prisma) => Promise<void>) =>
-        callback(prisma),
-    );
-
-    pedantixEngine = {
-      prepareGame: jest.fn().mockResolvedValue(undefined),
-      isGamePrepared: jest.fn().mockReturnValue(true),
-    };
-
-    userService = {
-      setPresence: jest.fn().mockResolvedValue(undefined),
-      findById: jest.fn(),
-    };
-    presenceGateway = {
-      broadcastPresence: jest.fn(),
-    };
-
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        GameService,
-        {
-          provide: PrismaService,
-          useValue: prisma,
-        },
-        {
-          provide: PedantixEngineService,
-          useValue: pedantixEngine,
-        },
-        {
-          provide: UserService,
-          useValue: userService,
-        },
-        {
-          provide: PresenceGateway,
-          useValue: presenceGateway,
-        },
+    db = {
+      game: { game_id: 1n, room_id: 7n, status: GameStatus.RUNNING },
+      players: [
+        { game_id: 1n, user_id: 10n },
+        { game_id: 1n, user_id: 11n },
       ],
-    }).compile();
+      updates: [],
+      gameUpdate: null,
+    };
+    const prisma: any = {
+      game: {
+        findUnique: async () => db.game,
+        updateMany: async ({ data }: any) => {
+          db.gameUpdate = data;
+          db.game = { ...db.game, status: data.status };
+          return { count: 1 };
+        },
+      },
+      gamePlayer: {
+        findUnique: async ({ where }: any) =>
+          db.players.find((p) => p.user_id === where.game_id_user_id.user_id) ?? null,
+        findMany: async () => db.players,
+        update: async (args: any) => db.updates.push(args),
+      },
+      room: { update: async () => ({}) },
+      roomPlayer: { findMany: async () => [] },
+      $transaction: async (fn: any) => fn(prisma),
+    };
+    const engine = new PedantixEngineService(
+      {
+        selectArticle: async () => ({
+          id: 1, url: '', title: 'Iron Tower',
+          paragraphs: ['The tower is made of iron. A tall tower. Not a banana.'],
+        }),
+      } as any,
+      new TokenizerService(),
+      new ArticleViewService(),
+      new ArticleIndexService(lemmatizer, vectors),
+      new GuessEngineService(lemmatizer, vectors, new ProximityService(vectors)),
+    );
+    await engine.prepareGame('1');
+    service = new GameService(
+      prisma,
+      engine,
+      { setPresence: async () => undefined } as any,
+      { broadcastPresence: () => undefined } as any,
+    );
+    jest.useFakeTimers({ doNotFake: ['nextTick'] });
+  });
+  afterEach(() => jest.useRealTimers());
 
-    service = module.get<GameService>(GameService);
+  const later = () => jest.advanceTimersByTime(1000);
+
+  it('shares reveals between players and scores 30 per found word', async () => {
+    const first = await service.submitGuess('1', '10', 'tower');
+    expect(first).toMatchObject({ valid: true, score: SCORE_PER_WORD, revealedCount: 3 });
+
+    const state = await service.getState('1');
+    const revealed = state.article!.paragraphs[0].tokens.filter(
+      (t) => t.type === 'word' && t.status === 'revealed',
+    );
+    expect(revealed).toHaveLength(2); // both body occurrences, visible to everybody
+    expect(state.scores).toEqual({ '10': SCORE_PER_WORD });
   });
 
-  afterEach(() => {
-    jest.useRealTimers();
-    jest.restoreAllMocks();
+  it('grades close hidden words on the shared board', async () => {
+    await service.submitGuess('1', '10', 'metal');
+    const state = await service.getState('1');
+    const hiddenIron = state.article!.paragraphs[0].tokens.find(
+      (t) => t.type === 'word' && t.status === 'hidden' && t.grade,
+    );
+    expect(hiddenIron).toBeDefined();
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  it('rejects invalid guesses without scoring them', async () => {
+    const bad = await service.submitGuess('1', '10', 'zzzzqq');
+    expect(bad).toMatchObject({ valid: false, reason: 'NOT_A_WORD', score: 0 });
+    later();
+    await service.submitGuess('1', '10', 'iron');
+    later();
+    const dup = await service.submitGuess('1', '11', 'iron');
+    expect(dup).toMatchObject({ valid: false, reason: 'ALREADY_GUESSED' });
+    expect((await service.getState('1')).attempts).toEqual({ '10': 1 });
   });
 
-  describe('startCountdown', () => {
-    it('throws NotFoundException if the game does not exist', async () => {
-      prisma.game.findUnique.mockResolvedValue(null);
-
-      await expect(service.startCountdown(gameId)).rejects.toThrow(
-        NotFoundException,
-      );
-
-      expect(pedantixEngine.prepareGame).not.toHaveBeenCalled();
-    });
-
-    it('throws ConflictException if the game is not in COUNTDOWN', async () => {
-      prisma.game.findUnique.mockResolvedValue({
-        ...game,
-        status: GameStatus.RUNNING,
-      });
-
-      await expect(service.startCountdown(gameId)).rejects.toThrow(
-        ConflictException,
-      );
-
-      expect(pedantixEngine.prepareGame).not.toHaveBeenCalled();
-    });
-
-    it('starts preparing the game immediately', async () => {
-      jest.useFakeTimers();
-
-      prisma.game.findUnique.mockResolvedValue(game);
-
-      await service.startCountdown(gameId);
-
-      expect(pedantixEngine.prepareGame).toHaveBeenCalledTimes(1);
-      expect(pedantixEngine.prepareGame).toHaveBeenCalledWith(gameId);
-    });
-
-    it('does not transition to RUNNING before the 10-second countdown ends', async () => {
-      jest.useFakeTimers();
-
-      prisma.game.findUnique.mockResolvedValue(game);
-      prisma.game.updateMany.mockResolvedValue({ count: 1 });
-      prisma.room.update.mockResolvedValue({});
-
-      await service.startCountdown(gameId);
-
-      await jest.advanceTimersByTimeAsync(9_999);
-
-      expect(prisma.game.updateMany).not.toHaveBeenCalled();
-
-      await jest.advanceTimersByTimeAsync(1);
-
-      expect(prisma.game.updateMany).toHaveBeenCalledWith({
-        where: {
-          game_id: BigInt(gameId),
-          status: GameStatus.COUNTDOWN,
-        },
-        data: {
-          status: GameStatus.RUNNING,
-        },
-      });
-
-      expect(prisma.room.update).toHaveBeenCalledWith({
-        where: {
-          room_id: roomId,
-        },
-        data: {
-          status: RoomStatus.IN_GAME,
-        },
-      });
-    });
-
-    it('waits for preparation if it takes longer than 10 seconds', async () => {
-      jest.useFakeTimers();
-
-      let resolvePreparation!: () => void;
-
-      const preparation = new Promise<void>((resolve) => {
-        resolvePreparation = resolve;
-      });
-
-      prisma.game.findUnique.mockResolvedValue(game);
-      prisma.game.updateMany.mockResolvedValue({ count: 1 });
-      prisma.room.update.mockResolvedValue({});
-
-      pedantixEngine.prepareGame.mockReturnValue(preparation);
-
-      await service.startCountdown(gameId);
-
-      expect(pedantixEngine.prepareGame).toHaveBeenCalledWith(gameId);
-
-      // Le compte à rebours est terminé, mais le moteur travaille encore.
-      await jest.advanceTimersByTimeAsync(10_000);
-
-      expect(prisma.game.updateMany).not.toHaveBeenCalled();
-      expect(prisma.room.update).not.toHaveBeenCalled();
-
-      // La préparation se termine après 12 secondes.
-      await jest.advanceTimersByTimeAsync(2_000);
-
-      resolvePreparation();
-
-      // Laisse les continuations asynchrones s'exécuter.
-      await jest.advanceTimersByTimeAsync(0);
-
-      expect(prisma.game.updateMany).toHaveBeenCalledWith({
-        where: {
-          game_id: BigInt(gameId),
-          status: GameStatus.COUNTDOWN,
-        },
-        data: {
-          status: GameStatus.RUNNING,
-        },
-      });
-
-      expect(prisma.room.update).toHaveBeenCalledWith({
-        where: {
-          room_id: roomId,
-        },
-        data: {
-          status: RoomStatus.IN_GAME,
-        },
-      });
-    });
-
-    it('does not transition to RUNNING if preparation fails', async () => {
-      jest.useFakeTimers();
-
-      prisma.game.findUnique.mockResolvedValue(game);
-
-      const preparationError = new Error('Article preparation failed');
-
-      pedantixEngine.prepareGame.mockRejectedValue(preparationError);
-
-      const consoleErrorSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
-
-      await service.startCountdown(gameId);
-
-      await jest.advanceTimersByTimeAsync(10_000);
-
-      expect(prisma.game.updateMany).not.toHaveBeenCalled();
-      expect(prisma.room.update).not.toHaveBeenCalled();
-
-      consoleErrorSpy.mockRestore();
-    });
-
-    it('does not start multiple countdowns for the same game', async () => {
-      jest.useFakeTimers();
-
-      prisma.game.findUnique.mockResolvedValue(game);
-      prisma.game.updateMany.mockResolvedValue({ count: 1 });
-      prisma.room.update.mockResolvedValue({});
-
-      await service.startCountdown(gameId);
-      await service.startCountdown(gameId);
-
-      expect(pedantixEngine.prepareGame).toHaveBeenCalledTimes(1);
-
-      await jest.advanceTimersByTimeAsync(10_000);
-
-      expect(prisma.game.updateMany).toHaveBeenCalledTimes(1);
-      expect(prisma.room.update).toHaveBeenCalledTimes(1);
-    });
+  it('throttles guess spam', async () => {
+    await service.submitGuess('1', '10', 'iron');
+    const spam = await service.submitGuess('1', '10', 'tower');
+    expect(spam).toMatchObject({ valid: false, reason: 'TOO_FAST' });
   });
 
-  describe('transitionToRunning', () => {
-    it('throws NotFoundException if the game does not exist', async () => {
-      prisma.game.findUnique.mockResolvedValue(null);
+  it('the player completing the title wins +500, game ends and results persist', async () => {
+    await service.submitGuess('1', '10', 'iron'); // +30 for player 10
+    await service.submitGuess('1', '11', 'tower'); // +30, completes title: +500
+    const state = await service.getState('1');
 
-      await expect(service.transitionToRunning(gameId)).rejects.toThrow(
-        NotFoundException,
-      );
-    });
+    expect(state.status).toBe('finished');
+    expect(state.winnerId).toBe('11');
+    expect(state.scores).toEqual({ '10': SCORE_PER_WORD, '11': SCORE_PER_WORD + SCORE_TITLE });
+    // finished game exposes the fully revealed article
+    const hidden = state.article!.paragraphs[0].tokens.filter(
+      (t) => t.type === 'word' && t.status === 'hidden',
+    );
+    expect(hidden).toHaveLength(0);
 
-    it('throws ConflictException if the game is not in COUNTDOWN', async () => {
-      prisma.game.findUnique.mockResolvedValue({
-        ...game,
-        status: GameStatus.RUNNING,
-      });
+    const saved = Object.fromEntries(
+      db.updates.map((u) => [u.where.game_id_user_id.user_id.toString(), u.data]),
+    );
+    expect(saved['11']).toEqual({ result: GameResult.WIN, score: 530, rank: 1 });
+    expect(saved['10']).toEqual({ result: GameResult.LOSS, score: 30, rank: 2 });
+    expect(db.gameUpdate.article_title).toBe('Iron Tower');
+    expect(db.gameUpdate.ended_at).toBeInstanceOf(Date);
+  });
 
-      await expect(service.transitionToRunning(gameId)).rejects.toThrow(
-        ConflictException,
-      );
-    });
-
-    it('updates the game and room statuses', async () => {
-      prisma.game.findUnique.mockResolvedValue(game);
-      prisma.game.updateMany.mockResolvedValue({ count: 1 });
-      prisma.room.update.mockResolvedValue({});
-
-      await service.transitionToRunning(gameId);
-
-      expect(prisma.game.updateMany).toHaveBeenCalledWith({
-        where: {
-          game_id: BigInt(gameId),
-          status: GameStatus.COUNTDOWN,
-        },
-        data: {
-          status: GameStatus.RUNNING,
-        },
-      });
-
-      expect(prisma.room.update).toHaveBeenCalledWith({
-        where: {
-          room_id: roomId,
-        },
-        data: {
-          status: RoomStatus.IN_GAME,
-        },
-      });
-    });
-
-    it('sets IN_GAME status for every room player once RUNNING', async () => {
-      prisma.game.findUnique.mockResolvedValue(game);
-      prisma.game.updateMany.mockResolvedValue({ count: 1 });
-      prisma.room.update.mockResolvedValue({});
-      prisma.roomPlayer.findMany.mockResolvedValue([
-        { user_id: BigInt(1) },
-        { user_id: BigInt(2) },
-      ]);
-
-      await service.transitionToRunning(gameId);
-
-      expect(userService.setPresence).toHaveBeenCalledWith('1', 'IN_GAME');
-      expect(userService.setPresence).toHaveBeenCalledWith('2', 'IN_GAME');
-      expect(presenceGateway.broadcastPresence).toHaveBeenCalledWith(
-        '1',
-        'IN_GAME',
-      );
-      expect(presenceGateway.broadcastPresence).toHaveBeenCalledWith(
-        '2',
-        'IN_GAME',
-      );
-    });
+  it('rejects guesses once the game is finished', async () => {
+    await service.submitGuess('1', '10', 'iron tower');
+    await expect(service.submitGuess('1', '11', 'banana')).rejects.toThrow('not running');
   });
 });

@@ -25,49 +25,90 @@ function buildInitialAttempts(players: RoomPlayer[], you: RoomPlayer | undefined
 }
 
 type ArticleWord = {
+  kind: "word" | "separator";
   label: string;
   status: "found" | "hidden";
+  length: number;
+  grade: number;
 };
 
-function ArticleText({ paragraph }: { paragraph: ArticleWord[] }) {
+// Hidden words get warmer as they get closer to a previous guess (grade 1..4).
+const GRADE_CLASSES = [
+  "bg-zinc-100",
+  "bg-violet-100",
+  "bg-violet-200",
+  "bg-violet-300",
+  "bg-violet-500",
+];
+
+function ArticleText({
+  paragraph,
+  className = "text-base leading-8 text-zinc-700 sm:text-lg",
+}: {
+  paragraph: ArticleWord[];
+  className?: string;
+}) {
   return (
-    <p className="text-base leading-8 text-zinc-700 sm:text-lg">
-      {paragraph.map((word, index) => (
-        <span key={`${word.label}-${index}`}>
-          {word.status === "found" ? (
-            <span className="border-b-2 border-lime-400 text-zinc-950">{word.label}</span>
-          ) : (
-            <span
-              aria-label="Hidden word"
-              className="mx-1 inline-block h-7 min-w-12 select-none rounded bg-zinc-100 align-middle text-[0]"
-            />
-          )}{" "}
-        </span>
-      ))}
+    <p className={className}>
+      {paragraph.map((word, index) => {
+        if (word.kind === "separator") {
+          return <span key={index}>{word.label}</span>;
+        }
+        if (word.status === "found") {
+          return (
+            <span key={index} className="border-b-2 border-lime-400 text-zinc-950">
+              {word.label}
+            </span>
+          );
+        }
+        return (
+          <span
+            key={index}
+            aria-label={word.grade > 0 ? "Hidden word, close to a guess" : "Hidden word"}
+            style={{ minWidth: `${Math.max(word.length, 2) * 0.6}em` }}
+            className={`mx-0.5 inline-block h-6 select-none rounded align-middle text-[0] ${
+              GRADE_CLASSES[Math.min(word.grade, 4)]
+            }`}
+          />
+        );
+      })}
     </p>
   );
 }
+
+const REJECTION_MESSAGES: Record<string, string> = {
+  EMPTY: "Enter a word before submitting your attempt.",
+  TOO_LONG: "That guess is too long.",
+  SINGLE_WORD_ONLY: "One word at a time (or the full title).",
+  NOT_A_WORD: "That does not look like an English word.",
+  ALREADY_GUESSED: "That word was already tried.",
+  GAME_FINISHED: "The game is over.",
+  TOO_FAST: "Slow down a little.",
+};
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
 
-function articleParagraphs(gameState: GameState | null): ArticleWord[][] {
-  return (
-    gameState?.article?.paragraphs.map((paragraph) =>
-      paragraph.tokens.map((token) => ({
-        label: token.type === "separator"
-          ? token.display
-          : token.status === "revealed"
-            ? token.display
-            : "",
-        status: token.type === "word" && token.status === "revealed"
-          ? "found"
-          : "hidden",
-      })),
-    ) ?? []
+function toArticleWords(
+  tokens: NonNullable<GameState["article"]>["paragraphs"][number]["tokens"],
+): ArticleWord[] {
+  return tokens.map((token) =>
+    token.type === "separator"
+      ? { kind: "separator", label: token.display, status: "hidden", length: 0, grade: 0 }
+      : token.status === "revealed"
+        ? { kind: "word", label: token.display, status: "found", length: token.length, grade: 0 }
+        : { kind: "word", label: "", status: "hidden", length: token.length, grade: token.grade ?? 0 },
   );
+}
+
+function articleParagraphs(gameState: GameState | null): ArticleWord[][] {
+  return gameState?.article?.paragraphs.map((p) => toArticleWords(p.tokens)) ?? [];
+}
+
+function articleTitle(gameState: GameState | null): ArticleWord[] {
+  return toArticleWords(gameState?.article?.title.tokens ?? []);
 }
 
 export function GameBoard({
@@ -88,41 +129,58 @@ export function GameBoard({
 
   const [guess, setGuess] = useState("");
   const [attempts, setAttempts] = useState(() => buildInitialAttempts(players, you));
-  const [isSolved, setIsSolved] = useState(false);
   const [notice, setNotice] = useState("Find the word closest to the secret article.");
   const [bestScore, setBestScore] = useState(0);
 
   useEffect(() => {
-    if (!lastGuess || lastGuess.userId !== you?.id) return;
+    if (!lastGuess) return;
+    const mine = lastGuess.userId === you?.id;
     const timeout = setTimeout(() => {
+      if (!lastGuess.valid) {
+        if (mine) {
+          setNotice(REJECTION_MESSAGES[lastGuess.reason ?? ""] ?? "That guess was rejected.");
+        }
+        return;
+      }
+
+      const author = mine ? you : players.find((player) => player.id === lastGuess.userId);
+      const username = mine ? "You" : (author?.username ?? "Player");
       setAttempts((currentAttempts) => [
         {
-          username: "You",
-          avatarUrl: you?.avatarUrl ?? null,
+          username,
+          avatarUrl: author?.avatarUrl ?? null,
           word: lastGuess.guess,
           proximity: lastGuess.score,
-          color: "bg-lime-400",
+          color: mine ? "bg-lime-400" : "bg-violet-400",
         },
-        ...currentAttempts.filter((attempt) => attempt.word !== lastGuess.guess),
+        ...currentAttempts.filter((attempt) => attempt.username !== username),
       ]);
+
+      if (!mine) return;
       setBestScore((currentBest) => Math.max(currentBest, lastGuess.score));
       setGuess("");
-      setIsSolved(lastGuess.correct);
       setNotice(
         lastGuess.correct
           ? "Well done, you found the secret article!"
-          : "That guess was not the answer. Try again.",
+          : lastGuess.revealedCount > 0
+            ? `"${lastGuess.guess}" found: ${lastGuess.revealedCount} word${lastGuess.revealedCount > 1 ? "s" : ""} revealed (+${lastGuess.score}).`
+            : lastGuess.bestGrade > 0
+              ? `"${lastGuess.guess}" is not in the text, but it is close to some words.`
+              : `"${lastGuess.guess}" is not in the text and nothing is close.`,
       );
     }, 0);
 
     return () => clearTimeout(timeout);
-  }, [lastGuess, you?.avatarUrl, you?.id]);
+  }, [lastGuess, you, players]);
   const currentScore = gameState?.scores[user?.id ?? ""] ?? bestScore;
   const currentAttemptCount = gameState?.attempts[user?.id ?? ""] ?? 0;
   const paragraphs = articleParagraphs(gameState);
-  const discoveredCount = paragraphs
-    .flat()
-    .filter((word) => word.status === "found").length;
+  const titleWords = articleTitle(gameState);
+  const bodyWords = paragraphs.flat().filter((word) => word.kind === "word");
+  const discoveredCount = bodyWords.filter((word) => word.status === "found").length;
+  const isSolved = gameState?.status === "finished";
+  const titleText = titleWords.map((word) => word.label).join("");
+  const winner = players.find((player) => player.id === gameState?.winnerId);
   const [previousPlayers, setPreviousPlayers] = useState(players);
   if (players !== previousPlayers) {
     setPreviousPlayers(players);
@@ -192,7 +250,7 @@ export function GameBoard({
                 : "Game in progress"} · #{gameId}
           </div>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">The secret word</h1>
-          <p className="mt-1 text-sm text-zinc-500">One Wikipedia article, 12 visible clues, only one right answer.</p>
+          <p className="mt-1 text-sm text-zinc-500">One Wikipedia article, one board shared by every player, only one right answer.</p>
         </div>
         <div className="flex items-center gap-3 text-sm">
           <div className="rounded-lg border border-zinc-200 bg-white px-4 py-2">
@@ -220,12 +278,16 @@ export function GameBoard({
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Scrambled article</p>
                 <h2 className="mt-1 text-lg font-semibold text-zinc-950">Fill in the missing words</h2>
               </div>
-              <span className="rounded-full bg-lime-100 px-3 py-1 text-xs font-semibold text-lime-800">{discoveredCount}/12 found</span>
+              <span className="rounded-full bg-lime-100 px-3 py-1 text-xs font-semibold text-lime-800">{discoveredCount}/{bodyWords.length} found</span>
             </div>
             <div className="space-y-6 px-5 py-8 sm:px-10 sm:py-12">
               <div className="border-b border-zinc-100 pb-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Article excerpt</p>
-                <h3 className="mt-2 text-2xl font-semibold text-zinc-950">Encyclopedia article</h3>
+                {titleWords.length > 0 ? (
+                  <ArticleText paragraph={titleWords} className="mt-2 text-2xl font-semibold leading-10 text-zinc-950" />
+                ) : (
+                  <h3 className="mt-2 text-2xl font-semibold text-zinc-950">Encyclopedia article</h3>
+                )}
               </div>
               <div className="max-w-4xl space-y-5">
                 {paragraphs.length === 0 ? (
@@ -312,7 +374,9 @@ export function GameBoard({
                     <span className={`flex h-8 w-8 items-center justify-center rounded-full ${attempt.color} text-xs font-bold text-zinc-900`}>{attempt.username.charAt(0)}</span>
                   )}
                   <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-zinc-800">{attempt.username}</p><p className="truncate text-xs text-zinc-400">{attempt.word}</p></div>
-                  <span className="font-mono text-sm font-semibold text-zinc-700">{attempt.proximity}</span>
+                  <span className="font-mono text-sm font-semibold text-zinc-700">
+                    {gameState?.scores[(attempt.username === "You" ? you : players.find((player) => player.username === attempt.username))?.id ?? ""] ?? 0}
+                  </span>
                 </div>
               ))}
             </div>
@@ -321,7 +385,8 @@ export function GameBoard({
           {isSolved ? (
             <motion.div variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="rounded-2xl border border-lime-300 bg-lime-50 p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-lime-800">Article found</p>
-              <p className="mt-1 text-lg font-semibold text-lime-950">The Eiffel Tower</p>
+              <p className="mt-1 text-lg font-semibold text-lime-950">{titleText}</p>
+              {winner && <p className="mt-1 text-sm text-lime-900">Found by {winner.id === you?.id ? "you" : winner.username}</p>}
               <Link href={`/results/${gameId}`} className="mt-4 block rounded-lg bg-lime-400 px-4 py-2.5 text-center text-sm font-semibold text-violet-950 hover:bg-lime-300">View results</Link>
             </motion.div>
           ) : (

@@ -17,19 +17,37 @@ export type GameState = {
   };
   scores: Record<string, number>;
   attempts: Record<string, number>;
+  winnerId?: string;
 };
 
 export type ArticleToken =
-  | { type: "word"; status: "hidden"; length: number }
+  // grade: 1..4 when a hidden word is semantically close to a past guess
+  | { type: "word"; status: "hidden"; length: number; grade?: number }
   | { type: "word"; status: "revealed"; length: number; display: string }
   | { type: "separator"; display: string };
+
+export type GuessRejection =
+  | "EMPTY"
+  | "TOO_LONG"
+  | "SINGLE_WORD_ONLY"
+  | "NOT_A_WORD"
+  | "ALREADY_GUESSED"
+  | "GAME_FINISHED"
+  | "TOO_FAST";
 
 export type GuessResult = {
   gameId: string;
   userId: string;
   guess: string;
+  valid: boolean;
+  reason?: GuessRejection;
+  /** points earned by this guess */
   score: number;
+  /** true when this guess completed the title */
   correct: boolean;
+  revealedCount: number;
+  /** 0 = nothing close, 1..4 = how close the closest hidden word is */
+  bestGrade: number;
 };
 
 export function connectToGame(

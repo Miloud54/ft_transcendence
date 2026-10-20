@@ -12,21 +12,44 @@ import { GameResult, GameStatus, RoomStatus } from 'generated/prisma';
 import { UserService } from 'src/user/user.service';
 import { PresenceGateway } from 'src/user/presence.gateway';
 
+/** Points for a guess that uncovers at least one new word. */
+export const SCORE_PER_WORD = 30;
+/** Bonus for the player whose guess completes the title (and wins). */
+export const SCORE_TITLE = 500;
+const MIN_GUESS_INTERVAL_MS = 300;
+/** In-memory game data is kept this long after the end (results screen). */
+const RELEASE_DELAY_MS = 30 * 60_000;
+
 export type GameState = {
   gameId: string;
   status: string;
   countdownRemaining: number;
-  article?: ReturnType<PedantixEngineService['getInitialArticleView']>;
+  /** Shared board: same view for every player of the game. */
+  article?: ReturnType<PedantixEngineService['getArticleView']>;
   scores: Record<string, number>;
   attempts: Record<string, number>;
+  winnerId?: string;
 };
+
+export type GuessRejection = Extract<
+  NonNullable<ReturnType<PedantixEngineService['applyGuess']>>,
+  { valid: false }
+>['reason'];
 
 export type GuessResult = {
   gameId: string;
   userId: string;
   guess: string;
+  valid: boolean;
+  reason?: GuessRejection | 'TOO_FAST';
+  /** points earned by this guess */
   score: number;
+  /** true when this guess completed the title */
   correct: boolean;
+  /** tokens newly revealed by this guess */
+  revealedCount: number;
+  /** best proximity grade this guess produced (0..4) */
+  bestGrade: number;
 };
 
 @Injectable()
@@ -36,6 +59,8 @@ export class GameService {
   private readonly countdownEnds = new Map<string, number>();
   private readonly scores = new Map<string, Map<string, number>>();
   private readonly attempts = new Map<string, Map<string, number>>();
+  private readonly winners = new Map<string, string>();
+  private readonly lastGuessAt = new Map<string, number>();
   private readonly stateListeners = new Set<
     (gameId: string, state: GameState) => void
   >();
@@ -66,10 +91,13 @@ export class GameService {
         : 0,
       article:
         game.status === GameStatus.RUNNING
-          ? this.pedantixEngine.getInitialArticleView(gameId)
-          : undefined,
+          ? this.pedantixEngine.getArticleView(gameId)
+          : game.status === GameStatus.FINISHED
+            ? this.pedantixEngine.getRevealedArticleView(gameId)
+            : undefined,
       scores: Object.fromEntries(this.scores.get(gameId) ?? []),
       attempts: Object.fromEntries(this.attempts.get(gameId) ?? []),
+      winnerId: this.winners.get(gameId),
     };
   }
 
@@ -96,25 +124,27 @@ export class GameService {
     if (game.status !== GameStatus.RUNNING) {
       throw new ConflictException('Game is not running');
     }
-
-    const guess = rawGuess.trim().toLowerCase();
-    if (guess.length < 1 || guess.length > 100) {
-      throw new ConflictException(
-        'Guess must contain between 1 and 100 characters',
-      );
-    }
-
-    const tokenizedArticle = this.pedantixEngine.getTokenizedArticle(gameId);
-    if (!tokenizedArticle) {
+    if (!this.pedantixEngine.isGamePrepared(gameId)) {
       throw new ConflictException('Game data is not ready');
     }
 
-    const title = tokenizedArticle.title.tokens
-      .filter((token) => token.type === 'word')
-      .map((token) => token.text.toLowerCase())
-      .join(' ');
-    const correct = title === guess;
-    const score = correct ? 1000 : 0;
+    const throttleKey = `${gameId}:${userId}`;
+    const now = Date.now();
+    if (now - (this.lastGuessAt.get(throttleKey) ?? 0) < MIN_GUESS_INTERVAL_MS) {
+      return this.rejected(gameId, userId, rawGuess, 'TOO_FAST');
+    }
+    this.lastGuessAt.set(throttleKey, now);
+
+    // Synchronous and atomic: validation, reveal, proximity, title detection.
+    const outcome = this.pedantixEngine.applyGuess(gameId, rawGuess);
+    if (!outcome) throw new ConflictException('Game data is not ready');
+    if (!outcome.valid) {
+      return this.rejected(gameId, userId, rawGuess, outcome.reason);
+    }
+
+    const score =
+      (outcome.revealedCount > 0 ? SCORE_PER_WORD : 0) +
+      (outcome.titleFound ? SCORE_TITLE : 0);
 
     const gameScores = this.scores.get(gameId) ?? new Map<string, number>();
     const gameAttempts = this.attempts.get(gameId) ?? new Map<string, number>();
@@ -123,9 +153,42 @@ export class GameService {
     this.scores.set(gameId, gameScores);
     this.attempts.set(gameId, gameAttempts);
 
-    const result = { gameId, userId, guess, score, correct };
-    await this.emitState(gameId);
+    const result: GuessResult = {
+      gameId,
+      userId,
+      guess: outcome.normalized,
+      valid: true,
+      score,
+      correct: outcome.titleFound,
+      revealedCount: outcome.revealedCount,
+      bestGrade: outcome.bestGrade,
+    };
+
+    if (outcome.titleFound) {
+      await this.finishGame(gameId, userId);
+    } else {
+      await this.emitState(gameId);
+    }
     return result;
+  }
+
+  private rejected(
+    gameId: string,
+    userId: string,
+    rawGuess: string,
+    reason: NonNullable<GuessResult['reason']>,
+  ): GuessResult {
+    return {
+      gameId,
+      userId,
+      guess: rawGuess.trim().slice(0, 100),
+      valid: false,
+      reason,
+      score: 0,
+      correct: false,
+      revealedCount: 0,
+      bestGrade: 0,
+    };
   }
 
   private async emitState(gameId: string) {
@@ -160,6 +223,7 @@ export class GameService {
         },
         data: {
           status: GameStatus.RUNNING,
+          started_at: new Date(),
         },
       });
 
@@ -246,7 +310,7 @@ export class GameService {
     }, 1_000);
   }
 
-  async finishGame(gameId: string): Promise<void> {
+  async finishGame(gameId: string, winnerId?: string): Promise<void> {
     const game = await this.prisma.game.findUnique({
       where: {
         game_id: BigInt(gameId),
@@ -261,6 +325,25 @@ export class GameService {
       throw new ConflictException('Game is not RUNNING');
     }
 
+    const gamePlayers = await this.prisma.gamePlayer.findMany({
+      where: { game_id: game.game_id },
+    });
+    const scores = this.scores.get(gameId) ?? new Map<string, number>();
+    const attempts = this.attempts.get(gameId) ?? new Map<string, number>();
+    const winner = winnerId ?? this.topScorer(scores);
+
+    // The winner is rank 1, then score (desc), then fewer attempts.
+    const ranked = [...gamePlayers].sort((a, b) => {
+      const idA = a.user_id.toString();
+      const idB = b.user_id.toString();
+      if ((idA === winner) !== (idB === winner)) return idA === winner ? -1 : 1;
+      const byScore = (scores.get(idB) ?? 0) - (scores.get(idA) ?? 0);
+      if (byScore !== 0) return byScore;
+      return (attempts.get(idA) ?? 0) - (attempts.get(idB) ?? 0);
+    });
+
+    if (winner) this.winners.set(gameId, winner);
+
     const finished = await this.prisma.$transaction(async (transaction) => {
       const updatedGame = await transaction.game.updateMany({
         where: {
@@ -269,11 +352,30 @@ export class GameService {
         },
         data: {
           status: GameStatus.FINISHED,
+          ended_at: new Date(),
+          article_title: this.pedantixEngine.getArticleTitle(gameId),
         },
       });
 
       if (updatedGame.count === 0) {
         return false;
+      }
+
+      for (const [position, player] of ranked.entries()) {
+        const id = player.user_id.toString();
+        await transaction.gamePlayer.update({
+          where: {
+            game_id_user_id: {
+              game_id: player.game_id,
+              user_id: player.user_id,
+            },
+          },
+          data: {
+            result: id === winner ? GameResult.WIN : GameResult.LOSS,
+            score: scores.get(id) ?? 0,
+            rank: position + 1,
+          },
+        });
       }
 
       await transaction.room.update({
@@ -304,6 +406,31 @@ export class GameService {
         this.presenceGateway.broadcastPresence(userId, 'ONLINE');
       }),
     );
+
+    // Keep the revealed article available for the results screen, then free it.
+    setTimeout(() => this.releaseGame(gameId), RELEASE_DELAY_MS).unref();
+  }
+
+  private topScorer(scores: Map<string, number>): string | undefined {
+    let best: string | undefined;
+    let bestScore = 0;
+    for (const [userId, score] of scores) {
+      if (score > bestScore) {
+        best = userId;
+        bestScore = score;
+      }
+    }
+    return best;
+  }
+
+  private releaseGame(gameId: string) {
+    this.pedantixEngine.releaseGame(gameId);
+    this.scores.delete(gameId);
+    this.attempts.delete(gameId);
+    this.winners.delete(gameId);
+    for (const key of this.lastGuessAt.keys()) {
+      if (key.startsWith(`${gameId}:`)) this.lastGuessAt.delete(key);
+    }
   }
 
   async getLeaderboard(limit = 20) {
