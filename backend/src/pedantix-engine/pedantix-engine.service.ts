@@ -15,6 +15,7 @@ import {
 } from './matching/article-index';
 import { GuessEngineService } from './guess/guess-engine.service';
 import { GuessOutcome } from './guess/guess.types';
+import { writeCheatFile } from './cheat/cheat-file';
 
 interface PreparedGame {
   article: Article;
@@ -121,5 +122,8 @@ export class PedantixEngineService {
       index,
       board: createBoard(),
     });
+
+    // Debug only (PEDANTIX_CHEAT=true): dump the secret article to backend/cheat/.
+    void writeCheatFile(gameId, article);
   }
 }
