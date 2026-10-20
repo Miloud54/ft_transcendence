@@ -27,10 +27,15 @@ export function LeaderboardContent() {
   const [sortBy, setSortBy] = useState<SortBy>("wins");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [previousSortBy, setPreviousSortBy] = useState(sortBy);
+
+  if (sortBy !== previousSortBy) {
+    setPreviousSortBy(sortBy);
+    setIsLoading(true);
+  }
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
-    setIsLoading(true);
 
     fetch(`${API_URL}/game/leaderboard?sortBy=${sortBy}`, {
       headers: { Authorization: `Bearer ${token}` },
