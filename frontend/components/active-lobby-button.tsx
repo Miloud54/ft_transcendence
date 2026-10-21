@@ -18,7 +18,6 @@ export function ActiveLobbyButton() {
 
   useEffect(() => {
     if (!userId || onLobbyPage || onGamePage || isInGame) {
-      setActiveRoomId(null);
       return;
     }
 
