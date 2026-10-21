@@ -104,6 +104,17 @@ describe('GuessEngineService', () => {
     expect(engine.run(index, board, 'Tower')).toMatchObject({ reason: 'ALREADY_GUESSED' });
   });
 
+  it('accepts numbers: reveals them when in the text, otherwise just no match', () => {
+    const custom = new TokenizerService().tokenize({
+      id: 3, url: '', title: 'Tower', paragraphs: ['Built in 1889, it is tall.'],
+    });
+    const idx = new ArticleIndexService(lemmatizer, vectors).build(custom);
+    const b = createBoard();
+    expect(engine.run(idx, b, '1889')).toMatchObject({ valid: true, revealedCount: 1, bestGrade: 0 });
+    expect(engine.run(idx, b, '1900')).toMatchObject({ valid: true, revealedCount: 0, bestGrade: 0 });
+    expect(engine.run(idx, b, '1900')).toMatchObject({ reason: 'ALREADY_GUESSED' });
+  });
+
   it('accepts proper nouns that only exist in the article', () => {
     const custom = new TokenizerService().tokenize({
       id: 2, url: '', title: 'Zorblax', paragraphs: ['Zorblax rules the iron tower.'],
@@ -178,6 +189,6 @@ describe('GuessEngineService', () => {
     const idx = new ArticleIndexService(lemmatizer, noVectors).build(tokenized);
     const b = createBoard();
     expect(noProx.run(idx, b, 'tower')).toMatchObject({ valid: true, bestGrade: 0 });
-    expect(noProx.run(idx, b, '123')).toMatchObject({ reason: 'NOT_A_WORD' });
+    expect(noProx.run(idx, b, 'qqq1')).toMatchObject({ reason: 'NOT_A_WORD' });
   });
 });
