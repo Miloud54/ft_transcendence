@@ -61,6 +61,7 @@ export class GameService {
   private readonly attempts = new Map<string, Map<string, number>>();
   private readonly winners = new Map<string, string>();
   private readonly lastGuessAt = new Map<string, number>();
+  private readonly leftPlayers = new Map<string, Set<string>>();
   private readonly stateListeners = new Set<
     (gameId: string, state: GameState) => void
   >();
@@ -172,6 +173,33 @@ export class GameService {
     return result;
   }
 
+  async leaveGame(gameId: string, userId: string): Promise<void> {
+    await this.assertPlayer(gameId, userId);
+
+    const game = await this.prisma.game.findUnique({
+      where: { game_id: BigInt(gameId) },
+    });
+    if (!game) throw new NotFoundException('Game not found');
+    if (game.status !== GameStatus.RUNNING) {
+      return;
+    }
+
+    const left = this.leftPlayers.get(gameId) ?? new Set<string>();
+    left.add(userId);
+    this.leftPlayers.set(gameId, left);
+
+    await this.prisma.gamePlayer.update({
+      where: {
+        game_id_user_id: { game_id: game.game_id, user_id: BigInt(userId) },
+      },
+      data: { result: GameResult.LOSS },
+    });
+
+    await this.userService.setPresence(userId, 'ONLINE');
+    this.presenceGateway.broadcastPresence(userId, 'ONLINE');
+    await this.emitState(gameId);
+  }
+
   private rejected(
     gameId: string,
     userId: string,
@@ -189,6 +217,10 @@ export class GameService {
       revealedCount: 0,
       bestGrade: 0,
     };
+  }
+
+  hasLeft(gameId: string, userId: string): boolean {
+    return this.leftPlayers.get(gameId)?.has(userId) ?? false;
   }
 
   private async emitState(gameId: string) {
@@ -330,12 +362,16 @@ export class GameService {
     });
     const scores = this.scores.get(gameId) ?? new Map<string, number>();
     const attempts = this.attempts.get(gameId) ?? new Map<string, number>();
-    const winner = winnerId ?? this.topScorer(scores);
+    const leftPlayers = this.leftPlayers.get(gameId) ?? new Set<string>();
+    const winner = winnerId ?? this.topScorer(scores, leftPlayers);
 
-    // The winner is rank 1, then score (desc), then fewer attempts.
+    // Players who left rank last. Otherwise: winner, then score (desc), then fewer attempts.
     const ranked = [...gamePlayers].sort((a, b) => {
       const idA = a.user_id.toString();
       const idB = b.user_id.toString();
+      const leftA = leftPlayers.has(idA);
+      const leftB = leftPlayers.has(idB);
+      if (leftA !== leftB) return leftA ? 1 : -1;
       if ((idA === winner) !== (idB === winner)) return idA === winner ? -1 : 1;
       const byScore = (scores.get(idB) ?? 0) - (scores.get(idA) ?? 0);
       if (byScore !== 0) return byScore;
@@ -411,10 +447,14 @@ export class GameService {
     setTimeout(() => this.releaseGame(gameId), RELEASE_DELAY_MS).unref();
   }
 
-  private topScorer(scores: Map<string, number>): string | undefined {
+  private topScorer(
+    scores: Map<string, number>,
+    exclude: Set<string>,
+  ): string | undefined {
     let best: string | undefined;
     let bestScore = 0;
     for (const [userId, score] of scores) {
+      if (exclude.has(userId)) continue;
       if (score > bestScore) {
         best = userId;
         bestScore = score;
@@ -428,6 +468,7 @@ export class GameService {
     this.scores.delete(gameId);
     this.attempts.delete(gameId);
     this.winners.delete(gameId);
+    this.leftPlayers.delete(gameId);
     for (const key of this.lastGuessAt.keys()) {
       if (key.startsWith(`${gameId}:`)) this.lastGuessAt.delete(key);
     }
