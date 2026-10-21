@@ -119,6 +119,22 @@ export class RoomController {
     return room;
   }
 
+  @Delete(':roomId')
+  @UseGuards(JwtAuthGuard)
+  async cancel(
+    @Param('roomId') roomId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const result = await this.roomService.cancelRoom(
+      roomId,
+      request.user.userId,
+    );
+    for (const playerId of result.otherPlayerIds) {
+      this.presenceGateway.notifyUser(playerId, 'room:removed', { roomId });
+    }
+    return result;
+  }
+
   @Post(':roomId/invite/:friendId')
   @UseGuards(JwtAuthGuard)
   async inviteFriend(

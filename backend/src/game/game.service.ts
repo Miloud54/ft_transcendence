@@ -419,7 +419,8 @@ export class GameService {
           room_id: game.room_id,
         },
         data: {
-          status: RoomStatus.OPEN,
+          status: RoomStatus.CLOSED,
+          closed_at: new Date(),
         },
       });
 

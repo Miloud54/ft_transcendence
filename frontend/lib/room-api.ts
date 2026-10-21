@@ -81,6 +81,13 @@ export function removePlayerFromRoom(roomId: string, playerId: string) {
   );
 }
 
+export function cancelRoom(roomId: string) {
+  return roomRequest<{ roomId: string; canceled: boolean }>(
+    `/rooms/${encodeURIComponent(roomId)}`,
+    { method: "DELETE" },
+  );
+}
+
 export type OpenRoom = {
   id: string;
   hostUsername: string;
