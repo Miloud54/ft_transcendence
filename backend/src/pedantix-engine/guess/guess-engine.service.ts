@@ -80,7 +80,7 @@ export class GuessEngineService {
     return { valid: true, normalized, revealedCount, bestGrade, titleFound };
   }
 
-  /** A guess is a word if the article contains it or the dictionary knows it. */
+  /** A guess is valid if the article contains it, the dictionary knows it, or it is a number. */
   private isValidWord(
     index: ArticleIndex,
     normalized: string,
@@ -89,6 +89,8 @@ export class GuessEngineService {
     if (!WORD_PATTERN.test(normalized)) return false;
     if (index.normalizedForms.has(normalized)) return true;
     if (lemmas.some((lemma) => index.byLemma.has(lemma))) return true;
+    // Numbers (years, quantities) are fair guesses even when absent from the text.
+    if (/^\d{1,12}$/.test(normalized)) return true;
     if (this.vectors.isReady) {
       return lemmas.some((lemma) => this.vectors.has(lemma));
     }
