@@ -256,15 +256,18 @@ export function GameBoard({
     });
   }
 
-  function handleLeaveGame() {
+  async function handleLeaveGame() {
     if (!window.confirm("Leave this game? You will be marked as having lost.")) {
       return;
     }
-    if (socket) {
-      socket.emit("game:leave", { gameId }, () => {
-        window.location.href = "/home";
+    socket?.emit("game:leave", { gameId });
+    try {
+      const token = localStorage.getItem("accessToken");
+      await fetch(`/api/game/${gameId}/leave`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
       });
-    } else {
+    } finally {
       window.location.href = "/home";
     }
   }
