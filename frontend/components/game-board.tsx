@@ -333,7 +333,7 @@ export function GameBoard({
           <button
             type="button"
             onClick={handleLeaveGame}
-            className="rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-500 hover:border-[#d03b3b] hover:text-[#d03b3b]"
+            className="rounded-lg bg-[#d03b3b] px-3 py-2 text-xs font-semibold text-white hover:bg-[#b83232]"
           >
             Leave game
           </button>
