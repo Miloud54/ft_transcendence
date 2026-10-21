@@ -51,6 +51,13 @@ export async function createRoom(minPlayers: number, maxPlayers: number) {
   });
 }
 
+export function createRematchRoom(minPlayers: number, maxPlayers: number, playerIds: string[]) {
+  return roomRequest<Room>("/rooms/rematch", {
+    method: "POST",
+    body: JSON.stringify({ minPlayers, maxPlayers, playerIds }),
+  });
+}
+
 export function getRoom(roomId: string) {
   return roomRequest<Room>(`/rooms/${encodeURIComponent(roomId)}`);
 }
@@ -59,6 +66,19 @@ export function joinRoom(roomId: string) {
   return roomRequest<Room>(`/rooms/${encodeURIComponent(roomId)}/join`, {
     method: "POST",
   });
+}
+
+export function leaveRoom(roomId: string) {
+  return roomRequest<Room>(`/rooms/${encodeURIComponent(roomId)}/leave`, {
+    method: "POST",
+  });
+}
+
+export function removePlayerFromRoom(roomId: string, playerId: string) {
+  return roomRequest<Room>(
+    `/rooms/${encodeURIComponent(roomId)}/players/${encodeURIComponent(playerId)}`,
+    { method: "DELETE" },
+  );
 }
 
 export type OpenRoom = {

@@ -10,10 +10,12 @@ import {
   getFriendRequests,
   getFriends,
   inviteFriendToRoom,
+  leaveRoom,
+  removePlayerFromRoom,
   startRoom,
   type Friend,
   type FriendRequest,
-  type Room,
+  type Room, 
 } from "@/lib/room-api";
 import { useCurrentUser } from "@/lib/current-user-context";
 
@@ -37,15 +39,48 @@ export default function LobbyPage({
   const [isStarting, setIsStarting] = useState(false);
   const [invitingFriendId, setInvitingFriendId] = useState<string | null>(null);
   const [invitedFriendIds, setInvitedFriendIds] = useState<Set<string>>(new Set());
+  const [prevRoomPlayerIds, setPrevRoomPlayerIds] = useState<Set<string> | null>(null);
   const [addingFriendId, setAddingFriendId] = useState<string | null>(null);
   const [sentFriendRequestIds, setSentFriendRequestIds] = useState<Set<string>>(new Set());
   const [codeCopied, setCodeCopied] = useState(false);
+  const [isLeavingLobby, setIsLeavingLobby] = useState(false);
+  const [removingPlayerId, setRemovingPlayerId] = useState<string | null>(null);
 
   async function handleCopyCode() {
     if (!room) return;
     await navigator.clipboard.writeText(room.code);
     setCodeCopied(true);
     setTimeout(() => setCodeCopied(false), 2000);
+  }
+
+  async function handleLeaveLobby() {
+    setError(null);
+    setIsLeavingLobby(true);
+    try {
+      await leaveRoom(id);
+      router.push("/home");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Could not leave the lobby");
+      setIsLeavingLobby(false);
+    }
+  }
+
+  async function handleRemovePlayer(player: Room["players"][number]) {
+    if (!window.confirm(`Remove ${player.username} from this lobby?`)) return;
+    setError(null);
+    setRemovingPlayerId(player.id);
+    try {
+      await removePlayerFromRoom(id, player.id);
+      setInvitedFriendIds((current) => {
+        const next = new Set(current);
+        next.delete(player.id);
+        return next;
+      });
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Could not remove player");
+    } finally {
+      setRemovingPlayerId(null);
+    }
   }
 
   useEffect(() => {
@@ -86,6 +121,55 @@ export default function LobbyPage({
       window.removeEventListener("presence:update", handlePresenceUpdate);
     };
   }, []);
+
+  useEffect(() => {
+    const onRemoved = (event: Event) => {
+      const { roomId } = (event as CustomEvent<{ roomId: string }>).detail;
+      if (roomId === id) {
+        router.push("/home?removed=lobby");
+      }
+    };
+    window.addEventListener("room:removed", onRemoved);
+    return () => window.removeEventListener("room:removed", onRemoved);
+  }, [id, router]);
+
+  useEffect(() => {
+    const onInvitationDeclined = (event: Event) => {
+      const { roomId, friendId } = (event as CustomEvent<{ roomId: string; friendId: string }>).detail;
+      if (roomId !== id) return;
+      setInvitedFriendIds((current) => {
+        if (!current.has(friendId)) return current;
+        const next = new Set(current);
+        next.delete(friendId);
+        return next;
+      });
+    };
+    window.addEventListener("room-invitation:declined", onInvitationDeclined);
+    return () => window.removeEventListener("room-invitation:declined", onInvitationDeclined);
+  }, [id]);
+
+  if (room) {
+    const currentPlayerIds = new Set(room.players.map((player) => player.id));
+    const samePlayerIds =
+      prevRoomPlayerIds !== null &&
+      prevRoomPlayerIds.size === currentPlayerIds.size &&
+      [...currentPlayerIds].every((playerId) => prevRoomPlayerIds.has(playerId));
+
+    if (!samePlayerIds) {
+      setPrevRoomPlayerIds(currentPlayerIds);
+      setInvitedFriendIds((current) => {
+        let changed = false;
+        const next = new Set(current);
+        for (const playerId of current) {
+          if (currentPlayerIds.has(playerId)) {
+            next.delete(playerId);
+            changed = true;
+          }
+        }
+        return changed ? next : current;
+      });
+    }
+  }
 
   useEffect(() => {
   const socket = connectToRoom(id, (nextRoom) => {
@@ -199,7 +283,7 @@ export default function LobbyPage({
               key={player.id}
               variants={fadeUp}
               whileHover={{ y: -4 }}
-              className="flex flex-col items-center gap-2 rounded-xl border border-zinc-200 bg-white p-6"
+              className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white p-6"
             >
               <Link href={`/dashboard?user=${encodeURIComponent(player.id)}`} className="flex flex-col items-center gap-2 hover:underline">
                 <img src={player.avatarUrl} alt={player.username} className="h-12 w-12 rounded-full bg-violet-100 object-cover" />
@@ -226,6 +310,16 @@ export default function LobbyPage({
                       : addingFriendId === player.id
                         ? "Adding..."
                         : "Add friend"}
+                </button>
+              )}
+              {isHost && player.id !== room.hostId && (
+                <button
+                  type="button"
+                  disabled={removingPlayerId === player.id}
+                  onClick={() => void handleRemovePlayer(player)}
+                  className="mt-1 rounded-md border border-[#d03b3b] px-2 py-0.5 text-[10px] font-semibold text-[#d03b3b] transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {removingPlayerId === player.id ? "Removing..." : "Remove"}
                 </button>
               )}
             </motion.div>
@@ -306,7 +400,7 @@ export default function LobbyPage({
         </motion.section>
       )}
 
-      <motion.div variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }}>
+      <motion.div variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="flex flex-col gap-3 sm:flex-row">
         <button
           type="button"
           onClick={handleStart}
@@ -319,6 +413,16 @@ export default function LobbyPage({
         >
           {isStarting ? "Starting..." : "Start game"}
         </button>
+        {!isHost && (
+          <button
+            type="button"
+            onClick={() => void handleLeaveLobby()}
+            disabled={isLeavingLobby}
+            className="w-full rounded-md border border-zinc-300 py-3 text-sm font-semibold text-zinc-600 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-8"
+          >
+            {isLeavingLobby ? "Leaving..." : "Leave lobby"}
+          </button>
+        )}
       </motion.div>
     </motion.div>
   );

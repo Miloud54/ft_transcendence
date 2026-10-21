@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   acceptFriendRequest,
   acceptRoomInvitation,
@@ -13,11 +14,9 @@ import {
   type RoomInvitation,
 } from "@/lib/room-api";
 
-type NotificationItem = {
-  id: string;
-  kind: "friend" | "room";
-  label: string;
-  detail: FriendRequest | RoomInvitation;
+type RematchNotice = {
+  roomId: string;
+  code: string;
 };
 
 export function NotificationCenter() {
@@ -25,6 +24,7 @@ export function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [roomInvitations, setRoomInvitations] = useState<RoomInvitation[]>([]);
+  const [rematchNotices, setRematchNotices] = useState<RematchNotice[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const resolvedFriendRequestIds = useRef(new Set<string>());
 
@@ -58,18 +58,28 @@ export function NotificationCenter() {
       resolvedFriendRequestIds.current.add(id);
       setFriendRequests((current) => current.filter((request) => request.id !== id));
     };
+    const onRematchCreated = (event: Event) => {
+      const room = (event as CustomEvent<{ id: string; code: string }>).detail;
+      setRematchNotices((current) =>
+        current.some((item) => item.roomId === room.id)
+          ? current
+          : [{ roomId: room.id, code: room.code }, ...current],
+      );
+    };
 
     window.addEventListener("friend-request:received", onFriendRequest);
     window.addEventListener("room-invitation:received", onRoomInvitation);
     window.addEventListener("friend-request:resolved", onFriendRequestResolved);
+    window.addEventListener("rematch:created", onRematchCreated);
     return () => {
       window.removeEventListener("friend-request:received", onFriendRequest);
       window.removeEventListener("room-invitation:received", onRoomInvitation);
       window.removeEventListener("friend-request:resolved", onFriendRequestResolved);
+      window.removeEventListener("rematch:created", onRematchCreated);
     };
   }, []);
 
-  const count = friendRequests.length + roomInvitations.length;
+  const count = friendRequests.length + roomInvitations.length + rematchNotices.length;
 
   async function respondToFriend(request: FriendRequest, action: "accept" | "decline") {
     setBusyId(request.id);
@@ -83,7 +93,7 @@ export function NotificationCenter() {
       resolvedFriendRequestIds.current.add(request.id);
       setFriendRequests((current) => {
         const next = current.filter((item) => item.id !== request.id);
-        if (next.length === 0 && roomInvitations.length === 0) {
+        if (next.length === 0 && roomInvitations.length === 0 && rematchNotices.length === 0) {
           setIsOpen(false);
         }
         return next;
@@ -100,7 +110,7 @@ export function NotificationCenter() {
         await acceptRoomInvitation(invitation.roomId);
         setRoomInvitations((current) => {
           const next = current.filter((item) => item.roomId !== invitation.roomId);
-          if (next.length === 0 && friendRequests.length === 0) {
+          if (next.length === 0 && friendRequests.length === 0 && rematchNotices.length === 0) {
             setIsOpen(false);
           }
           return next;
@@ -110,7 +120,7 @@ export function NotificationCenter() {
         await declineRoomInvitation(invitation.roomId);
         setRoomInvitations((current) => {
           const next = current.filter((item) => item.roomId !== invitation.roomId);
-          if (next.length === 0 && friendRequests.length === 0) {
+          if (next.length === 0 && friendRequests.length === 0 && rematchNotices.length === 0) {
             setIsOpen(false);
           }
           return next;
@@ -119,6 +129,16 @@ export function NotificationCenter() {
     } finally {
       setBusyId(null);
     }
+  }
+
+  function dismissRematch(roomId: string) {
+    setRematchNotices((current) => {
+      const next = current.filter((item) => item.roomId !== roomId);
+      if (next.length === 0 && friendRequests.length === 0 && roomInvitations.length === 0) {
+        setIsOpen(false);
+      }
+      return next;
+    });
   }
 
   return (
@@ -143,6 +163,27 @@ export function NotificationCenter() {
             <p className="px-2 py-5 text-sm text-zinc-500">No new notifications.</p>
           ) : (
             <div className="mt-2 space-y-2">
+              {rematchNotices.map((notice) => (
+                <div key={`rematch-${notice.roomId}`} className="rounded-lg bg-violet-50 p-3">
+                  <p className="text-sm">A rematch lobby was created for you.</p>
+                  <div className="mt-2 flex gap-2">
+                    <Link
+                      href={`/lobby/${notice.roomId}`}
+                      onClick={() => dismissRematch(notice.roomId)}
+                      className="rounded-md bg-lime-400 px-2 py-1 text-xs font-semibold text-violet-950"
+                    >
+                      Join lobby
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => dismissRematch(notice.roomId)}
+                      className="rounded-md border border-violet-200 px-2 py-1 text-xs font-semibold text-violet-700"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              ))}
               {friendRequests.map((request) => (
                 <div key={`friend-${request.id}`} className="rounded-lg bg-violet-50 p-3">
                   <p className="text-sm">{request.username} wants to be your friend.</p>

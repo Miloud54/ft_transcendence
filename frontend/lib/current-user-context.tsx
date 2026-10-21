@@ -69,6 +69,15 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
       presenceSocket.on("room-invitation:received", (invitation: unknown) => {
         window.dispatchEvent(new CustomEvent("room-invitation:received", { detail: invitation }));
       });
+      presenceSocket.on("rematch:created", (room: unknown) => {
+        window.dispatchEvent(new CustomEvent("rematch:created", { detail: room }));
+      });
+      presenceSocket.on("room:removed", (payload: unknown) => {
+        window.dispatchEvent(new CustomEvent("room:removed", { detail: payload }));
+      });
+      presenceSocket.on("room-invitation:declined", (payload: unknown) => {
+        window.dispatchEvent(new CustomEvent("room-invitation:declined", { detail: payload }));
+      });
 
       const updatePresence = () =>
         fetch(`${API_URL}/users/me/presence`, {
