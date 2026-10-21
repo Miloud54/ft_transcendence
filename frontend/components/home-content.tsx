@@ -19,12 +19,22 @@ export function HomeContent() {
   const [openRooms, setOpenRooms] = useState<OpenRoom[]>([]);
   const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [removedMessage, setRemovedMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && !user) {
       router.replace("/");
     }
   }, [isLoading, user, router]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("removed") === "lobby") {
+      setRemovedMessage("You were removed from that lobby by its host.");
+      window.history.replaceState(null, "", "/home");
+    }
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -60,6 +70,23 @@ export function HomeContent() {
         <h1 className="text-2xl font-semibold text-zinc-950">Home</h1>
         <p className="text-sm text-zinc-500">Create a game or join one to get started.</p>
       </motion.div>
+
+      {removedMessage && (
+        <motion.div
+          variants={fadeUp}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="flex items-center justify-between rounded-lg border border-[#d03b3b] bg-[#fdecec] px-4 py-3 text-sm font-medium text-[#d03b3b]"
+        >
+          <span>{removedMessage}</span>
+          <button
+            type="button"
+            onClick={() => setRemovedMessage(null)}
+            className="ml-3 text-xs font-semibold text-[#d03b3b] hover:opacity-70"
+          >
+            Dismiss
+          </button>
+        </motion.div>
+      )}
 
       <motion.section
         variants={fadeUp}

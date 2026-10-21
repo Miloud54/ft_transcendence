@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Post,
   UseGuards,
@@ -14,6 +15,7 @@ import type { Request } from 'express';
 import { RoomGateway } from './room.gateway';
 import { PresenceGateway } from '../user/presence.gateway';
 import { JoinByCodeDto } from './dto/join-by-code.dto';
+import { CreateRematchDto } from './dto/create-rematch.dto';
 
 type AuthenticatedRequest = Request & {
   user: {
@@ -54,6 +56,18 @@ export class RoomController {
     return this.roomService.create(request.user.userId, dto);
   }
 
+  @Post('rematch')
+  @UseGuards(JwtAuthGuard)
+  async createRematch(@Req() request: AuthenticatedRequest, @Body() dto: CreateRematchDto) {
+    const room = await this.roomService.createRematch(request.user.userId, dto);
+    for (const player of room.players) {
+      if (player.id !== request.user.userId) {
+        this.presenceGateway.notifyUser(player.id, 'rematch:created', room);
+      }
+    }
+    return room;
+  }
+
   @Post('join-by-code')
   @UseGuards(JwtAuthGuard)
   async joinByCode(
@@ -75,6 +89,31 @@ export class RoomController {
     @Req() request: AuthenticatedRequest,
   ) {
     const room = await this.roomService.join(roomId, request.user.userId);
+    this.roomGateway.emitRoomState(roomId, room);
+
+    return room;
+  }
+
+  @Delete(':roomId/players/:playerId')
+  @UseGuards(JwtAuthGuard)
+  async removePlayer(
+    @Param('roomId') roomId: string,
+    @Param('playerId') playerId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const room = await this.roomService.removePlayer(roomId, request.user.userId, playerId);
+    this.roomGateway.emitRoomState(roomId, room);
+    this.presenceGateway.notifyUser(playerId, 'room:removed', { roomId });
+    return room;
+  }
+
+  @Post(':roomId/leave')
+  @UseGuards(JwtAuthGuard)
+  async leave(
+    @Param('roomId') roomId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const room = await this.roomService.leave(roomId, request.user.userId);
     this.roomGateway.emitRoomState(roomId, room);
 
     return room;
@@ -116,11 +155,19 @@ export class RoomController {
 
   @Post(':roomId/invitation/decline')
   @UseGuards(JwtAuthGuard)
-  declineInvitation(
+  async declineInvitation(
     @Param('roomId') roomId: string,
     @Req() request: AuthenticatedRequest,
   ) {
-    return this.roomService.declineInvitation(roomId, request.user.userId);
+    const result = await this.roomService.declineInvitation(
+      roomId,
+      request.user.userId,
+    );
+    this.presenceGateway.notifyUser(result.hostId, 'room-invitation:declined', {
+      roomId,
+      friendId: request.user.userId,
+    });
+    return result;
   }
 
   @Post(':roomId/start')

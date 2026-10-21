@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { API_URL } from "@/lib/room-api";
+import { useRouter } from "next/navigation";
+import { API_URL, createRematchRoom } from "@/lib/room-api";
+import { useCurrentUser } from "@/lib/current-user-context";
 
 type ResultPlayer = {
   userId: string;
@@ -87,8 +89,11 @@ function RankingCard({
 }
 
 export function ResultsContent({ gameId }: { gameId: string }) {
+  const router = useRouter();
+  const { user } = useCurrentUser();
   const [results, setResults] = useState<GameResults | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isCreatingRematch, setIsCreatingRematch] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
@@ -113,6 +118,20 @@ export function ResultsContent({ gameId }: { gameId: string }) {
 
   const winner = results.byDiscovery[0];
 
+  async function handlePlayAgain() {
+    if (!results) return;
+    setIsCreatingRematch(true);
+    setError(null);
+    try {
+      const playerIds = results.byScore.map((player) => player.userId);
+      const room = await createRematchRoom(2, Math.max(results.byScore.length, 2), playerIds);
+      router.push(`/lobby/${room.id}`);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Could not create a new room");
+      setIsCreatingRematch(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 text-center">
       <div>
@@ -131,7 +150,7 @@ export function ResultsContent({ gameId }: { gameId: string }) {
         <RankingCard
           title="By page discovery order"
           entries={results.byDiscovery}
-          metric={(entry) => (entry.discoveryRank === 1 ? "First to find it" : `#${entry.discoveryRank ?? "—"}`)}
+          metric={(entry) => (entry.discoveryRank === 1 ? "First to find it" : entry.discoveryRank ? `#${entry.discoveryRank}` : "—")}
         />
 
         <RankingCard
@@ -145,9 +164,14 @@ export function ResultsContent({ gameId }: { gameId: string }) {
         <Link href="/home" className="rounded-md border border-zinc-300 px-6 py-2.5 text-sm font-medium text-zinc-700">
           Home
         </Link>
-        <Link href="/home" className="rounded-md bg-lime-400 px-6 py-2.5 text-center text-sm font-semibold text-violet-900">
-          Play again
-        </Link>
+        <button
+          type="button"
+          onClick={() => void handlePlayAgain()}
+          disabled={isCreatingRematch}
+          className="rounded-md bg-lime-400 px-6 py-2.5 text-center text-sm font-semibold text-violet-900 disabled:opacity-60"
+        >
+          {isCreatingRematch ? "Creating room..." : "Play again"}
+        </button>
       </div>
     </div>
   );

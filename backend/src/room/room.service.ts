@@ -14,6 +14,7 @@ import {
   Prisma,
   RoomInvitationStatus,
   RoomStatus,
+  UserStatus,
 } from 'generated/prisma';
 import { GameService } from 'src/game/game.service';
 
@@ -216,6 +217,67 @@ export class RoomService {
     );
   }
 
+  async createRematch(
+        userId: string,
+        dto: { minPlayers: number; maxPlayers: number; playerIds: string[] },
+    ) {
+        if (dto.minPlayers > dto.maxPlayers) {
+            throw new BadRequestException('minPlayers cannot be greater than maxPlayers');
+        }
+
+        const candidateIds = dto.playerIds
+            .filter((id) => id !== userId)
+            .map((id) => BigInt(id));
+
+        const onlineUsers = candidateIds.length
+            ? await this.prisma.user.findMany({
+                  where: { user_id: { in: candidateIds }, status: UserStatus.ONLINE },
+                  select: { user_id: true },
+              })
+            : [];
+
+        const MAX_ATTEMPTS = 5;
+
+        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            try {
+                const room = await this.prisma.room.create({
+                    data: {
+                        creator_id: BigInt(userId),
+                        status: RoomStatus.OPEN,
+                        min_players: dto.minPlayers,
+                        max_players: dto.maxPlayers,
+                        code: generateRoomCode(),
+                        players: {
+                            create: [
+                                { user_id: BigInt(userId) },
+                                ...onlineUsers.map((onlineUser) => ({ user_id: onlineUser.user_id })),
+                            ],
+                        },
+                    },
+                    include: {
+                        players: {
+                            include: {
+                                users: true,
+                            },
+                        },
+                    },
+                });
+
+                return toRoomResponse(room);
+            } catch (error) {
+                const isCodeCollision =
+                    error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+                if (isCodeCollision && attempt < MAX_ATTEMPTS - 1) {
+                    continue;
+                }
+                throw error;
+            }
+        }
+
+        throw new ConflictException('Could not generate a unique room code, please try again');
+    }
+
+
   async listFriendsOpenRooms(userId: string) {
     const userIdBig = BigInt(userId);
 
@@ -323,6 +385,57 @@ export class RoomService {
 
     return toRoomResponse(updatedRoom);
   }
+
+  async leave(roomId: string, userId: string) {
+      const room = await this.prisma.room.findUnique({
+          where: { room_id: BigInt(roomId) },
+      });
+      if (!room) {
+          throw new NotFoundException('Room not found');
+      }
+
+      if (room.creator_id === BigInt(userId)) {
+          throw new ConflictException('The host cannot leave their own lobby');
+      }
+
+      if (room.status !== RoomStatus.OPEN) {
+          throw new ConflictException('Room is not open');
+      }
+
+      await this.prisma.roomPlayer.deleteMany({
+          where: { room_id: room.room_id, user_id: BigInt(userId) },
+      });
+
+      return this.find(roomId);
+  }
+
+  async removePlayer(roomId: string, hostUserId: string, targetUserId: string) {
+      const room = await this.prisma.room.findUnique({
+          where: { room_id: BigInt(roomId) },
+      });
+      if (!room) {
+          throw new NotFoundException('Room not found');
+      }
+
+      if (room.creator_id !== BigInt(hostUserId)) {
+          throw new ForbiddenException('Only the host can remove players');
+      }
+
+      if (BigInt(targetUserId) === BigInt(hostUserId)) {
+          throw new ConflictException('The host cannot remove themselves');
+      }
+
+      if (room.status !== RoomStatus.OPEN) {
+          throw new ConflictException('Room is not open');
+      }
+
+      await this.prisma.roomPlayer.deleteMany({
+          where: { room_id: room.room_id, user_id: BigInt(targetUserId) },
+      });
+
+      return this.find(roomId);
+  }
+
 
   async inviteFriend(roomId: string, userId: string, friendId: string) {
     const room = await this.prisma.room.findUnique({
@@ -473,6 +586,7 @@ export class RoomService {
           invitee_id: BigInt(userId),
         },
       },
+      include: { room: true },
     });
     if (!invitation || invitation.status !== RoomInvitationStatus.PENDING) {
       throw new NotFoundException('Room invitation not found');
@@ -481,7 +595,11 @@ export class RoomService {
       where: { invitation_id: invitation.invitation_id },
       data: { status: RoomInvitationStatus.DECLINED },
     });
-    return { roomId, declined: true };
+    return {
+      roomId,
+      declined: true,
+      hostId: invitation.room.creator_id.toString(),
+    };
   }
 
   async start(roomId: string, userId: string) {
