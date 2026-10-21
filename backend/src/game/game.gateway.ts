@@ -84,6 +84,9 @@ export class GameGateway
     const userId = this.requireUser(client);
     const gameId = this.requireGameId(payload);
     await this.gameService.assertPlayer(gameId, userId);
+    if (this.gameService.hasLeft(gameId, userId)) {
+      throw new WsException('You have left this game and cannot rejoin');
+    }
     await client.join(gameSocketName(gameId));
     client.emit('game:state', await this.gameService.getState(gameId));
   }
@@ -93,8 +96,9 @@ export class GameGateway
     @ConnectedSocket() client: GameSocket,
     @MessageBody() payload: GamePayload,
   ) {
-    this.requireUser(client);
+    const userId = this.requireUser(client);
     const gameId = this.requireGameId(payload);
+    await this.gameService.leaveGame(gameId, userId);
     await client.leave(gameSocketName(gameId));
   }
 

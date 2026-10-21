@@ -50,12 +50,22 @@ const GRADE_CLASSES = [
   "bg-violet-400",
 ];
 
+const GRADE_TEXT_CLASSES = [
+  "text-zinc-400",
+  "text-zinc-500",
+  "text-zinc-600",
+  "text-white",
+  "text-white",
+];
+
 function ArticleText({
   paragraph,
   className = "text-base leading-8 text-zinc-700 sm:text-lg",
+  lastFoundWord = null,
 }: {
   paragraph: ArticleWord[];
   className?: string;
+  lastFoundWord?: string | null;
 }) {
   return (
     <p className={className}>
@@ -64,8 +74,14 @@ function ArticleText({
           return <span key={index}>{word.label}</span>;
         }
         if (word.status === "found") {
+          const isLastFound = lastFoundWord !== null && word.label.toLowerCase() === lastFoundWord;
           return (
-            <span key={index} className="border-b-2 border-lime-400 text-zinc-950">
+            <span
+              key={index}
+              className={`border-b-2 border-lime-400 ${
+                isLastFound ? "font-semibold text-violet-700" : "text-zinc-950"
+              }`}
+            >
               {word.label}
             </span>
           );
@@ -80,10 +96,10 @@ function ArticleText({
                   ? "Hidden word, close to a guess"
                   : "Hidden word"
             }
-            style={{ minWidth: `${Math.max(word.length, 2) * 0.6}em` }}
-            className={`mx-0.5 inline-flex h-6 items-center justify-center rounded px-1 align-middle text-xs font-medium text-zinc-400 ${
-              GRADE_CLASSES[Math.min(word.grade, 4)]
-            }`}
+            style={{ minWidth: `${Math.max(word.length, 2) * 0.6}rem` }}
+            className={`mx-0.5 inline-flex h-6 items-center justify-center rounded px-1 align-middle text-xs font-medium ${
+              GRADE_TEXT_CLASSES[Math.min(word.grade, 4)]
+            } ${GRADE_CLASSES[Math.min(word.grade, 4)]}`}
           >
             {word.closestGuess ?? ""}
           </span>
@@ -155,6 +171,7 @@ export function GameBoard({
   const [attempts, setAttempts] = useState<Attempt[]>(() => buildInitialAttempts(players, you));
   const [notice, setNotice] = useState("Find the word closest to the secret article.");
   const [bestScore, setBestScore] = useState(0);
+  const [lastFoundWord, setLastFoundWord] = useState<string | null>(null);
 
   useEffect(() => {
     if (!lastGuess) return;
@@ -179,6 +196,10 @@ export function GameBoard({
         },
         ...currentAttempts.filter((attempt) => attempt.username !== username),
       ]);
+
+      if (lastGuess.valid && lastGuess.revealedCount > 0) {
+        setLastFoundWord(lastGuess.guess.toLowerCase());
+      }
 
       if (!mine) return;
       setBestScore((currentBest) => Math.max(currentBest, lastGuess.score));
@@ -235,6 +256,19 @@ export function GameBoard({
     });
   }
 
+  function handleLeaveGame() {
+    if (!window.confirm("Leave this game? You will be marked as having lost.")) {
+      return;
+    }
+    if (socket) {
+      socket.emit("game:leave", { gameId }, () => {
+        window.location.href = "/home";
+      });
+    } else {
+      window.location.href = "/home";
+    }
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const word = guess.trim();
@@ -267,7 +301,7 @@ export function GameBoard({
       <motion.header
         variants={fadeUp}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="flex flex-col gap-4 border-b border-zinc-200 pb-5 sm:flex-row sm:items-end sm:justify-between"
+        className="flex flex-col gap-2 border-b border-zinc-200 pb-3 sm:flex-row sm:items-end sm:justify-between"
       >
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
@@ -278,7 +312,7 @@ export function GameBoard({
                 ? "Game finished"
                 : "Game in progress"} · #{gameId}
           </div>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">The secret word</h1>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-950">The secret word</h1>
           <p className="mt-1 text-sm text-zinc-500">One Wikipedia article, one board shared by every player, only one right answer.</p>
         </div>
         <div className="flex items-center gap-3 text-sm">
@@ -292,10 +326,17 @@ export function GameBoard({
                   : "—"}
             </strong>
           </div>
-          <div className="rounded-lg border border-zinc-200 bg-white px-4 py-2">
+                 <div className="rounded-lg border border-zinc-200 bg-white px-4 py-2">
             <span className="block text-xs text-zinc-400">Players</span>
             <strong className="text-zinc-900">{players.length} online</strong>
           </div>
+          <button
+            type="button"
+            onClick={handleLeaveGame}
+            className="rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-500 hover:border-[#d03b3b] hover:text-[#d03b3b]"
+          >
+            Leave game
+          </button>
         </div>
       </motion.header>
 
@@ -309,11 +350,11 @@ export function GameBoard({
               </div>
               <span className="rounded-full bg-lime-100 px-3 py-1 text-xs font-semibold text-lime-800">{discoveredCount}/{bodyWords.length} found</span>
             </div>
-            <div className="space-y-6 px-5 py-8 sm:px-10 sm:py-12">
-              <div className="border-b border-zinc-100 pb-5">
+            <div className="space-y-4 px-5 py-5 sm:px-10 sm:py-6">
+              <div className="border-b border-zinc-100 pb-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">Article excerpt</p>
                 {titleWords.length > 0 ? (
-                  <ArticleText paragraph={titleWords} className="mt-2 text-2xl font-semibold leading-10 text-zinc-950" />
+                  <ArticleText paragraph={titleWords} className="mt-1 text-2xl font-semibold leading-10 text-zinc-950" lastFoundWord={lastFoundWord} />
                 ) : (
                   <h3 className="mt-2 text-2xl font-semibold text-zinc-950">Encyclopedia article</h3>
                 )}
@@ -322,7 +363,7 @@ export function GameBoard({
                 {paragraphs.length === 0 ? (
                   <p className="text-sm text-zinc-500">Waiting for the game article...</p>
                 ) : paragraphs.map((paragraph, index) => (
-                  <ArticleText key={index} paragraph={paragraph} className="text-sm leading-7 text-zinc-700" />
+                  <ArticleText key={index} paragraph={paragraph} className="text-sm leading-7 text-zinc-700" lastFoundWord={lastFoundWord} />
                 ))}
               </div>
             </div>
@@ -350,23 +391,6 @@ export function GameBoard({
             </div>
           </motion.section>
 
-          <motion.section variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-zinc-200 bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Best score</p>
-              <p className="mt-2 text-2xl font-semibold text-zinc-950">{currentScore.toLocaleString("en-US")}</p>
-              <p className="mt-1 text-xs text-lime-700">Your best word</p>
-            </div>
-            <div className="rounded-xl border border-zinc-200 bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Attempts</p>
-              <p className="mt-2 text-2xl font-semibold text-zinc-950">{currentAttemptCount}</p>
-              <p className="mt-1 text-xs text-zinc-500">This game</p>
-            </div>
-            <div className="rounded-xl border border-zinc-200 bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Current streak</p>
-              <p className="mt-2 text-2xl font-semibold text-zinc-950">x3</p>
-              <p className="mt-1 text-xs text-zinc-500">Words discovered</p>
-            </div>
-          </motion.section>
         </main>
 
         <aside className="space-y-6">
@@ -379,10 +403,7 @@ export function GameBoard({
               <div className="h-full border-r-2 border-white" style={{ width: `${temperaturePercent}%` }} />
             </div>
             <div className="mt-2 flex justify-between text-[11px] text-zinc-400"><span>Cold</span><span>Scorching</span></div>
-            <div className="mt-5 rounded-lg bg-lime-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-lime-800">Latest hint</p>
-              <p className="mt-1 text-sm font-medium text-lime-950">Words related to materials are close.</p>
-            </div>
+
           </motion.section>
 
           <motion.section variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -407,18 +428,29 @@ export function GameBoard({
             </div>
           </motion.section>
 
-          {isSolved ? (
+          <motion.section variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="rounded-2xl bg-violet-700 p-5 text-white">
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-200">Best score</p>
+                <p className="mt-1 text-lg font-semibold">{currentScore.toLocaleString("en-US")}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-200">Attempts</p>
+                <p className="mt-1 text-lg font-semibold">{currentAttemptCount}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-200">Streak</p>
+                <p className="mt-1 text-lg font-semibold">x3</p>
+              </div>
+            </div>
+          </motion.section>
+
+          {isSolved && (
             <motion.div variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="rounded-2xl border border-lime-300 bg-lime-50 p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-lime-800">Article found</p>
               <p className="mt-1 text-lg font-semibold text-lime-950">{titleText}</p>
               {winner && <p className="mt-1 text-sm text-lime-900">Found by {winner.id === you?.id ? "you" : winner.username}</p>}
               <Link href={`/results/${gameId}`} className="mt-4 block rounded-lg bg-lime-400 px-4 py-2.5 text-center text-sm font-semibold text-violet-950 hover:bg-lime-300">View results</Link>
-            </motion.div>
-          ) : (
-            <motion.div variants={fadeUp} transition={{ duration: 0.4, ease: "easeOut" }} className="rounded-2xl bg-violet-700 p-5 text-white">
-              <p className="text-xs font-semibold uppercase tracking-wide text-violet-200">Bonus objective</p>
-              <p className="mt-2 text-lg font-semibold">Find the article in under 10 words.</p>
-              <p className="mt-2 text-sm leading-6 text-violet-100">Each hot word gradually reveals the original text.</p>
             </motion.div>
           )}
         </aside>
