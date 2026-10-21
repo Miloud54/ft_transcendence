@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   addFriend,
+  cancelRoom,
   getFriendRequests,
   getFriends,
   inviteFriendToRoom,
@@ -15,7 +16,7 @@ import {
   startRoom,
   type Friend,
   type FriendRequest,
-  type Room, 
+  type Room,
 } from "@/lib/room-api";
 import { useCurrentUser } from "@/lib/current-user-context";
 
@@ -45,6 +46,7 @@ export default function LobbyPage({
   const [codeCopied, setCodeCopied] = useState(false);
   const [isLeavingLobby, setIsLeavingLobby] = useState(false);
   const [removingPlayerId, setRemovingPlayerId] = useState<string | null>(null);
+  const [isCanceling, setIsCanceling] = useState(false);
 
   async function handleCopyCode() {
     if (!room) return;
@@ -62,6 +64,19 @@ export default function LobbyPage({
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Could not leave the lobby");
       setIsLeavingLobby(false);
+    }
+  }
+
+  async function handleCancelLobby() {
+    if (!window.confirm("Close this lobby? All invited players will be sent back home.")) return;
+    setError(null);
+    setIsCanceling(true);
+    try {
+      await cancelRoom(id);
+      router.push("/home");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Could not close the lobby");
+      setIsCanceling(false);
     }
   }
 
@@ -413,6 +428,16 @@ export default function LobbyPage({
         >
           {isStarting ? "Starting..." : "Start game"}
         </button>
+        {isHost && room.status === "open" && (
+          <button
+            type="button"
+            onClick={() => void handleCancelLobby()}
+            disabled={isCanceling}
+            className="w-full rounded-md border border-[#d03b3b] py-3 text-sm font-semibold text-[#d03b3b] hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-8"
+          >
+            {isCanceling ? "Closing..." : "Close lobby"}
+          </button>
+        )}
         {!isHost && (
           <button
             type="button"

@@ -436,6 +436,34 @@ export class RoomService {
       return this.find(roomId);
   }
 
+  async cancelRoom(roomId: string, hostUserId: string) {
+      const room = await this.prisma.room.findUnique({
+          where: { room_id: BigInt(roomId) },
+          include: { players: true },
+      });
+      if (!room) {
+          throw new NotFoundException('Room not found');
+      }
+
+      if (room.creator_id !== BigInt(hostUserId)) {
+          throw new ForbiddenException('Only the host can close this lobby');
+      }
+
+      if (room.status !== RoomStatus.OPEN) {
+          throw new ConflictException('Only an open lobby can be closed');
+      }
+
+      await this.prisma.room.update({
+          where: { room_id: room.room_id },
+          data: { status: RoomStatus.CLOSED, closed_at: new Date() },
+      });
+
+      const otherPlayerIds = room.players
+          .filter((player) => player.user_id !== room.creator_id)
+          .map((player) => player.user_id.toString());
+
+      return { roomId, canceled: true, otherPlayerIds };
+  }
 
   async inviteFriend(roomId: string, userId: string, friendId: string) {
     const room = await this.prisma.room.findUnique({
