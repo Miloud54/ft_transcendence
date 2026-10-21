@@ -35,7 +35,7 @@ curl -sf -u "elastic:${ELASTIC_PASSWORD}" -X PUT http://elasticsearch:9200/_ilm/
 # Applique automatiquement cette politique à chaque nouvel index docker-logs-*
 curl -sf -u "elastic:${ELASTIC_PASSWORD}" -X PUT http://elasticsearch:9200/_index_template/docker-logs \
   -H 'Content-Type: application/json' \
-  -d '{"index_patterns":["docker-logs-*"],"template":{"settings":{"index.lifecycle.name":"docker-logs-retention"}}}'
+  -d '{"index_patterns":["docker-logs-*"],"template":{"settings":{"index.number_of_replicas":0,"index.lifecycle.name":"docker-logs-retention"}}}'
 
 # Archivage : déclare le dossier où Elasticsearch range les snapshots 
 curl -sf -u "elastic:${ELASTIC_PASSWORD}" -X PUT http://elasticsearch:9200/_snapshot/logs-archive \
