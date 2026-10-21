@@ -19,7 +19,11 @@ export function HomeContent() {
   const [openRooms, setOpenRooms] = useState<OpenRoom[]>([]);
   const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [removedMessage, setRemovedMessage] = useState<string | null>(null);
+  const [removedMessage, setRemovedMessage] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("removed") === "lobby" ? "You were removed from that lobby by its host." : null;
+  });
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -31,7 +35,6 @@ export function HomeContent() {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     if (params.get("removed") === "lobby") {
-      setRemovedMessage("You were removed from that lobby by its host.");
       window.history.replaceState(null, "", "/home");
     }
   }, []);

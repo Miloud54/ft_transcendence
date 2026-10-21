@@ -39,6 +39,7 @@ export default function LobbyPage({
   const [isStarting, setIsStarting] = useState(false);
   const [invitingFriendId, setInvitingFriendId] = useState<string | null>(null);
   const [invitedFriendIds, setInvitedFriendIds] = useState<Set<string>>(new Set());
+  const [prevRoomPlayerIds, setPrevRoomPlayerIds] = useState<Set<string> | null>(null);
   const [addingFriendId, setAddingFriendId] = useState<string | null>(null);
   const [sentFriendRequestIds, setSentFriendRequestIds] = useState<Set<string>>(new Set());
   const [codeCopied, setCodeCopied] = useState(false);
@@ -147,21 +148,28 @@ export default function LobbyPage({
     return () => window.removeEventListener("room-invitation:declined", onInvitationDeclined);
   }, [id]);
 
-  useEffect(() => {
-    if (!room) return;
+  if (room) {
     const currentPlayerIds = new Set(room.players.map((player) => player.id));
-    setInvitedFriendIds((current) => {
-      let changed = false;
-      const next = new Set(current);
-      for (const playerId of current) {
-        if (currentPlayerIds.has(playerId)) {
-          next.delete(playerId);
-          changed = true;
+    const samePlayerIds =
+      prevRoomPlayerIds !== null &&
+      prevRoomPlayerIds.size === currentPlayerIds.size &&
+      [...currentPlayerIds].every((playerId) => prevRoomPlayerIds.has(playerId));
+
+    if (!samePlayerIds) {
+      setPrevRoomPlayerIds(currentPlayerIds);
+      setInvitedFriendIds((current) => {
+        let changed = false;
+        const next = new Set(current);
+        for (const playerId of current) {
+          if (currentPlayerIds.has(playerId)) {
+            next.delete(playerId);
+            changed = true;
+          }
         }
-      }
-      return changed ? next : current;
-    });
-  }, [room]);
+        return changed ? next : current;
+      });
+    }
+  }
 
   useEffect(() => {
   const socket = connectToRoom(id, (nextRoom) => {
