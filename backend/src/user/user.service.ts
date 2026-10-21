@@ -322,6 +322,25 @@ export class UserService {
     };
   }
 
+  async getActiveRoom(userId: string) {
+    const userIdBig = BigInt(userId);
+
+    const roomPlayer = await this.prisma.roomPlayer.findFirst({
+      where: {
+        user_id: userIdBig,
+        room: { status: RoomStatus.OPEN },
+      },
+      include: { room: true },
+      orderBy: { room_id: 'desc' },
+    });
+
+    if (!roomPlayer) {
+      return null;
+    }
+
+    return { roomId: roomPlayer.room.room_id.toString() };
+  }
+
   async addFriend(userId: string, friendId: string) {
     const ownerId = BigInt(userId);
     const targetId = BigInt(friendId);
