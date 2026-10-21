@@ -4,4 +4,4 @@ node_modules
 
 /generated/prisma
 
-backend/cheat/*.txt
+/cheat/*.txt
