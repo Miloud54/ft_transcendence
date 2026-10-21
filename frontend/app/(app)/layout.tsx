@@ -8,6 +8,7 @@ import { RoomChat } from "@/components/room-chat";
 import { MobileNav } from "@/components/mobile-nav";
 import { NotificationCenter } from "@/components/notification-center";
 import { ActiveGameButton } from "@/components/active-game-button";
+import { ActiveLobbyButton } from "@/components/active-lobby-button";
 import { Logo } from "@/components/logo";
 
 const NAV_ITEMS = [
@@ -36,6 +37,7 @@ export default function AppLayout({
 
           <div className="flex items-center gap-4">
             <ActiveGameButton />
+            <ActiveLobbyButton />
             <MobileNav items={NAV_ITEMS} />
             <NotificationCenter />
             <AccountMenu />

@@ -167,6 +167,31 @@ export class RoomService {
     return this.chatMessages.get(roomId) ?? [];
   }
 
+  async closeStalePlayerHostedRooms(userId: string) {
+    const staleRooms = await this.prisma.room.findMany({
+      where: { creator_id: BigInt(userId), status: RoomStatus.OPEN },
+      include: { players: true },
+    });
+
+    if (staleRooms.length === 0) {
+      return [];
+    }
+
+    await this.prisma.room.updateMany({
+      where: { room_id: { in: staleRooms.map((room) => room.room_id) } },
+      data: { status: RoomStatus.CLOSED, closed_at: new Date() },
+    });
+
+    return staleRooms.flatMap((room) =>
+      room.players
+        .filter((player) => player.user_id !== room.creator_id)
+        .map((player) => ({
+          roomId: room.room_id.toString(),
+          playerId: player.user_id.toString(),
+        })),
+    );
+  }
+
   async create(userId: string, dto: CreateRoomDto) {
     if (dto.minPlayers > dto.maxPlayers) {
       throw new BadRequestException(
@@ -218,65 +243,71 @@ export class RoomService {
   }
 
   async createRematch(
-        userId: string,
-        dto: { minPlayers: number; maxPlayers: number; playerIds: string[] },
-    ) {
-        if (dto.minPlayers > dto.maxPlayers) {
-            throw new BadRequestException('minPlayers cannot be greater than maxPlayers');
-        }
-
-        const candidateIds = dto.playerIds
-            .filter((id) => id !== userId)
-            .map((id) => BigInt(id));
-
-        const onlineUsers = candidateIds.length
-            ? await this.prisma.user.findMany({
-                  where: { user_id: { in: candidateIds }, status: UserStatus.ONLINE },
-                  select: { user_id: true },
-              })
-            : [];
-
-        const MAX_ATTEMPTS = 5;
-
-        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-            try {
-                const room = await this.prisma.room.create({
-                    data: {
-                        creator_id: BigInt(userId),
-                        status: RoomStatus.OPEN,
-                        min_players: dto.minPlayers,
-                        max_players: dto.maxPlayers,
-                        code: generateRoomCode(),
-                        players: {
-                            create: [
-                                { user_id: BigInt(userId) },
-                                ...onlineUsers.map((onlineUser) => ({ user_id: onlineUser.user_id })),
-                            ],
-                        },
-                    },
-                    include: {
-                        players: {
-                            include: {
-                                users: true,
-                            },
-                        },
-                    },
-                });
-
-                return toRoomResponse(room);
-            } catch (error) {
-                const isCodeCollision =
-                    error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
-                if (isCodeCollision && attempt < MAX_ATTEMPTS - 1) {
-                    continue;
-                }
-                throw error;
-            }
-        }
-
-        throw new ConflictException('Could not generate a unique room code, please try again');
+    userId: string,
+    dto: { minPlayers: number; maxPlayers: number; playerIds: string[] },
+  ) {
+    if (dto.minPlayers > dto.maxPlayers) {
+      throw new BadRequestException(
+        'minPlayers cannot be greater than maxPlayers',
+      );
     }
 
+    const candidateIds = dto.playerIds
+      .filter((id) => id !== userId)
+      .map((id) => BigInt(id));
+
+    const onlineUsers = candidateIds.length
+      ? await this.prisma.user.findMany({
+          where: { user_id: { in: candidateIds }, status: UserStatus.ONLINE },
+          select: { user_id: true },
+        })
+      : [];
+
+    const MAX_ATTEMPTS = 5;
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        const room = await this.prisma.room.create({
+          data: {
+            creator_id: BigInt(userId),
+            status: RoomStatus.OPEN,
+            min_players: dto.minPlayers,
+            max_players: dto.maxPlayers,
+            code: generateRoomCode(),
+            players: {
+              create: [
+                { user_id: BigInt(userId) },
+                ...onlineUsers.map((onlineUser) => ({
+                  user_id: onlineUser.user_id,
+                })),
+              ],
+            },
+          },
+          include: {
+            players: {
+              include: {
+                users: true,
+              },
+            },
+          },
+        });
+
+        return toRoomResponse(room);
+      } catch (error) {
+        const isCodeCollision =
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002';
+        if (isCodeCollision && attempt < MAX_ATTEMPTS - 1) {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw new ConflictException(
+      'Could not generate a unique room code, please try again',
+    );
+  }
 
   async listFriendsOpenRooms(userId: string) {
     const userIdBig = BigInt(userId);
@@ -387,82 +418,82 @@ export class RoomService {
   }
 
   async leave(roomId: string, userId: string) {
-      const room = await this.prisma.room.findUnique({
-          where: { room_id: BigInt(roomId) },
-      });
-      if (!room) {
-          throw new NotFoundException('Room not found');
-      }
+    const room = await this.prisma.room.findUnique({
+      where: { room_id: BigInt(roomId) },
+    });
+    if (!room) {
+      throw new NotFoundException('Room not found');
+    }
 
-      if (room.creator_id === BigInt(userId)) {
-          throw new ConflictException('The host cannot leave their own lobby');
-      }
+    if (room.creator_id === BigInt(userId)) {
+      throw new ConflictException('The host cannot leave their own lobby');
+    }
 
-      if (room.status !== RoomStatus.OPEN) {
-          throw new ConflictException('Room is not open');
-      }
+    if (room.status !== RoomStatus.OPEN) {
+      throw new ConflictException('Room is not open');
+    }
 
-      await this.prisma.roomPlayer.deleteMany({
-          where: { room_id: room.room_id, user_id: BigInt(userId) },
-      });
+    await this.prisma.roomPlayer.deleteMany({
+      where: { room_id: room.room_id, user_id: BigInt(userId) },
+    });
 
-      return this.find(roomId);
+    return this.find(roomId);
   }
 
   async removePlayer(roomId: string, hostUserId: string, targetUserId: string) {
-      const room = await this.prisma.room.findUnique({
-          where: { room_id: BigInt(roomId) },
-      });
-      if (!room) {
-          throw new NotFoundException('Room not found');
-      }
+    const room = await this.prisma.room.findUnique({
+      where: { room_id: BigInt(roomId) },
+    });
+    if (!room) {
+      throw new NotFoundException('Room not found');
+    }
 
-      if (room.creator_id !== BigInt(hostUserId)) {
-          throw new ForbiddenException('Only the host can remove players');
-      }
+    if (room.creator_id !== BigInt(hostUserId)) {
+      throw new ForbiddenException('Only the host can remove players');
+    }
 
-      if (BigInt(targetUserId) === BigInt(hostUserId)) {
-          throw new ConflictException('The host cannot remove themselves');
-      }
+    if (BigInt(targetUserId) === BigInt(hostUserId)) {
+      throw new ConflictException('The host cannot remove themselves');
+    }
 
-      if (room.status !== RoomStatus.OPEN) {
-          throw new ConflictException('Room is not open');
-      }
+    if (room.status !== RoomStatus.OPEN) {
+      throw new ConflictException('Room is not open');
+    }
 
-      await this.prisma.roomPlayer.deleteMany({
-          where: { room_id: room.room_id, user_id: BigInt(targetUserId) },
-      });
+    await this.prisma.roomPlayer.deleteMany({
+      where: { room_id: room.room_id, user_id: BigInt(targetUserId) },
+    });
 
-      return this.find(roomId);
+    return this.find(roomId);
   }
 
   async cancelRoom(roomId: string, hostUserId: string) {
-      const room = await this.prisma.room.findUnique({
-          where: { room_id: BigInt(roomId) },
-          include: { players: true },
-      });
-      if (!room) {
-          throw new NotFoundException('Room not found');
-      }
+    const room = await this.prisma.room.findUnique({
+      where: { room_id: BigInt(roomId) },
+      include: { players: true },
+    });
+    if (!room) {
+      throw new NotFoundException('Room not found');
+    }
 
-      if (room.creator_id !== BigInt(hostUserId)) {
-          throw new ForbiddenException('Only the host can close this lobby');
-      }
+    if (room.creator_id !== BigInt(hostUserId)) {
+      throw new ForbiddenException('Only the host can close this lobby');
+    }
 
-      if (room.status !== RoomStatus.OPEN) {
-          throw new ConflictException('Only an open lobby can be closed');
-      }
+    if (room.status !== RoomStatus.OPEN) {
+      throw new ConflictException('Only an open lobby can be closed');
+    }
 
-      await this.prisma.room.update({
-          where: { room_id: room.room_id },
-          data: { status: RoomStatus.CLOSED, closed_at: new Date() },
-      });
+    await this.prisma.room.update({
+      where: { room_id: room.room_id },
+      data: { status: RoomStatus.CLOSED, closed_at: new Date() },
+    });
 
-      const otherPlayerIds = room.players
-          .filter((player) => player.user_id !== room.creator_id)
-          .map((player) => player.user_id.toString());
+    const otherPlayerIds = room.players
+      .filter((player) => player.user_id !== room.creator_id)
+      .map((player) => player.user_id.toString());
 
-      return { roomId, canceled: true, otherPlayerIds };
+    return { roomId, canceled: true, otherPlayerIds };
   }
 
   async inviteFriend(roomId: string, userId: string, friendId: string) {

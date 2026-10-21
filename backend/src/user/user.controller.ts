@@ -90,6 +90,12 @@ export class UserController {
     return this.userService.getActiveGame(userId);
   }
 
+  @Get('me/active-room')
+  getActiveRoom(@Req() req: Request) {
+    const { userId } = req.user as { userId: string };
+    return this.userService.getActiveRoom(userId);
+  }
+
   @Post('me/friends/:friendId')
   async addFriend(@Req() req: Request, @Param('friendId') friendId: string) {
     const { userId } = req.user as { userId: string };

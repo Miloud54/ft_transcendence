@@ -52,13 +52,24 @@ export class RoomController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(@Req() request: AuthenticatedRequest, @Body() dto: CreateRoomDto) {
+  async create(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: CreateRoomDto,
+  ) {
+    const staleNotifications =
+      await this.roomService.closeStalePlayerHostedRooms(request.user.userId);
+    for (const { roomId, playerId } of staleNotifications) {
+      this.presenceGateway.notifyUser(playerId, 'room:removed', { roomId });
+    }
     return this.roomService.create(request.user.userId, dto);
   }
 
   @Post('rematch')
   @UseGuards(JwtAuthGuard)
-  async createRematch(@Req() request: AuthenticatedRequest, @Body() dto: CreateRematchDto) {
+  async createRematch(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: CreateRematchDto,
+  ) {
     const room = await this.roomService.createRematch(request.user.userId, dto);
     for (const player of room.players) {
       if (player.id !== request.user.userId) {
@@ -101,7 +112,11 @@ export class RoomController {
     @Param('playerId') playerId: string,
     @Req() request: AuthenticatedRequest,
   ) {
-    const room = await this.roomService.removePlayer(roomId, request.user.userId, playerId);
+    const room = await this.roomService.removePlayer(
+      roomId,
+      request.user.userId,
+      playerId,
+    );
     this.roomGateway.emitRoomState(roomId, room);
     this.presenceGateway.notifyUser(playerId, 'room:removed', { roomId });
     return room;

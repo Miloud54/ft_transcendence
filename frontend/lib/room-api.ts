@@ -88,6 +88,10 @@ export function cancelRoom(roomId: string) {
   );
 }
 
+export function getActiveRoom() {
+  return roomRequest<{ roomId: string } | null>("/users/me/active-room");
+}
+
 export type OpenRoom = {
   id: string;
   hostUsername: string;
