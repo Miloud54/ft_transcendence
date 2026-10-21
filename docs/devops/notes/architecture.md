@@ -153,7 +153,7 @@ Les trois réseaux :
 | Backend | `npm ci` + mode dev à chaque démarrage, Prisma Studio | image compilée (`Dockerfile.prod` à créer), sans Prisma Studio | DevOps + équipe back |
 | Fichiers compilés dans git | `prisma.config.js`, `seed.js` (+ `.d.ts`, `.map`) font planter le backend | supprimés de git, ajoutés au `.gitignore` | équipe back |
 | Vault | mode dev : secrets en mémoire, token root pour le backend | mode serveur : secrets sur disque, déverrouillage, token en lecture seule | DevOps (après décision d'équipe) |
-| WAF et Grafana | le WAF cherche l'adresse de Grafana au démarrage (bloc `upstream`) | adresse cherchée à chaque requête, comme Kibana | DevOps |
+| WAF et Grafana | ~~le WAF cherche l'adresse de Grafana au démarrage (bloc `upstream`)~~ | ✅ fait le 19/10/2026 : adresse cherchée à chaque requête, comme Kibana | DevOps |
 | Redémarrage automatique | seulement `db` | `restart: unless-stopped` sur tous les services qui tournent en continu | DevOps |
 | Tests de santé (healthcheck) | absents pour frontend, kibana, logstash, grafana, WAF | un par service qui tourne en continu | DevOps |
 | Volumes `node_modules` anonymes | un nouveau (~500 Mo) à chaque recréation : a rempli le disque | disparaissent avec les images compilées | réglé par le build prod |
