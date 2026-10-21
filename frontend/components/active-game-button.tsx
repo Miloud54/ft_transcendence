@@ -88,8 +88,10 @@ export function ActiveGameButton() {
   const userId = user?.id;
   const onGamePage = pathname.startsWith("/game/");
 
+  const isInGame = user?.status === "IN_GAME";
+
   useEffect(() => {
-    if (!userId || onGamePage) {
+    if (!userId || onGamePage || !isInGame) {
       return;
     }
 
@@ -129,9 +131,9 @@ export function ActiveGameButton() {
       cancelled = true;
     };
     // Re-check whenever the user navigates, e.g. after leaving a game page
-  }, [userId, onGamePage, pathname]);
+  }, [userId, onGamePage, pathname, isInGame]);
 
-  if (!userId || onGamePage) {
+  if (!userId || onGamePage || !isInGame) {
     return null;
   }
 
