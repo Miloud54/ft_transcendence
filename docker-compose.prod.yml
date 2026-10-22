@@ -1,16 +1,476 @@
 services:
+
   frontend:
+
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
+    image: transcendance-frontend:prod
+
     container_name: transcendence-frontend
     restart: unless-stopped
-    expose:
-      - "3000"
-    # ports:
-    #     - "3000:3000"
+    
+    command: sh -c "node server.js 2>&1 | tee /var/log/app/frontend.log"
+
+    volumes:
+      - app_logs:/var/log/app
+    
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - private-net
+    
+  
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    image: transcendance-backend:prod
+
+    container_name: transcendence-backend
+
+    #comment next line if not on school pc
+    #user: "0:0"
+
+    restart: unless-stopped
+
+    depends_on:
+      db:
+        condition: service_healthy
+      vault-init:
+        condition: service_completed_successfully
+
+    environment:
+      DB_USER: ${DB_USER}
+      DB_NAME: ${DB_NAME}
+      DATABASE_URL: "postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}"
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID}
+      FRONTEND_URL: https://localhost:8443
+
+    # migrations and running
+    command: sh -c "npx prisma migrate deploy && node dist/main 2>&1 | tee /var/log/app/backend.log"
+
+    volumes:
+      - app_logs:/var/log/app
+      - uploads:/app/uploads #profile photos kept while container is restarted
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+    
+    networks:
+     - private-net
+  
+
+  volumes-init: # conteneur "jetable" : règle les droits des volumes partagés, puis s'arrête
+    image: docker.io/library/postgres:18-alpine
+    # app_logs : ouvert en écriture pour tous, protégé par le sticky bit
+    # es_snapshots : donné à l'utilisateur d'Elasticsearch (uid 1000) pour qu'il puisse y écrire ses snapshots
+    command: sh -c "chmod 1777 /var/log/app && chown 1000:0 /snapshots"
+    volumes:
+      - app_logs:/var/log/app
+      - es_snapshots:/snapshots
+  
+
+  db:
+    image: docker.io/library/postgres:18-alpine
+    
+    container_name: transcendence-db
+
+    user: "0:0"
+
+    restart: on-failure
+    
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    
+    entrypoint: ["sh", "-c"]
+    command:
+      - >
+        rm -f /var/log/app/db.log &&
+        chmod 1777 /var/log/app &&
+        exec docker-entrypoint.sh postgres
+        -c logging_collector=on
+        -c log_directory=/var/log/app
+        -c log_filename=db.log
+        -c log_file_mode=0644
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    
+    volumes:
+      - db_data:/var/lib/postgresql
+      - app_logs:/var/log/app
+
+    networks:
+      - private-net
+
+  backup:
+    image: docker.io/library/postgres:18-alpine
+
+    container_name: transcendence-backup
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    environment:
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      BACKUP_INTERVAL_SECONDS: "86400" # toutes les 24h 
+
+    volumes:
+      - ./backup/backup.sh:/backup.sh:ro
+      - db_backups:/backups
+
+    entrypoint: ["sh", "/backup.sh"]
+
+    networks:
+      - private-net
+  
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+
+    container_name: transcendence-elasticsearch
+
+    environment:
+      discovery.type: single-node         # une seule instance, pas de cluster
+      xpack.security.enabled: "true"    
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"   # limite la RAM utilisée à 512 Mo
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      xpack.security.http.ssl.enabled: "false" # HTTP simple + mot de passe (réseau interne déjà isolé, pas de HTTPS pour éviter la gestion de certificats)
+      path.repo: /usr/share/elasticsearch/snapshots 
+    
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 180s
+    
+    volumes:
+      - es_data:/usr/share/elasticsearch/data     # garde les données entre rédemarrages
+      - es_snapshots:/usr/share/elasticsearch/snapshots   # archive des logs
+    
+    networks:
+      - private-net
+  
+  es-init: # conteneur jetable : configure les comptes kibana_system et logstash_writer dans Elasticsearch (mots de passe connus, pas de génération aléatoire), à chaque démarrage
+    image: docker.io/curlimages/curl:latest
+
+    container_name: transcendence-es-init
+
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      KIBANA_PASSWORD: ${KIBANA_PASSWORD}
+      LOGSTASH_PASSWORD: ${LOGSTASH_PASSWORD}
+
+    volumes:
+      - ./elasticsearch/init.sh:/init.sh:ro
+
+    entrypoint: sh /init.sh
+
+    networks:
+      - private-net
+
+  logstash:
+
+    image: docker.elastic.co/logstash/logstash:8.15.0
+
+    container_name: transcendence-logstash
+
+    user: "0:0"
+
+    init: true
+    
+    environment:
+      LOGSTASH_PASSWORD: ${LOGSTASH_PASSWORD}
+
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+    volumes:
+      - ./logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:Z
+      - ./logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:Z
+      - app_logs:/var/log/app:ro
+      - logstash_data:/usr/share/logstash/data
+
+    networks:
+      - private-net
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.0
+
+    container_name: transcendence-kibana
+
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+    environment:
+       ELASTICSEARCH_HOSTS: http://elasticsearch:9200        # où aller chercher les données
+       ELASTICSEARCH_USERNAME: kibana_system
+       ELASTICSEARCH_PASSWORD: ${KIBANA_PASSWORD}
+       SERVER_BASEPATH: /kibana
+       SERVER_REWRITEBASEPATH: "true"
+       SERVER_PUBLICBASEURL: https://localhost:8443/kibana
+
+
+
+    networks:
+      - private-net
+  
+  kibana-init:
+    image: docker.io/curlimages/curl:latest
+
+    container_name: transcendence-kibana-init
+
+    depends_on:
+      kibana:
+        condition: service_started
+    
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+
+    volumes:
+      - ./kibana:/kibana-init:ro
+    
+    entrypoint: sh /kibana-init/init.sh
+
+    networks:
+      - private-net
+  
+  
+  vault:
+    image: docker.io/hashicorp/vault:1.17
+
+    container_name: transcendence-vault
+
+    user: "0:0"
+
+    cap_add:
+      - IPC_LOCK # empêche les secrets d'être copiés sur le disque (swap) si la RAM est saturée
+    
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      VAULT_ADDR: http://127.0.0.1:8200
+    
+    command: ["server", "-dev", "-dev-no-store-token"]
+
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    
+    networks:
+      - private-net
+
+  
+  vault-init: # conteneur jetable : écrit les secrets dans Vault au démarrage, sans action manuelle
+    image: docker.io/hashicorp/vault:1.17
+
+    container_name: transcendence-vault-init
+
+    depends_on:
+      vault:
+        condition: service_healthy
+    
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
+      GRAFANA_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+
+    volumes:
+      - ./vault/entrypoint.sh:/entrypoint.sh:ro
+
+    
+    entrypoint: sh /entrypoint.sh
+
+    networks:
+      - private-net
+  
+  prometheus:
+    image: docker.io/prom/prometheus:v3.11.2
+
+    container_name: transcendence-prometheus
+
+    user: "0:0"
+
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:Z
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:Z
+      - prometheus_data:/prometheus
+
+    ports:
+      - "127.0.0.1:9090:9090" 
+
+    networks:
+      - private-net
+
+  grafana-init: # conteneur jetable : récupère le mot de passe admin Grafana depuis Vault
+    image: docker.io/hashicorp/vault:1.17
+
+    container_name: transcendence-grafana-init
+
+    depends_on:
+      vault-init:
+        condition: service_completed_successfully
+
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID}
+
+    volumes:
+      - grafana_secrets:/secrets
+
+    networks:
+      - private-net
+
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        vault kv get -field=grafana_admin_password secret/backend > /secrets/grafana_admin_password
+
+  grafana:
+    image: docker.io/grafana/grafana:13.2.1
+    container_name: transcendence-grafana
+
+    depends_on:
+      prometheus:
+        condition: service_started
+      grafana-init:
+        condition: service_completed_successfully
+
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_SERVER_ROOT_URL: https://localhost:8443/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:Z
+      - grafana_data:/var/lib/grafana
+      - grafana_secrets:/run/secrets:ro
+
+    networks:
+      - private-net
+
+  alertmanager-init:
+    image: docker.io/hashicorp/vault:1.17
+
+    container_name: transcendence-alertmanager-init
+
+    depends_on:
+      vault-init:
+        condition: service_completed_successfully
+
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID}
+
+    volumes:
+      - ./alertmanager/alertmanager.yml.template:/alertmanager.yml.template:ro
+      - alertmanager_config:/config
+
+    networks:
+      - private-net
+
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        DISCORD_WEBHOOK_URL=$$(vault kv get -field=discord_webhook_url secret/backend) && \
+        sed "s|\$${DISCORD_WEBHOOK_URL}|$$DISCORD_WEBHOOK_URL|g" /alertmanager.yml.template > /config/alertmanager.yml
+
+  alertmanager:
+    image: docker.io/prom/alertmanager:v0.32.0
+
+    container_name: transcendence-alertmanager
+
+    depends_on:
+      alertmanager-init:
+        condition: service_completed_successfully
+
+    volumes:
+      - alertmanager_config:/etc/alertmanager
+
+    networks:
+      - private-net
+  
+  waf:
+    image: docker.io/owasp/modsecurity-crs:4.25-nginx-lts
+
+    container_name: transcendence-waf
+
+    user: "0:0"
+
+    depends_on:
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_healthy
+    
+    environment:
+      MODSEC_RULE_ENGINE: "On" 
+    
+    volumes:
+      - ./waf/default.conf.template:/etc/nginx/templates/conf.d/default.conf.template:Z,ro
+      - ./waf/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:/etc/modsecurity.d/owasp-crs/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:Z,ro
+      - app_logs:/var/log/app
+
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    
     networks:
       - public-net
+      - private-net
+
+
+volumes:
+  db_data:
+  db_backups:
+  es_data:
+  es_snapshots:
+  prometheus_data:
+  grafana_data:
+  grafana_secrets:
+  alertmanager_config:
+  app_logs: # volume partage pour les logs
+  logstash_data:
+  uploads: # avatars of backend
 
 networks:
   public-net:
+  private-net:
+    # internal: true - à remettre une fois Nginx (WAF) sera le seul point d'entrée public
+    # et que le backend n auta plus besoin de son 'ports' direct. 

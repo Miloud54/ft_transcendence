@@ -1,0 +1,35 @@
+
+# First step: install dependencies and compile
+
+FROM node:24.18.0-slim AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+# prisma.config.ts requires DATABASE_URL even for "generate", which does not connect
+# to the database: a dummy value is enough at build time.
+# Then compile TypeScript into dist/.
+RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" npx prisma generate && npm run build
+
+# Second step: runner (final image)
+FROM node:24.18.0-slim AS runner
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY --from=builder --chown=node:node /app/package*.json ./
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/dist ./dist
+COPY --from=builder --chown=node:node /app/generated ./generated
+COPY --from=builder --chown=node:node /app/prisma ./prisma
+COPY --from=builder --chown=node:node /app/prisma.config.ts ./
+COPY --from=builder --chown=node:node /app/data ./data
+COPY --from=builder --chown=node:node /app/src/pedantix-engine/article/curated/curated-articles.json ./src/pedantix-engine/article/curated/curated-articles.json
+
+RUN mkdir -p uploads/avatars && chown -R node:node /app/uploads
+
+USER node
+
+EXPOSE 3000
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
