@@ -75,7 +75,6 @@ export class GuessEngineService {
     const titleFound =
       index.titleWordIds.length > 0 &&
       index.titleWordIds.every((id) => board.revealed.has(id));
-    if (titleFound) board.finished = true;
 
     return { valid: true, normalized, revealedCount, bestGrade, titleFound };
   }

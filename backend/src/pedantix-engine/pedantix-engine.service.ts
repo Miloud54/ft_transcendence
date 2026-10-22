@@ -107,6 +107,11 @@ export class PedantixEngineService {
     return this.guessEngine.run(game.index, game.board, rawGuess);
   }
 
+  markGameFinished(gameId: string): void {
+    const game = this.games.get(gameId);
+    if (game) game.board.finished = true;
+  }
+
   releaseGame(gameId: string): void {
     this.games.delete(gameId);
   }

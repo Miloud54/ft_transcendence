@@ -226,6 +226,7 @@ export function GameBoard({
   const hottestGrade = Math.max(0, ...bodyWords.map((word) => word.grade));
   const temperaturePercent = Math.round((hottestGrade / 4) * 100);  
   const isSolved = gameState?.status === "finished";
+  const isTitleFound = (gameState?.graceRemaining ?? 0) > 0;
   const titleText = titleWords.map((word) => word.label).join("");
   const winner = players.find((player) => player.id === gameState?.winnerId);
   const getAttemptScore = (attempt: Attempt) =>
@@ -311,6 +312,8 @@ export function GameBoard({
             <span className="h-2 w-2 rounded-full bg-lime-500" />
             {gameState?.status === "countdown"
               ? `Starting in ${gameState.countdownRemaining}s`
+              : isTitleFound
+                ? `Title found · ${gameState?.graceRemaining}s remaining`
               : gameState?.status === "finished"
                 ? "Game finished"
                 : "Game in progress"} · #{gameId}
@@ -324,6 +327,8 @@ export function GameBoard({
             <strong className="font-mono text-zinc-900">
               {gameState?.status === "countdown"
                 ? `${gameState.countdownRemaining}s`
+                : isTitleFound
+                  ? `${gameState?.graceRemaining ?? 0}s`
                 : gameState?.status === "running"
                   ? "In progress"
                   : "—"}

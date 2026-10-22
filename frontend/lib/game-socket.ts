@@ -11,6 +11,7 @@ export type GameState = {
   gameId: string;
   status: "countdown" | "running" | "finished" | string;
   countdownRemaining: number;
+  graceRemaining: number;
   article?: {
     title: { tokens: ArticleToken[] };
     paragraphs: { tokens: ArticleToken[] }[];

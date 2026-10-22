@@ -132,14 +132,21 @@ describe('GameService (shared board)', () => {
     expect(spam).toMatchObject({ valid: false, reason: 'TOO_FAST' });
   });
 
-  it('the player completing the title wins +500, game ends and results persist', async () => {
+  it('keeps the game open for five minutes after the title is found', async () => {
     await service.submitGuess('1', '10', 'iron'); // +30 for player 10
     await service.submitGuess('1', '11', 'tower'); // +30, completes title: +500
-    const state = await service.getState('1');
+    let state = await service.getState('1');
+
+    expect(state.status).toBe('running');
+    expect(state.graceRemaining).toBe(300);
+    expect(state.scores).toEqual({ '10': SCORE_PER_WORD, '11': SCORE_PER_WORD + SCORE_TITLE });
+
+    await service.submitGuess('1', '10', 'banana');
+    await jest.advanceTimersByTimeAsync(5 * 60_000);
+    state = await service.getState('1');
 
     expect(state.status).toBe('finished');
     expect(state.winnerId).toBe('11');
-    expect(state.scores).toEqual({ '10': SCORE_PER_WORD, '11': SCORE_PER_WORD + SCORE_TITLE });
     // finished game exposes the fully revealed article
     const hidden = state.article!.paragraphs[0].tokens.filter(
       (t) => t.type === 'word' && t.status === 'hidden',
@@ -157,6 +164,8 @@ describe('GameService (shared board)', () => {
 
   it('rejects guesses once the game is finished', async () => {
     await service.submitGuess('1', '10', 'iron tower');
+    expect((await service.getState('1')).status).toBe('running');
+    await jest.advanceTimersByTimeAsync(5 * 60_000);
     await expect(service.submitGuess('1', '11', 'banana')).rejects.toThrow('not running');
   });
 });
