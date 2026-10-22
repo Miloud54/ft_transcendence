@@ -14,9 +14,10 @@ import { PresenceGateway } from 'src/user/presence.gateway';
 
 /** Points for a guess that uncovers at least one new word. */
 export const SCORE_PER_WORD = 30;
-/** Bonus for the player whose guess completes the title (and wins). */
+/** Bonus for the player whose guess completes the title. */
 export const SCORE_TITLE = 500;
 const MIN_GUESS_INTERVAL_MS = 300;
+const TITLE_GRACE_PERIOD_MS = 5 * 60_000;
 /** In-memory game data is kept this long after the end (results screen). */
 const RELEASE_DELAY_MS = 30 * 60_000;
 
@@ -24,6 +25,8 @@ export type GameState = {
   gameId: string;
   status: string;
   countdownRemaining: number;
+  /** Seconds remaining after the title is found, before the game closes. */
+  graceRemaining: number;
   /** Shared board: same view for every player of the game. */
   article?: ReturnType<PedantixEngineService['getArticleView']>;
   scores: Record<string, number>;
@@ -57,6 +60,8 @@ export class GameService {
   private readonly countdowns = new Set<string>();
   private readonly preparations = new Map<string, Promise<void>>();
   private readonly countdownEnds = new Map<string, number>();
+  private readonly graceEnds = new Map<string, number>();
+  private readonly graceTimers = new Map<string, NodeJS.Timeout>();
   private readonly scores = new Map<string, Map<string, number>>();
   private readonly attempts = new Map<string, Map<string, number>>();
   private readonly winners = new Map<string, string>();
@@ -90,6 +95,7 @@ export class GameService {
       countdownRemaining: countdownEndsAt
         ? Math.max(0, Math.ceil((countdownEndsAt - Date.now()) / 1000))
         : 0,
+      graceRemaining: this.remainingSeconds(this.graceEnds.get(gameId)),
       article:
         game.status === GameStatus.RUNNING
           ? this.pedantixEngine.getArticleView(gameId)
@@ -166,11 +172,38 @@ export class GameService {
     };
 
     if (outcome.titleFound) {
-      await this.finishGame(gameId, userId);
-    } else {
-      await this.emitState(gameId);
+      this.startTitleGracePeriod(gameId);
     }
+    await this.emitState(gameId);
     return result;
+  }
+
+  private startTitleGracePeriod(gameId: string) {
+    if (this.graceEnds.has(gameId)) return;
+
+    const endsAt = Date.now() + TITLE_GRACE_PERIOD_MS;
+    this.graceEnds.set(gameId, endsAt);
+    const timer = setTimeout(() => {
+      this.graceTimers.delete(gameId);
+      this.graceEnds.delete(gameId);
+      void this.finishGame(gameId).catch((error) => {
+        console.error('Failed to finish game after title grace period:', error);
+      });
+    }, TITLE_GRACE_PERIOD_MS);
+    timer.unref();
+    this.graceTimers.set(gameId, timer);
+
+    const interval = setInterval(() => {
+      if (!this.graceEnds.has(gameId)) {
+        clearInterval(interval);
+        return;
+      }
+      void this.emitState(gameId);
+    }, 1_000);
+  }
+
+  private remainingSeconds(endsAt: number | undefined): number {
+    return endsAt ? Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)) : 0;
   }
 
   async leaveGame(gameId: string, userId: string): Promise<void> {
@@ -426,6 +459,15 @@ export class GameService {
 
       return true;
     });
+    if (finished) {
+      this.graceEnds.delete(gameId);
+      const graceTimer = this.graceTimers.get(gameId);
+      if (graceTimer) {
+        clearTimeout(graceTimer);
+        this.graceTimers.delete(gameId);
+      }
+      this.pedantixEngine.markGameFinished(gameId);
+    }
     await this.emitState(gameId);
 
     if (!finished) {
@@ -465,6 +507,10 @@ export class GameService {
   }
 
   private releaseGame(gameId: string) {
+    const graceTimer = this.graceTimers.get(gameId);
+    if (graceTimer) clearTimeout(graceTimer);
+    this.graceTimers.delete(gameId);
+    this.graceEnds.delete(gameId);
     this.pedantixEngine.releaseGame(gameId);
     this.scores.delete(gameId);
     this.attempts.delete(gameId);

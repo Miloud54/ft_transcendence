@@ -156,8 +156,8 @@ describe('GuessEngineService', () => {
   it('detects the title once every title word is revealed', () => {
     expect(engine.run(index, board, 'iron')).toMatchObject({ titleFound: false });
     expect(engine.run(index, board, 'tower')).toMatchObject({ titleFound: true });
-    expect(board.finished).toBe(true);
-    expect(engine.run(index, board, 'tall')).toMatchObject({ reason: 'GAME_FINISHED' });
+    expect(board.finished).toBe(false);
+    expect(engine.run(index, board, 'tall')).toMatchObject({ valid: true });
   });
 
   it('accepts the exact full title as one guess', () => {
