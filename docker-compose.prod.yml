@@ -5,7 +5,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
-    image: transcendance-frontend:prod
+    image: transcendence-frontend:prod
 
     container_name: transcendence-frontend
     restart: unless-stopped
@@ -30,12 +30,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
-    image: transcendance-backend:prod
+    image: transcendence-backend:prod
 
     container_name: transcendence-backend
-
-    #comment next line if not on school pc
-    #user: "0:0"
 
     restart: unless-stopped
 
@@ -75,7 +72,7 @@ services:
     image: docker.io/library/postgres:18-alpine
     # app_logs : ouvert en écriture pour tous, protégé par le sticky bit
     # es_snapshots : donné à l'utilisateur d'Elasticsearch (uid 1000) pour qu'il puisse y écrire ses snapshots
-    command: sh -c "chmod 1777 /var/log/app && chown 1000:0 /snapshots"
+    command: sh -c "chmod 1777 /var/log/app && chown 1000:1000 /var/log/app/backend.log /var/log/app/frontend.log 2>/dev/null; chmod 644 /var/log/app/*.log 2>/dev/null; chown 1000:0 /snapshots"
     volumes:
       - app_logs:/var/log/app
       - es_snapshots:/snapshots
@@ -87,8 +84,8 @@ services:
     container_name: transcendence-db
 
     user: "0:0"
-
-    restart: on-failure
+    
+    restart: unless-stopped
     
     environment:
       POSTGRES_USER: ${DB_USER}
@@ -128,6 +125,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    
+    restart: unless-stopped
 
     environment:
       DB_USER: ${DB_USER}
@@ -148,6 +147,8 @@ services:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
 
     container_name: transcendence-elasticsearch
+
+    restart: unless-stopped
 
     environment:
       discovery.type: single-node         # une seule instance, pas de cluster
@@ -172,7 +173,7 @@ services:
       - private-net
   
   es-init: # conteneur jetable : configure les comptes kibana_system et logstash_writer dans Elasticsearch (mots de passe connus, pas de génération aléatoire), à chaque démarrage
-    image: docker.io/curlimages/curl:latest
+    image: docker.io/curlimages/curl:8.22.0
 
     container_name: transcendence-es-init
 
@@ -202,6 +203,8 @@ services:
     user: "0:0"
 
     init: true
+
+    restart: unless-stopped
     
     environment:
       LOGSTASH_PASSWORD: ${LOGSTASH_PASSWORD}
@@ -227,6 +230,8 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
+    
+    restart: unless-stopped
 
     environment:
        ELASTICSEARCH_HOSTS: http://elasticsearch:9200        # où aller chercher les données
@@ -236,20 +241,19 @@ services:
        SERVER_REWRITEBASEPATH: "true"
        SERVER_PUBLICBASEURL: https://localhost:8443/kibana
 
-
-
     networks:
       - private-net
   
+
   kibana-init:
-    image: docker.io/curlimages/curl:latest
+    image: docker.io/curlimages/curl:8.22.0
 
     container_name: transcendence-kibana-init
 
     depends_on:
       kibana:
         condition: service_started
-    
+
     environment:
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
 
@@ -272,6 +276,8 @@ services:
     cap_add:
       - IPC_LOCK # empêche les secrets d'être copiés sur le disque (swap) si la RAM est saturée
     
+    restart: unless-stopped
+
     environment:
       VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID}
       VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
@@ -327,13 +333,12 @@ services:
 
     user: "0:0"
 
+    restart: unless-stopped
+
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:Z
       - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:Z
       - prometheus_data:/prometheus
-
-    ports:
-      - "127.0.0.1:9090:9090" 
 
     networks:
       - private-net
@@ -371,6 +376,8 @@ services:
         condition: service_started
       grafana-init:
         condition: service_completed_successfully
+    
+    restart: unless-stopped
 
     environment:
       GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
@@ -416,6 +423,8 @@ services:
 
     container_name: transcendence-alertmanager
 
+    restart: unless-stopped
+
     depends_on:
       alertmanager-init:
         condition: service_completed_successfully
@@ -438,6 +447,8 @@ services:
         condition: service_started
       backend:
         condition: service_healthy
+    
+    restart: unless-stopped  
     
     environment:
       MODSEC_RULE_ENGINE: "On" 
@@ -472,5 +483,5 @@ volumes:
 networks:
   public-net:
   private-net:
-    # internal: true - à remettre une fois Nginx (WAF) sera le seul point d'entrée public
-    # et que le backend n auta plus besoin de son 'ports' direct. 
+    # internal: true - à activer (étape e) : coupe private-net d'Internet.
+    # Avant, créer un réseau egress-net pour backend et alertmanager, qui doivent joindre Internet.

@@ -1,6 +1,6 @@
 # **Docker Compose de production**
 
-**(21/10/2026)** — branche `dockercompose_prod`, travail en cours
+**(21/10/2026, mis à jour le 22/10/2026)** — branche `dockercompose_prod`, travail en cours
 
 Ce document suit le passage de `docker-compose.yml` (développement) à `docker-compose.prod.yml` (production) : les choix, les changements service par service, et comment tester. Vue d'ensemble de l'architecture cible : `docs/devops/notes/architecture.md`.
 
@@ -37,10 +37,10 @@ Une étape = un test. On ne lance la stack de prod complète (`up`) qu'une fois 
 | a | Copier `docker-compose.yml` en `docker-compose.prod.yml` | ✅ fait |
 | b | **Frontend** en version build (`Dockerfile.prod`) | ✅ fait le 21/10/2026 (image de 1,91 Go → 216 Mo) |
 | c | **Backend** : `backend/Dockerfile.prod` (compilation, migrations au démarrage, `NODE_ENV=production`) | 🟡 Dockerfile écrit et testé (22/10/2026) ; bloc du compose à adapter ; relecture équipe back (voir section 4) |
-| d | `restart: unless-stopped` et healthcheck sur tous les services qui tournent en continu | à faire |
+| d | `restart: unless-stopped` et healthcheck sur tous les services qui tournent en continu | 🟡 `restart` fait le 22/10/2026 (voir section 5) ; healthchecks de Kibana, Grafana, Prometheus en option |
 | e | **Réseaux** : `private-net` en `internal: true` + `egress-net` pour le backend et Alertmanager | à faire, à tester avec soin |
 | f | **Vault** en mode serveur (stockage sur disque, déverrouillage, token en lecture seule pour le backend) | après décision d'équipe |
-| g | Ports : seul le WAF publié ; retirer `127.0.0.1:5555` (Prisma Studio) et `127.0.0.1:9090` (Prometheus) | à faire |
+| g | Ports : seul le WAF publié ; retirer `127.0.0.1:5555` (Prisma Studio) et `127.0.0.1:9090` (Prometheus) | ✅ fait le 22/10/2026 : seuls `8080` et `8443` (WAF) restent |
 | h | Adresses écrites en dur (`https://localhost:8443` dans les callbacks OAuth et les avatars) → variables | à faire, avec l'équipe back |
 
 ---
@@ -357,12 +357,109 @@ Image construite et lancée **à part** (conteneur de test, réseau `private-net
 ### État au 22/10/2026
 
 - [x] `backend/Dockerfile.prod` écrit et testé
-- [ ] bloc `backend` de `docker-compose.prod.yml` : `Dockerfile.prod`, `image`, `restart`, `command` faits ; reste à retirer `./backend:/app`, `/app/node_modules`, `stdin_open`, `tty`, `init`, à ajouter le volume `uploads` (dans le bloc et en bas du fichier), et à corriger le nom d'image (`transcendence`)
-- [ ] `docker compose -f docker-compose.prod.yml build backend`
+- [x] bloc `backend` de `docker-compose.prod.yml` : montages de dev retirés, volume `uploads` ajouté, nom d'image corrigé (`transcendence-backend:prod`)
+- [x] `docker compose -f docker-compose.prod.yml build backend`
 - [ ] relecture par l'équipe back
 - [ ] test sur un poste de l'école
 
-## **5. Quel fichier est utilisé ?**
+## **5. Les autres services**
+
+**(22/10/2026)** — les services qui ne sont ni le frontend ni le backend utilisent des **images officielles** : on ne les reconstruit pas, on ajuste seulement leur bloc. Explication détaillée des volumes et des dépendances : `docs_maria/services-volumes-dependances.md`.
+
+### `restart: unless-stopped`
+
+`restart: unless-stopped` veut dire : « si le conteneur s'arrête tout seul (plantage, redémarrage de la machine), Docker le relance ; sauf si c'est nous qui l'avons arrêté (`docker compose stop` ou `down`) ».
+
+La règle :
+- **service qui tourne en continu** → `restart: unless-stopped` ;
+- **conteneur jetable** (`*-init`, `volumes-init`), qui fait une tâche puis s'arrête normalement → **jamais** de `restart`, sinon Docker le relancerait en boucle (par exemple `kibana-init` réimporterait le dashboard sans arrêt).
+
+| Service | Sorte | `restart` | Ce qui se passerait sans |
+| --- | --- | --- | --- |
+| `frontend` | continu | ✅ | le site ne s'affiche plus |
+| `backend` | continu | ✅ | l'API et le jeu ne répondent plus |
+| `db` | continu | ✅ (déjà là en dev) | plus de base de données |
+| `backup` | continu (boucle de 24 h) | ✅ | **plus aucune sauvegarde, sans que personne ne s'en rende compte** |
+| `vault` | continu | ✅ | plus de secrets (voir le piège ci-dessous) |
+| `elasticsearch` | continu | ✅ | plus aucun log enregistré, Kibana vide |
+| `logstash` | continu | ✅ | les logs ne sont plus envoyés à Elasticsearch |
+| `kibana` | continu | ✅ | plus d'interface pour les logs |
+| `prometheus` | continu | ✅ | plus de métriques |
+| `grafana` | continu | ✅ | plus de graphiques |
+| `alertmanager` | continu | ✅ | plus d'alertes Discord |
+| `waf` | continu | ✅ | **le site entier est inaccessible** |
+| `vault-init`, `es-init`, `kibana-init`, `grafana-init`, `alertmanager-init`, `volumes-init` | jetables | ❌ volontairement | — |
+
+### Le piège de Vault avec `restart`
+
+Vault tourne encore en **mode dev** : ses secrets sont **en mémoire** (pas de volume). C'est `vault-init` qui les y range à chaque `up`, depuis le `.env`.
+
+Si Vault plante et que `restart` le relance **tout seul** :
+- il redémarre **vide** ;
+- `vault-init` ne repasse pas : il a déjà fini son travail, et Docker ne relance pas un jetable.
+
+| Ce qui continue de marcher | Ce qui casserait |
+| --- | --- |
+| le backend, Grafana et Alertmanager **s'ils tournent déjà** : ils ont lu leurs secrets au démarrage | tout service qui **redémarre ensuite** et va relire ses secrets dans Vault |
+
+**Réparer** : relancer `docker compose -f docker-compose.prod.yml up -d`, ce qui refait passer `vault-init`.
+
+`restart` reste **mieux que rien** : au moins Vault revient. La vraie solution est le **mode serveur** (étape f), qui garde les secrets sur disque.
+
+### Port de Prometheus fermé
+
+Le bloc `prometheus` publiait `127.0.0.1:9090:9090`. C'était un accès direct, qui **contournait le WAF**. Il est retiré :
+- Grafana joint Prometheus par le **réseau interne** (`http://prometheus:9090`), sans passer par ce port ;
+- les métriques restent visibles dans **Grafana**, derrière le WAF (`/grafana`).
+
+En prod, seuls les ports du WAF restent ouverts : `8443` (HTTPS) et `8080` (redirige vers `8443`). Prisma Studio (`5555`) n'existe plus en prod.
+
+### `user: "0:0"` : service par service
+
+`user: "0:0"` force un conteneur à **démarrer en root**. L'équipe l'a ajouté le 08/10/2026 pour les postes de l'école (podman), où certains volumes n'appartenaient pas au bon utilisateur.
+
+**Pourquoi c'est un risque** : un programme root peut tout faire dans son conteneur, et lire tous les volumes branchés. Si un attaquant prenait le contrôle de ce programme, il aurait ces pouvoirs.
+
+**Ce qui limite le risque** :
+- certaines images démarrent en root, puis **redescendent toutes seules** vers un utilisateur limité pour le vrai travail ;
+- sous **podman sans droits administrateur** (école), « root dans le conteneur » correspond en fait à l'utilisateur normal sur la machine.
+
+Ce qui tourne vraiment (vérifié le 22/10/2026 avec `ps` dans chaque conteneur) :
+
+| Service | `user: "0:0"` | Le programme qui fait le vrai travail tourne en… | Décision |
+| --- | --- | --- | --- |
+| `frontend` | non | `node` | ✅ sans root |
+| `backend` | **retiré** (présent en dev) | `node` | ✅ sans root : le Dockerfile prépare les droits (`COPY --chown`, `USER node`), et il n'y a plus de code monté depuis la machine |
+| `db` | oui | `postgres` (n° 70) : l'image démarre en root pour régler ses dossiers, puis redescend. Postgres refuse d'ailleurs de tourner en root | **garder** : l'image démarre déjà en root par défaut, la ligne ne change rien |
+| `waf` | oui | `nginx` (n° 101) pour les workers, qui traitent toutes les requêtes. Seul le processus « chef » reste root, ce qui est normal pour Nginx | **garder** |
+| `vault` | oui | `vault` (n° 100). Seul le petit lanceur reste root | **garder** |
+| `logstash` | oui | **root** | **garder pour l'instant** (voir ci-dessous) |
+| `prometheus` | oui | **root** | **garder pour l'instant** (voir ci-dessous) |
+| `elasticsearch`, `kibana`, `grafana`, `alertmanager` | non | leur propre utilisateur | ✅ sans root |
+
+**Pourquoi le backend et le frontend en priorité** : ce sont eux qui reçoivent les requêtes d'Internet et traitent des données envoyées par des inconnus (formulaires, fichiers uploadés, websockets). Une faille a le plus de chances d'être chez eux, donc c'est là que l'absence de root compte le plus. Logstash et Prometheus ne sont pas joignables de l'extérieur.
+
+**Pourquoi on ne retire pas tout de suite root à Logstash et Prometheus** : ils écrivent dans leur volume (`logstash_data`, `prometheus_data`), et tous les fichiers qui s'y trouvent ont été **créés en root**. Sans root, ils ne pourraient plus y écrire et planteraient au démarrage.
+
+Piste d'amélioration, si le temps le permet :
+1. brancher ces volumes sur `volumes-init` ;
+2. y ajouter un `chown` vers leur utilisateur (`1000` pour Logstash, `nobody` pour Prometheus), comme pour `/snapshots` ;
+3. retirer `user: "0:0"` ;
+4. tester en local **et** sur un poste de l'école.
+
+Logstash affiche d'ailleurs un avertissement : *« Running Logstash as superuser is not recommended and won't be allowed in the future »*. Pas de risque aujourd'hui, car la version est fixée (`8.15.0`). Mais une future version 9 refusera de démarrer en root.
+
+**Réponse pour la soutenance** : *« Les services exposés (frontend, backend) tournent sans root. Postgres, Nginx et Vault démarrent en root mais réduisent leurs privilèges. Logstash et Prometheus, qui ne sont pas exposés, tournent en root pour la compatibilité avec podman sur les postes de l'école : c'est un compromis identifié, et la piste d'amélioration est d'ajuster les droits de leurs volumes. »*
+
+### Autres ajustements
+
+| Où | Changement | Pourquoi |
+| --- | --- | --- |
+| `es-init`, `kibana-init` | `curlimages/curl:latest` → `curlimages/curl:8.22.0` | `latest` change avec le temps : chez l'évaluateur, ce ne serait peut-être pas la version testée. En prod, on fixe les versions |
+| `volumes-init` | `chmod a+w` sur les logs → `chown 1000:1000` sur `backend.log` et `frontend.log`, puis `chmod 644` | chaque fichier de log n'est modifiable que par le service qui l'écrit (`node` = n° 1000), au lieu de l'être par tous |
+| `frontend`, `backend` | nom d'image `transcendance-…` → `transcendence-…` | faute de frappe (nécessite un `--build`) |
+
+## **6. Quel fichier est utilisé ?**
 
 C'est la **commande** qui décide. Les deux fichiers existent côte à côte, Docker n'en utilise qu'un à la fois :
 
@@ -383,7 +480,7 @@ En dev, le frontend et le backend lancent `npm ci` **à chaque démarrage**, qui
 | `private-net` | normal (accès à Internet) | `internal: true` (coupé d'Internet) |
 | `egress-net` | n'existe pas | backend et Alertmanager |
 
-## **6. Tester sans casser la stack de dev**
+## **7. Tester sans casser la stack de dev**
 
 Les deux fichiers créent des conteneurs **de mêmes noms** (`container_name`). On ne fait donc tourner **qu'une stack à la fois**.
 
