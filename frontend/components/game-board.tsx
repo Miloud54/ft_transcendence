@@ -179,6 +179,7 @@ export function GameBoard({
     const timeout = setTimeout(() => {
       if (!lastGuess.valid) {
         if (mine) {
+          setGuess("");
           setNotice(REJECTION_MESSAGES[lastGuess.reason ?? ""] ?? "That guess was rejected.");
         }
         return;
