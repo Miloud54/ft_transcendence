@@ -72,11 +72,11 @@ services:
     image: docker.io/library/postgres:18-alpine
     # app_logs : ouvert en écriture pour tous, protégé par le sticky bit
     # es_snapshots : donné à l'utilisateur d'Elasticsearch (uid 1000) pour qu'il puisse y écrire ses snapshots
-    command: sh -c "chmod 1777 /var/log/app && chown 1000:1000 /var/log/app/backend.log /var/log/app/frontend.log 2>/dev/null; chmod 644 /var/log/app/*.log 2>/dev/null; chown 1000:0 /snapshots"
+    command: sh -c "chmod 1777 /var/log/app && chown 1000:1000 /var/log/app/backend.log /var/log/app/frontend.log 2>/dev/null; chmod 644 /var/log/app/*.log 2>/dev/null; chown 1000:0 /snapshots && mkdir -p /uploads/avatars && chown -R 1000:1000 /uploads"
     volumes:
       - app_logs:/var/log/app
       - es_snapshots:/snapshots
-  
+      - uploads:/uploads
 
   db:
     image: docker.io/library/postgres:18-alpine
@@ -137,6 +137,7 @@ services:
     volumes:
       - ./backup/backup.sh:/backup.sh:ro
       - db_backups:/backups
+      - uploads:/uploads:ro
 
     entrypoint: ["sh", "/backup.sh"]
 

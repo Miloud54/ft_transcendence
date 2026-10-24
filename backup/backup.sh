@@ -13,5 +13,11 @@ while true; do
 
   ls -1t /backups/transcendix_*.sql.gz 2>/dev/null | tail -n +$((RETENTION + 1)) | xargs -r rm -f
 
+  # Archive of avatars
+  tar czf "/backups/uploads_${timestamp}.tar.gz" -C /uploads .
+  echo "[backup] Uploads archived."
+
+  ls -1t /backups/uploads_*.tar.gz 2>/dev/null | tail -n +$((RETENTION + 1)) | xargs -r rm -f
+
   sleep "$INTERVAL"
 done
