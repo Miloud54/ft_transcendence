@@ -146,7 +146,7 @@ services:
       BACKUP_INTERVAL_SECONDS: "86400" # toutes les 24h 
 
     volumes:
-      - ./backup/backup.sh:/backup.sh:ro
+      - ./backup/backup.sh:/backup.sh:ro,Z
       - db_backups:/backups
       - uploads:/uploads:ro
 
@@ -197,7 +197,7 @@ services:
       LOGSTASH_PASSWORD: ${LOGSTASH_PASSWORD}
 
     volumes:
-      - ./elasticsearch/init.sh:/init.sh:ro
+      - ./elasticsearch/init.sh:/init.sh:ro,Z
 
     entrypoint: sh /init.sh
 
@@ -265,7 +265,7 @@ services:
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
 
     volumes:
-      - ./kibana:/kibana-init:ro
+      - ./kibana:/kibana-init:ro,Z
     
     entrypoint: sh /kibana-init/init.sh
 
@@ -323,7 +323,7 @@ services:
       GRAFANA_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
 
     volumes:
-      - ./vault/entrypoint.sh:/entrypoint.sh:ro
+      - ./vault/entrypoint.sh:/entrypoint.sh:ro,Z
 
     
     entrypoint: sh /entrypoint.sh
@@ -410,7 +410,7 @@ services:
       VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID}
 
     volumes:
-      - ./alertmanager/alertmanager.yml.template:/alertmanager.yml.template:ro
+      - ./alertmanager/alertmanager.yml.template:/alertmanager.yml.template:ro,Z
       - alertmanager_config:/config
 
     networks:
