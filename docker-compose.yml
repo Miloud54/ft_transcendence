@@ -63,6 +63,7 @@ services:
       - ./backend:/app:Z
       - /app/node_modules
       - app_logs:/var/log/app
+      - uploads:/app/uploads
 
     stdin_open: true
     tty: true
@@ -83,10 +84,11 @@ services:
     image: docker.io/library/postgres:18-alpine
     # app_logs : ouvert en écriture pour tous, protégé par le sticky bit
     # es_snapshots : donné à l'utilisateur d'Elasticsearch (uid 1000) pour qu'il puisse y écrire ses snapshots
-    command: sh -c "chmod 1777 /var/log/app && chown 1000:0 /snapshots"
+    command: sh -c "chmod 1777 /var/log/app && chown 1000:1000 /var/log/app/backend.log /var/log/app/frontend.log 2>/dev/null; chmod 644 /var/log/app/*.log 2>/dev/null; chown 1000:0 /snapshots && mkdir -p /uploads/avatars && chown -R 1000:1000 /uploads"
     volumes:
       - app_logs:/var/log/app
       - es_snapshots:/snapshots
+      - uploads:/uploads
   
 
   db:
@@ -144,8 +146,9 @@ services:
       BACKUP_INTERVAL_SECONDS: "86400" # toutes les 24h 
 
     volumes:
-      - ./backup/backup.sh:/backup.sh:ro
+      - ./backup/backup.sh:/backup.sh:ro,Z
       - db_backups:/backups
+      - uploads:/uploads:ro
 
     entrypoint: ["sh", "/backup.sh"]
 
@@ -194,7 +197,7 @@ services:
       LOGSTASH_PASSWORD: ${LOGSTASH_PASSWORD}
 
     volumes:
-      - ./elasticsearch/init.sh:/init.sh:ro
+      - ./elasticsearch/init.sh:/init.sh:ro,Z
 
     entrypoint: sh /init.sh
 
@@ -262,7 +265,7 @@ services:
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
 
     volumes:
-      - ./kibana:/kibana-init:ro
+      - ./kibana:/kibana-init:ro,Z
     
     entrypoint: sh /kibana-init/init.sh
 
@@ -320,7 +323,7 @@ services:
       GRAFANA_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
 
     volumes:
-      - ./vault/entrypoint.sh:/entrypoint.sh:ro
+      - ./vault/entrypoint.sh:/entrypoint.sh:ro,Z
 
     
     entrypoint: sh /entrypoint.sh
@@ -407,7 +410,7 @@ services:
       VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID}
 
     volumes:
-      - ./alertmanager/alertmanager.yml.template:/alertmanager.yml.template:ro
+      - ./alertmanager/alertmanager.yml.template:/alertmanager.yml.template:ro,Z
       - alertmanager_config:/config
 
     networks:
@@ -475,6 +478,7 @@ volumes:
   alertmanager_config:
   app_logs: # volume partage pour les logs
   logstash_data:
+  uploads:
 
 networks:
   public-net:
