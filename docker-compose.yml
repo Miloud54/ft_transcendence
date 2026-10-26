@@ -56,7 +56,7 @@ services:
 
     working_dir: /app
 
-    command: sh -c "npm ci && npx prisma generate && npm run prisma:deploy && npm run start:dev 2>&1 | tee /var/log/app/backend.log"
+    command: sh -c "npm ci && npx prisma generate && npm run prisma:deploy && npx prisma db seed && npm run start:dev 2>&1 | tee /var/log/app/backend.log"
 
     ports:
       - "127.0.0.1:5555:5555"
@@ -323,6 +323,7 @@ services:
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
       GRAFANA_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      DEMO_PASSWORD: ${DEMO_PASSWORD}
 
     volumes:
       - ./vault/entrypoint.sh:/entrypoint.sh:ro,Z

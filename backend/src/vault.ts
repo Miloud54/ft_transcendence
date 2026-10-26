@@ -7,6 +7,7 @@ interface VaultSecretData {
   google_client_secret: string;
   discord_client_id: string;
   discord_client_secret: string;
+  demo_password?: string;
 }
 
 interface VaultKvV2Response {

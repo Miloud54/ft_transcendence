@@ -15,6 +15,12 @@ function hashPassword(plain: string): string {
 const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000);
 
 async function main() {
+const existingUsers = await prisma.user.count();
+  if (existingUsers > 0 && process.env.SEED_FORCE !== "true") {
+    console.log(`Database already contains ${existingUsers} users, skipping seed (set SEED_FORCE=true to reset).`);
+    return;
+  }
+  
   console.log("🧹 Cleaning database...");
   // TRUNCATE + RESTART IDENTITY so ids start again at 1
   await prisma.$executeRawUnsafe(
