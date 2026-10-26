@@ -1,3 +1,5 @@
+name: transcendence-prod
+
 services:
 
   frontend:
@@ -7,7 +9,6 @@ services:
       dockerfile: Dockerfile.prod
     image: transcendence-frontend:prod
 
-    container_name: transcendence-frontend
     restart: unless-stopped
     
     command: sh -c "node server.js 2>&1 | tee /var/log/app/frontend.log"
@@ -32,7 +33,6 @@ services:
       dockerfile: Dockerfile.prod
     image: transcendence-backend:prod
 
-    container_name: transcendence-backend
 
     restart: unless-stopped
 
@@ -82,7 +82,6 @@ services:
   db:
     image: docker.io/library/postgres:18-alpine
     
-    container_name: transcendence-db
 
     user: "0:0"
     
@@ -121,7 +120,6 @@ services:
   backup:
     image: docker.io/library/postgres:18-alpine
 
-    container_name: transcendence-backup
 
     depends_on:
       db:
@@ -148,7 +146,6 @@ services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
 
-    container_name: transcendence-elasticsearch
 
     restart: unless-stopped
 
@@ -177,7 +174,6 @@ services:
   es-init: # conteneur jetable : configure les comptes kibana_system et logstash_writer dans Elasticsearch (mots de passe connus, pas de génération aléatoire), à chaque démarrage
     image: docker.io/curlimages/curl:8.22.0
 
-    container_name: transcendence-es-init
 
     depends_on:
       elasticsearch:
@@ -200,7 +196,6 @@ services:
 
     image: docker.elastic.co/logstash/logstash:8.15.0
 
-    container_name: transcendence-logstash
 
     user: "0:0"
 
@@ -227,7 +222,6 @@ services:
   kibana:
     image: docker.elastic.co/kibana/kibana:8.15.0
 
-    container_name: transcendence-kibana
 
     depends_on:
       elasticsearch:
@@ -250,7 +244,6 @@ services:
   kibana-init:
     image: docker.io/curlimages/curl:8.22.0
 
-    container_name: transcendence-kibana-init
 
     depends_on:
       kibana:
@@ -271,7 +264,6 @@ services:
   vault:
     image: docker.io/hashicorp/vault:1.17
 
-    container_name: transcendence-vault
 
     user: "0:0"
 
@@ -301,7 +293,6 @@ services:
   vault-init: # conteneur jetable : écrit les secrets dans Vault au démarrage, sans action manuelle
     image: docker.io/hashicorp/vault:1.17
 
-    container_name: transcendence-vault-init
 
     depends_on:
       vault:
@@ -331,7 +322,6 @@ services:
   prometheus:
     image: docker.io/prom/prometheus:v3.11.2
 
-    container_name: transcendence-prometheus
 
     user: "0:0"
 
@@ -348,7 +338,6 @@ services:
   grafana-init: # conteneur jetable : récupère le mot de passe admin Grafana depuis Vault
     image: docker.io/hashicorp/vault:1.17
 
-    container_name: transcendence-grafana-init
 
     depends_on:
       vault-init:
@@ -371,7 +360,6 @@ services:
 
   grafana:
     image: docker.io/grafana/grafana:13.2.1
-    container_name: transcendence-grafana
 
     depends_on:
       prometheus:
@@ -397,7 +385,6 @@ services:
   alertmanager-init:
     image: docker.io/hashicorp/vault:1.17
 
-    container_name: transcendence-alertmanager-init
 
     depends_on:
       vault-init:
@@ -423,7 +410,6 @@ services:
   alertmanager:
     image: docker.io/prom/alertmanager:v0.32.0
 
-    container_name: transcendence-alertmanager
 
     restart: unless-stopped
 
@@ -441,7 +427,6 @@ services:
   waf:
     image: docker.io/owasp/modsecurity-crs:4.25-nginx-lts
 
-    container_name: transcendence-waf
 
     user: "0:0"
 
