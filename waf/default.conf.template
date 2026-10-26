@@ -73,7 +73,7 @@ server {
         proxy_read_timeout 3600s;
     }
 
-    location /kibana/ {
+    location /kibana {
         # Kibana est un outil d'administration, pas une partie du site : le WAF ne l'attend pas
         # au demarrage (pas de bloc upstream, pas de depends_on). L'adresse est resolue a chaque
         # requete via la variable : si Kibana est absent, seul /kibana/ repond 502, le site reste
@@ -99,7 +99,7 @@ server {
         proxy_read_timeout 3600s;
     }
 
-    location /grafana/ {
+    location /grafana {
         set $grafana_backend http://grafana:3000;
         proxy_pass $grafana_backend;
         proxy_set_header Host $host;
