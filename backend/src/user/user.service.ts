@@ -141,7 +141,11 @@ export class UserService {
     }
 
     const results = await this.prisma.gamePlayer.findMany({
-      where: { user_id: userIdBig, result: { not: null } },
+      where: {
+        user_id: userIdBig,
+        result: { not: null },
+        game: { status: GameStatus.FINISHED },
+      },
       select: { result: true, score: true, rank: true },
     });
 
@@ -214,7 +218,11 @@ export class UserService {
     const userIdBig = BigInt(userId);
 
     const entries = await this.prisma.gamePlayer.findMany({
-      where: { user_id: userIdBig, result: { not: null } },
+      where: {
+        user_id: userIdBig,
+        result: { not: null },
+        game: { status: GameStatus.FINISHED },
+      },
       include: {
         game: {
           include: {

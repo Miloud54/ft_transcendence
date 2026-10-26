@@ -523,7 +523,7 @@ export class GameService {
 
    async getLeaderboard(limit = 20, sortBy: 'wins' | 'points' = 'wins') {
     const players = await this.prisma.gamePlayer.findMany({
-      where: { result: { not: null } },
+      where: { result: { not: null }, game: { status: GameStatus.FINISHED } },
       include: { users: true },
     });
 
