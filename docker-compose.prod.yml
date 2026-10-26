@@ -51,7 +51,7 @@ services:
       FRONTEND_URL: https://localhost:8443
 
     # migrations and running
-    command: sh -c "npx prisma migrate deploy && node dist/main 2>&1 | tee /var/log/app/backend.log"
+    command: sh -c "npx prisma migrate deploy && npm run seed:demo && node dist/main 2>&1 | tee /var/log/app/backend.log"
 
     volumes:
       - app_logs:/var/log/app
@@ -309,6 +309,7 @@ services:
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
       GRAFANA_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      DEMO_PASSWORD: ${DEMO_PASSWORD}
 
     volumes:
       - ./vault/entrypoint.sh:/entrypoint.sh:ro,Z
