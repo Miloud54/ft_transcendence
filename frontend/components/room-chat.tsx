@@ -73,6 +73,7 @@ function RoomChatContent({ roomId }: { roomId: string | null }) {
         },
         onChatMessage: (message) => {
           if (message.roomId !== roomId) return;
+          setConnectionError(null);
           setMessages((current) =>
             current.some((existing) => existing.id === message.id)
               ? current
@@ -113,6 +114,12 @@ function RoomChatContent({ roomId }: { roomId: string | null }) {
 
     if (!text || !roomId || !socketRef.current) return;
 
+    if (text.length > 500) {
+      setConnectionError("Message cannot exceed 500 characters");
+      return;
+    }
+
+    setConnectionError(null);
     socketRef.current.emit("chat:send", { roomId, text });
     setDraft("");
   }
