@@ -10,6 +10,7 @@ import { NotificationCenter } from "@/components/notification-center";
 import { ActiveGameButton } from "@/components/active-game-button";
 import { ActiveLobbyButton } from "@/components/active-lobby-button";
 import { Logo } from "@/components/logo";
+import { AuthGuard } from "@/components/auth-guard";
 
 const NAV_ITEMS = [
   { href: "/home", label: "Home" },
@@ -26,32 +27,34 @@ export default function AppLayout({
 }>) {
   return (
     <CurrentUserProvider>
-      <div className="flex min-h-full flex-1 flex-col">
-        <header className="flex items-center justify-between gap-6 bg-violet-700 px-6 py-1.5">
-          <div className="flex items-center gap-8">
-            <Link href="/home" className="flex items-center" aria-label="Transcendix">
-              <Logo className="h-14 w-auto lg:h-[4.5rem]" />
-            </Link>
-            <MainNav items={NAV_ITEMS} />
-          </div>
+      <AuthGuard>
+        <div className="flex min-h-full flex-1 flex-col">
+          <header className="flex items-center justify-between gap-6 bg-violet-700 px-6 py-1.5">
+            <div className="flex items-center gap-8">
+              <Link href="/home" className="flex items-center" aria-label="Transcendix">
+                <Logo className="h-14 w-auto lg:h-[4.5rem]" />
+              </Link>
+              <MainNav items={NAV_ITEMS} />
+            </div>
 
-          <div className="flex items-center gap-4">
-            <ActiveGameButton />
-            <ActiveLobbyButton />
-            <MobileNav items={NAV_ITEMS} />
-            <NotificationCenter />
-            <AccountMenu />
-            <Link href="/dashboard">
-              <CurrentUserBadge />
-            </Link>
-          </div>
-         </header>
+            <div className="flex items-center gap-4">
+              <ActiveGameButton />
+              <ActiveLobbyButton />
+              <MobileNav items={NAV_ITEMS} />
+              <NotificationCenter />
+              <AccountMenu />
+              <Link href="/dashboard">
+                <CurrentUserBadge />
+              </Link>
+            </div>
+          </header>
 
-        <main className="flex-1 px-4 py-8 sm:px-8">{children}</main>
+          <main className="flex-1 px-4 py-8 sm:px-8">{children}</main>
 
-        <Footer />
-        <RoomChat />
-      </div>
+          <Footer />
+          <RoomChat />
+        </div>
+      </AuthGuard>
     </CurrentUserProvider>
   );
 }

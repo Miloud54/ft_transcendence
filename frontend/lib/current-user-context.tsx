@@ -29,13 +29,16 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
     const token = localStorage.getItem("accessToken");
 
-    fetch(`${API_URL}/users/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((response) => {
-        if (!response.ok) throw new Error("Could not load current user.");
-        return response.json();
-      })
+    const request = token
+      ? fetch(`${API_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).then((response) => {
+          if (!response.ok) throw new Error("Could not load current user.");
+          return response.json();
+        })
+      : Promise.resolve(null);
+
+    request
       .then(setUser)
       .catch(() => setUser(null))
       .finally(() => setIsLoading(false));
