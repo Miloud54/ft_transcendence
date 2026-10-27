@@ -1,61 +1,73 @@
 # Disaster Recovery
 
-## Ce qui est sauvegardé
+## What is backed up
 
-La base de données PostgreSQL (`transcendence_db`) est sauvegardée automatiquement par le service `backup` (`docker-compose.yml`) :
+The `backup` service (`backup/backup.sh`, declared in `docker-compose.yml`) automatically backs up:
 
-- Un dump complet (`pg_dump`) est pris immédiatement au démarrage du conteneur, puis à intervalle régulier (`BACKUP_INTERVAL_SECONDS`, 24h par défaut).
-- Chaque dump est compressé (`.sql.gz`) et horodaté : `transcendix_YYYYMMDD_HHMMSS.sql.gz`.
-- Les dumps sont stockés dans le volume Docker `db_backups`, monté sur `/backups` dans le conteneur `transcendence-backup`.
-- Rotation automatique : seuls les 7 derniers dumps sont conservés, les plus anciens sont supprimés.
+- **The PostgreSQL database** (`transcendence_db`): a full dump (`pg_dump`), compressed and timestamped as `transcendix_YYYYMMDD_HHMMSS.sql.gz`.
+- **Uploaded files** (custom avatars, `uploads` volume): a compressed archive named `uploads_YYYYMMDD_HHMMSS.tar.gz`.
 
-Ce qui n'est **pas** couvert par ce mécanisme : les fichiers uploadés (`backend/uploads/`, avatars perso) et les données Vault (secrets re-générés à chaque démarrage via `vault-init`, pas besoin de backup).
+How it works:
 
-## Vérifier les backups disponibles
+- A first backup is taken as soon as the container starts, then at a regular interval (`BACKUP_INTERVAL_SECONDS`, 24 hours by default).
+- Backups are stored in the `db_backups` Docker volume, mounted on `/backups` in the `transcendence-backup` container.
+- Automatic rotation: only the 7 most recent database dumps and the 7 most recent upload archives are kept; older ones are deleted.
+
+**Not** covered by this mechanism: Vault data. It does not need a backup, because `vault-init` writes the secrets again from `.env` at every start.
+
+## Check the available backups
 
 ```bash
 docker exec transcendence-backup ls -la /backups
 ```
 
-## Procédure de restauration
+## Restore procedure
 
-**1. S'assurer que la base de données tourne :**
+The container names below are those of the development stack. In production, they are prefixed with the project name (for example `transcendence-prod-db-1`): check them with `docker compose -f docker-compose.prod.yml ps`.
+
+**1. Make sure the database is running:**
 ```bash
 docker compose up -d db
 ```
 
-**2. Copier le dump souhaité hors du conteneur** (ou l'utiliser directement via le volume partagé) :
+**2. Copy the chosen dump out of the container** (or use it directly through the shared volume):
 ```bash
 docker cp transcendence-backup:/backups/transcendix_<timestamp>.sql.gz ./restore.sql.gz
 gunzip restore.sql.gz
 ```
 
-**3. Vider la base actuelle** (⚠️ destructif, à faire uniquement si on restaure volontairement par-dessus) :
+**3. Empty the current database** (⚠️ destructive, only do this when you deliberately restore over it):
 ```bash
 docker exec -it transcendence-db psql -U "$DB_USER" -d "$DB_NAME" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 ```
 
-**4. Restaurer le dump :**
+**4. Restore the dump:**
 ```bash
 cat restore.sql | docker exec -i transcendence-db psql -U "$DB_USER" -d "$DB_NAME"
 ```
 
-**5. Vérifier que l'application fonctionne :**
+**5. Restore the avatars if needed:**
 ```bash
-curl http://localhost:3001/health
+docker cp transcendence-backup:/backups/uploads_<timestamp>.tar.gz ./uploads.tar.gz
+docker cp ./uploads.tar.gz transcendence-backend:/tmp/uploads.tar.gz
+docker exec transcendence-backend tar xzf /tmp/uploads.tar.gz -C /app/uploads
 ```
-La réponse doit indiquer `"database":{"status":"up"}`.
 
-## Scénarios de panne couverts
+**6. Check that the application works:**
+```bash
+curl -k https://localhost:8443/api/health
+```
+The response must contain `"database":{"status":"up"}`.
 
-| Scénario | Procédure |
-|---|---|
-| Corruption de données / mauvaise migration | Restaurer le dernier dump sain (voir ci-dessus) avant la corruption |
-| Perte du volume `db_data` (ex: suppression accidentelle) | Recréer le conteneur `db` (`docker compose up -d db`), puis restaurer le dernier dump disponible |
-| Panne du conteneur `backend` | `docker compose restart backend` — aucune perte de données, le backend est sans état (stateless) |
-| Panne complète de l'environnement | `docker compose up -d` recrée tous les services ; seule la base de données doit être restaurée depuis le dernier dump si le volume `db_data` a été perdu |
+## Failure scenarios covered
 
-## Limites connues
+- **Data corruption or bad migration**: restore the last healthy dump taken before the corruption (see above).
+- **Loss of the `db_data` volume** (for example, accidental deletion): recreate the `db` container (`docker compose up -d db`), then restore the latest available dump.
+- **Loss of the `uploads` volume**: restore the latest upload archive (step 5).
+- **`backend` container failure**: `docker compose restart backend`. No stored data is lost; only the games in progress and the chat messages, which are kept in memory, are lost.
+- **Complete failure of the environment**: `docker compose up -d` recreates every service; only the database and the avatars need to be restored from the latest backups if their volumes were lost.
 
-- Les backups sont stockés localement dans un volume Docker sur la même machine que la base — en cas de perte totale de la machine, les backups sont perdus aussi. Pour une vraie tolérance aux pannes, il faudrait exporter les dumps vers un stockage distant (S3, etc.), hors du périmètre de ce projet scolaire.
-- La restauration remplace l'intégralité du schéma `public` — il n'y a pas de restauration partielle/sélective.
+## Known limitations
+
+- Backups are stored in a Docker volume on the same machine as the database: if the whole machine is lost, the backups are lost too. Real fault tolerance would require exporting them to remote storage (S3, etc.), which is outside the scope of this school project.
+- A restore replaces the whole `public` schema: there is no partial or selective restore.
