@@ -17,7 +17,7 @@ Players create or join rooms, play together live against each other, chat, add f
 - **Semantic proximity**: wrong guesses are scored against the hidden words using GloVe word vectors.
 - **Accounts**: email/password registration, Google and Discord OAuth 2.0, avatar upload, online / in-game status.
 - **Social**: friends list, friend requests and room invitations with real-time notifications, room chat shared between lobby and game.
-- **Stats**: personal dashboard (games played, win rate, average score, best rank), match history, achievements, XP / levels, global leaderboard.
+- **Stats**: personal dashboard (games played, win rate, average score, best rank), match history, achievements, global leaderboard.
 - **Security**: HTTPS-only access through a Web Application Firewall (Nginx + ModSecurity + OWASP CRS), secrets stored in HashiCorp Vault.
 - **Observability**: centralized logs (ELK), metrics and alerting (Prometheus, Grafana, Alertmanager to Discord), health checks, status page, automated database backups.
 
@@ -130,7 +130,7 @@ Database backup and restore procedures are described in [docs/disaster-recovery.
 
 - **Work organization**: features were split by domain (frontend and user management, game engine, rooms and real-time, social features, security and DevOps), each owned by one or two members. The team held a weekly meeting to review what had been done, what was left to do and what was blocked, then reassigned tasks for the following week.
 - **Git workflow**: one branch per feature or fix, merged into `main` through GitHub pull requests. Every pull request is reviewed and approved by another team member than its author before being merged, so that each change gets a real code review. A GitHub Actions CI pipeline (lint, build, tests) runs on every pull request.
-- **Tools**: GitHub (branches, pull requests, CI) and Notion (task tracking and shared notes). Technical notes are kept in [docs/](docs/).
+- **Tools**: GitHub (branches, pull requests, CI), Notion (task tracking and shared notes), Figma (UI mockups, designed before building the frontend) and DrawSQL (database schema design). Technical notes are kept in [docs/](docs/).
 - **Communication**: Discord and WhatsApp for day-to-day discussions, plus in-person meetings at 42.
 
 ## Technical Stack
@@ -166,6 +166,8 @@ Database backup and restore procedures are described in [docs/disaster-recovery.
 - **WAF in front of everything**: the WAF is the only entry point. In production no other port is exposed, so every request is filtered and encrypted.
 
 ## Database Schema
+
+The schema was designed collaboratively on DrawSQL before being written in Prisma: [interactive diagram](https://drawsql.app/teams/odile/diagrams/transcendence).
 
 Seven tables in PostgreSQL. Arrows go from a foreign key to the table it references.
 
@@ -274,7 +276,7 @@ RoomInvitations    invitation_id    BigInt     PK
 - **Results and play again** (edidier): end-of-game ranking page, play again in the same room, back to lobby / back to game.
 
 ### Statistics
-- **Dashboard and statistics** (edidier): games played, wins, win rate, average score, best rank, charts, XP and level.
+- **Dashboard and statistics** (edidier): games played, wins, win rate, average score, best rank, charts.
 - **Match history** (edidier): "My games" page listing past games and results.
 - **Achievements and leaderboard** (edidier): unlockable achievements, global leaderboard sorted by wins or points.
 
@@ -339,7 +341,7 @@ A consistent identity across the whole site. The color palette (violet `#4d37fb`
 Registration and login with hashed passwords (bcrypt) and JWT access / refresh tokens. Users can update their profile, upload an avatar (a generated avatar is used by default), add friends and see their online / offline / in-game status, and each user has a profile page.
 
 **8. Game statistics and match history (Minor)**
-Every finished game stores each player's result, score and rank in `Game_players`. The backend aggregates them into statistics (wins, losses, win rate, best rank, level), a match history ("My games"), achievements (first victory, veteran, champion, on a roll) and a global leaderboard sorted by wins or points.
+Every finished game stores each player's result, score and rank in `Game_players`. The backend aggregates them into statistics (wins, losses, win rate, best rank), a match history ("My games"), achievements (first victory, veteran, champion, on a roll) and a global leaderboard sorted by wins or points.
 
 **9. Remote authentication with OAuth 2.0 (Minor)**
 Lets players sign in without creating a password. Implemented with Passport strategies for Google and Discord; the callbacks go through the WAF and redirect to the frontend with the issued tokens.

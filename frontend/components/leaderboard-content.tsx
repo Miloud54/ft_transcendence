@@ -109,7 +109,6 @@ export function LeaderboardContent() {
                 <img src={entry.avatar} alt={entry.username} className="h-8 w-8 rounded-full bg-zinc-100" />
                 <div>
                   <p className="text-sm font-medium text-zinc-950">{entry.username}</p>
-                  <p className="text-xs text-zinc-400">Level {entry.level}</p>
                 </div>
               </div>
               <span className="text-sm font-semibold text-violet-700">
