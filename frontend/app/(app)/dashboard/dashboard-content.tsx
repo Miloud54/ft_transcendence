@@ -147,14 +147,6 @@ export function DashboardContent() {
 
           <dl className="mt-6 grid grid-cols-2 gap-4 text-sm">
             <div>
-              <dt className="text-zinc-400">Level</dt>
-              <dd className="font-medium text-zinc-950">{profile.lvl}</dd>
-            </div>
-            <div>
-              <dt className="text-zinc-400">XP</dt>
-              <dd className="font-medium text-zinc-950">{profile.xp}</dd>
-            </div>
-            <div>
               <dt className="text-zinc-400">Status</dt>
               <dd>
                 {profile.status === "IN_GAME" ? (
