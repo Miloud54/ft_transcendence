@@ -137,6 +137,8 @@ services:
 
     container_name: transcendence-backup
 
+    init: true
+
     depends_on:
       db:
         condition: service_healthy
@@ -188,6 +190,8 @@ services:
     image: docker.io/curlimages/curl:latest
 
     container_name: transcendence-es-init
+
+    init: true
 
     depends_on:
       elasticsearch:
@@ -258,6 +262,8 @@ services:
     image: docker.io/curlimages/curl:latest
 
     container_name: transcendence-kibana-init
+
+    init: true
 
     depends_on:
       kibana:
@@ -446,6 +452,8 @@ services:
     container_name: transcendence-waf
 
     user: "0:0"
+
+    stop_signal: SIGTERM
 
     depends_on:
       frontend:
