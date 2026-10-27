@@ -43,8 +43,8 @@ export class GameGateway
   ) {}
 
   onModuleInit() {
-    this.gameService.onStateChange((gameId, state) => {
-      this.server.to(gameSocketName(gameId)).emit('game:state', state);
+    this.gameService.onStateChange((gameId) => {
+      void this.emitGameState(gameId);
     });
   }
 
@@ -88,7 +88,10 @@ export class GameGateway
       throw new WsException('You have left this game and cannot rejoin');
     }
     await client.join(gameSocketName(gameId));
-    client.emit('game:state', await this.gameService.getState(gameId));
+    client.emit(
+      'game:state',
+      await this.gameService.getState(gameId, client.data.userId),
+    );
   }
 
   @SubscribeMessage('game:leave')
@@ -138,10 +141,34 @@ export class GameGateway
     // Rejected ones (not a word, duplicate...) only concern the sender.
     // The new game state is emitted by GameService through onStateChange.
     if (result.valid) {
-      this.server.to(gameSocketName(gameId)).emit('game:guess-result', result);
+      const sockets = await this.server
+        .in(gameSocketName(gameId))
+        .fetchSockets();
+      const { revealsTitleWord, ...publicResult } = result;
+      for (const socket of sockets) {
+        socket.emit('game:guess-result', {
+          ...publicResult,
+          guess:
+            socket.data.userId === result.userId || !revealsTitleWord
+              ? publicResult.guess
+              : '—',
+        });
+      }
     } else {
       client.emit('game:guess-result', result);
     }
+  }
+
+  private async emitGameState(gameId: string) {
+    const sockets = await this.server.in(gameSocketName(gameId)).fetchSockets();
+    await Promise.all(
+      sockets.map(async (socket) => {
+        socket.emit(
+          'game:state',
+          await this.gameService.getState(gameId, socket.data.userId),
+        );
+      }),
+    );
   }
 
   private requireUser(client: GameSocket) {

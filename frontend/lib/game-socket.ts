@@ -47,6 +47,7 @@ export type GuessResult = {
   /** true when this guess completed the title */
   correct: boolean;
   revealedCount: number;
+  foundInText: boolean;
   /** 0 = nothing close, 1..4 = how close the closest hidden word is */
   bestGrade: number;
 };

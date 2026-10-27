@@ -210,6 +210,8 @@ export function GameBoard({
           ? "Well done, you found the secret article!"
           : lastGuess.revealedCount > 0
             ? `"${lastGuess.guess}" found: ${lastGuess.revealedCount} word${lastGuess.revealedCount > 1 ? "s" : ""} revealed (+${lastGuess.score}).`
+            : lastGuess.foundInText
+              ? `"${lastGuess.guess}" is in the text, but it was already revealed.`
             : lastGuess.bestGrade > 0
               ? `"${lastGuess.guess}" is not in the text, but it is close to some words.`
               : `"${lastGuess.guess}" is not in the text and nothing is close.`,

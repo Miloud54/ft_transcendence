@@ -26,7 +26,13 @@ export class GuessEngineService {
     private readonly proximity: ProximityService,
   ) {}
 
-  run(index: ArticleIndex, board: BoardState, rawGuess: string): GuessOutcome {
+  run(
+    index: ArticleIndex,
+    board: BoardState,
+    rawGuess: string,
+    guessed: Set<string> = board.guessed,
+    titleRevealedIds?: Set<number>,
+  ): GuessOutcome {
     const normalized = normalizeText(rawGuess);
 
     if (board.finished) return reject('GAME_FINISHED', normalized);
@@ -41,7 +47,7 @@ export class GuessEngineService {
     if (normalized.includes(' ') && !isFullTitle) {
       return reject('SINGLE_WORD_ONLY', normalized);
     }
-    if (board.guessed.has(normalized)) {
+    if (guessed.has(normalized)) {
       return reject('ALREADY_GUESSED', normalized);
     }
 
@@ -55,6 +61,13 @@ export class GuessEngineService {
     const matched = isFullTitle
       ? index.titleWordIds
       : unique(lemmas.flatMap((lemma) => index.byLemma.get(lemma) ?? []));
+    const revealsTitleWord = matched.some((id) =>
+      index.titleWordIds.includes(id),
+    );
+    const foundInText = matched.length > 0;
+    for (const id of matched) {
+      if (index.titleWordIds.includes(id)) titleRevealedIds?.add(id);
+    }
 
     let revealedCount = 0;
     for (const id of matched) {
@@ -70,13 +83,21 @@ export class GuessEngineService {
       ? 0
       : this.proximity.grade(index, board, normalized, lemmas);
 
-    board.guessed.add(normalized);
+    guessed.add(normalized);
 
     const titleFound =
       index.titleWordIds.length > 0 &&
       index.titleWordIds.every((id) => board.revealed.has(id));
 
-    return { valid: true, normalized, revealedCount, bestGrade, titleFound };
+    return {
+      valid: true,
+      normalized,
+      revealedCount,
+      foundInText,
+      bestGrade,
+      titleFound,
+      revealsTitleWord,
+    };
   }
 
   /** A guess is valid if the article contains it, the dictionary knows it, or it is a number. */

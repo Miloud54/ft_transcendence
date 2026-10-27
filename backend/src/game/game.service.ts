@@ -27,7 +27,7 @@ export type GameState = {
   countdownRemaining: number;
   /** Seconds remaining after the title is found, before the game closes. */
   graceRemaining: number;
-  /** Shared board: same view for every player of the game. */
+  /** Board view personalized for the requesting player. */
   article?: ReturnType<PedantixEngineService['getArticleView']>;
   scores: Record<string, number>;
   attempts: Record<string, number>;
@@ -51,8 +51,12 @@ export type GuessResult = {
   correct: boolean;
   /** tokens newly revealed by this guess */
   revealedCount: number;
+  /** true when the guessed word occurs in the article, even if already revealed */
+  foundInText: boolean;
   /** best proximity grade this guess produced (0..4) */
   bestGrade: number;
+  /** Used by the gateway to hide title guesses from other players. */
+  revealsTitleWord: boolean;
 };
 
 @Injectable()
@@ -83,7 +87,7 @@ export class GameService {
     return () => this.stateListeners.delete(listener);
   }
 
-  async getState(gameId: string): Promise<GameState> {
+  async getState(gameId: string, viewerId?: string): Promise<GameState> {
     const game = await this.prisma.game.findUnique({
       where: { game_id: BigInt(gameId) },
     });
@@ -98,7 +102,10 @@ export class GameService {
       graceRemaining: this.remainingSeconds(this.graceEnds.get(gameId)),
       article:
         game.status === GameStatus.RUNNING
-          ? this.pedantixEngine.getArticleView(gameId)
+          ? this.pedantixEngine.getArticleView(
+              gameId,
+              viewerId,
+            )
           : game.status === GameStatus.FINISHED
             ? this.pedantixEngine.getRevealedArticleView(gameId)
             : undefined,
@@ -143,7 +150,7 @@ export class GameService {
     this.lastGuessAt.set(throttleKey, now);
 
     // Synchronous and atomic: validation, reveal, proximity, title detection.
-    const outcome = this.pedantixEngine.applyGuess(gameId, rawGuess);
+    const outcome = this.pedantixEngine.applyGuess(gameId, userId, rawGuess);
     if (!outcome) throw new ConflictException('Game data is not ready');
     if (!outcome.valid) {
       return this.rejected(gameId, userId, rawGuess, outcome.reason);
@@ -168,10 +175,13 @@ export class GameService {
       score,
       correct: outcome.titleFound,
       revealedCount: outcome.revealedCount,
+      foundInText: outcome.foundInText,
       bestGrade: outcome.bestGrade,
+      revealsTitleWord: outcome.revealsTitleWord,
     };
 
     if (outcome.titleFound) {
+      this.winners.set(gameId, userId);
       this.startTitleGracePeriod(gameId);
     }
     await this.emitState(gameId);
@@ -248,7 +258,9 @@ export class GameService {
       score: 0,
       correct: false,
       revealedCount: 0,
+      foundInText: false,
       bestGrade: 0,
+      revealsTitleWord: false,
     };
   }
 

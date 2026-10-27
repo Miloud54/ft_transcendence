@@ -106,6 +106,26 @@ describe('GameService (shared board)', () => {
     expect(state.scores).toEqual({ '10': SCORE_PER_WORD });
   });
 
+  it('only shows each discovered title word to the player who found it', async () => {
+    await service.submitGuess('1', '10', 'iron');
+    later();
+    await service.submitGuess('1', '11', 'tower');
+
+    const winnerState = await service.getState('1', '11');
+    const opponentState = await service.getState('1', '10');
+    const winnerTitle = winnerState.article!.title.tokens;
+    const opponentTitle = opponentState.article!.title.tokens;
+
+    expect(winnerTitle.filter((token) => token.type === 'word')).toEqual([
+      { type: 'word', status: 'hidden', length: 4 },
+      { type: 'word', status: 'revealed', length: 5, display: 'Tower' },
+    ]);
+    expect(opponentTitle.filter((token) => token.type === 'word')).toEqual([
+      { type: 'word', status: 'revealed', length: 4, display: 'Iron' },
+      { type: 'word', status: 'hidden', length: 5 },
+    ]);
+  });
+
   it('grades close hidden words on the shared board', async () => {
     await service.submitGuess('1', '10', 'metal');
     const state = await service.getState('1');
@@ -121,9 +141,9 @@ describe('GameService (shared board)', () => {
     later();
     await service.submitGuess('1', '10', 'iron');
     later();
-    const dup = await service.submitGuess('1', '11', 'iron');
-    expect(dup).toMatchObject({ valid: false, reason: 'ALREADY_GUESSED' });
-    expect((await service.getState('1')).attempts).toEqual({ '10': 1 });
+    const otherPlayerGuess = await service.submitGuess('1', '11', 'iron');
+    expect(otherPlayerGuess).toMatchObject({ valid: true });
+    expect((await service.getState('1')).attempts).toEqual({ '10': 1, '11': 1 });
   });
 
   it('throttles guess spam', async () => {
