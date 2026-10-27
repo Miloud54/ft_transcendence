@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+trap 'exit 0' INT TERM
+
 RETENTION=7
 INTERVAL=${BACKUP_INTERVAL_SECONDS:-86400}
 
@@ -19,5 +21,6 @@ while true; do
 
   ls -1t /backups/uploads_*.tar.gz 2>/dev/null | tail -n +$((RETENTION + 1)) | xargs -r rm -f
 
-  sleep "$INTERVAL"
+  sleep "$INTERVAL" &
+  wait $!
 done

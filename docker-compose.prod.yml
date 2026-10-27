@@ -120,6 +120,7 @@ services:
   backup:
     image: docker.io/library/postgres:18-alpine
 
+    init: true
 
     depends_on:
       db:
@@ -174,6 +175,7 @@ services:
   es-init: # conteneur jetable : configure les comptes kibana_system et logstash_writer dans Elasticsearch (mots de passe connus, pas de génération aléatoire), à chaque démarrage
     image: docker.io/curlimages/curl:8.22.0
 
+    init: true
 
     depends_on:
       elasticsearch:
@@ -244,6 +246,7 @@ services:
   kibana-init:
     image: docker.io/curlimages/curl:8.22.0
 
+    init: true
 
     depends_on:
       kibana:
@@ -428,8 +431,9 @@ services:
   waf:
     image: docker.io/owasp/modsecurity-crs:4.25-nginx-lts
 
-
     user: "0:0"
+
+    stop_signal: SIGTERM
 
     depends_on:
       frontend:
