@@ -90,6 +90,12 @@ server {
         proxy_read_timeout 3600s;
     }
 
+    # Next.js dev server advertises a Chrome DevTools workspace pointing to the
+    # container path /app, which does not exist on the host and logs an error.
+    location = /.well-known/appspecific/com.chrome.devtools.json {
+        return 404;
+    }
+
     location / {
         proxy_pass http://frontend_upstream;
         proxy_set_header Host $host;
