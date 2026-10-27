@@ -26,12 +26,6 @@ export function HomeContent() {
   });
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.replace("/");
-    }
-  }, [isLoading, user, router]);
-
-  useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     if (params.get("removed") === "lobby") {
