@@ -1,5 +1,9 @@
-/** Matches one word, optionally joined by apostrophes or hyphens ("don't", "well-known"). */
-export const WORD_PATTERN = /^[\p{L}\p{N}]+(?:['-][\p{L}\p{N}]+)*$/u;
+/**
+ * Matches one word, including single-letter entries and common English
+ * apostrophe/hyphen compounds such as "a", "don't", "well-known", "it's".
+ */
+export const WORD_PATTERN =
+  /^(?:[\p{L}\p{N}]|[\p{L}\p{N}]+(?:['-][\p{L}\p{N}]+)*)$/u;
 
 /** Lowercase, strip diacritics, unify apostrophes, collapse whitespace. */
 export function normalizeText(input: string): string {

@@ -165,6 +165,58 @@ Database backup and restore procedures are described in [docs/disaster-recovery.
 - **Everything in containers**: no one installs Node.js or databases locally, and every member runs exactly the same versions. Compatibility with Podman was required because 42 machines run Podman.
 - **WAF in front of everything**: the WAF is the only entry point. In production no other port is exposed, so every request is filtered and encrypted.
 
+## Architecture
+
+Production stack (`docker-compose.prod.yml`). The WAF is the only entry point; every other service runs on an isolated internal network.
+
+```text
+                           Browser
+                              │  HTTPS :8443  (HTTP :8080 → redirect)
+══════════════════════════════╪═════════════════════════════ public-net
+   ┌──────────────────────────▼──────────────────────────┐
+   │      WAF  ·  nginx + ModSecurity (OWASP CRS)        │
+   │      TLS termination, request filtering             │
+   └───┬─────────────┬───────────────┬──────────────┬────┘
+       │ /           │ /api/         │ /kibana      │ /grafana
+       │             │ /socket.io/   │              │
+═══════╪═════════════╪═══════════════╪══════════════╪═══════ private-net (internal)
+  ┌────▼─────┐ ┌─────▼──────┐    ┌───▼────┐    ┌────▼────┐
+  │ frontend │ │  backend   │    │ Kibana │    │ Grafana │
+  │ Next.js  │ │  NestJS    │    └───▲────┘    └────▲────┘
+  └──────────┘ └─┬───┬─────┬┘        │              │
+      ┌──────────┘   │     │         │              │
+  ┌───▼───┐       ┌──▼──┐  │   ┌─────┴─────┐ ┌──────┴─────┐
+  │ Vault │       │ db  │  │   │ Elastic-  │ │ Prometheus │
+  └───────┘       │ PG  │  │   │  search   │ └──────┬─────┘
+                  └──┬──┘  │   └─────▲─────┘        │ alerts
+                  ┌──▼───┐ │         │      ┌───────▼──────┐
+                  │backup│ │   ┌─────┴────┐ │ Alertmanager │
+                  └──────┘ │   │ Logstash │ └───────┬──────┘
+                           │   └──────────┘         │
+                           │                        │
+═══════════════════════════╪════════════════════════╪═══════ egress-net
+                           ▼                        ▼
+              Wikipedia API, Google &        Discord webhook
+                   Discord OAuth
+```
+
+### Networks
+
+| Network       | Members               | Purpose                                                            |
+|---------------|-----------------------|--------------------------------------------------------------------|
+| `public-net`  | waf                   | Only network reachable from the host (ports 8080/8443)             |
+| `private-net` | all services          | `internal: true`: services talk to each other, no Internet access  |
+| `egress-net`  | backend, alertmanager | Outbound Internet access, limited to the two services that need it |
+
+### Main flows
+
+- **Requests**: browser → WAF (TLS + OWASP CRS) → frontend, backend (`/api/`, `/socket.io/`), Kibana or Grafana.
+- **Secrets**: `vault-init` writes the secrets into Vault at startup; the backend and the other init containers read them from there.
+- **Logs**: backend, frontend, db and WAF write `*.log` files to a shared volume → Logstash parses them → Elasticsearch (`docker-logs-YYYY.MM.DD`) → Kibana.
+- **Metrics**: Prometheus scrapes the backend `/metrics` endpoint → Grafana dashboards; alerts go through Alertmanager to Discord.
+- **Backups**: the `backup` container periodically dumps the database and the uploaded avatars.
+- **Startup order**: health checks and `depends_on` conditions chain the services (e.g. `db` healthy → `backend` → `waf`; `elasticsearch` healthy → `logstash`, `kibana`).
+
 ## Database Schema
 
 The schema was designed collaboratively on DrawSQL before being written in Prisma: [interactive diagram](https://drawsql.app/teams/odile/diagrams/transcendence).

@@ -197,3 +197,14 @@ Intérêt : chaque service n'est branché qu'aux réseaux **dont il a besoin**. 
 
 - **Vault** : token limité par service, mode serveur, et comment le déverrouiller à chaque démarrage (fichier de clés local, ou à la main).
 - **Certificat HTTPS** : auto-signé (projet d'école) ou vrai certificat si un nom de domaine existe.
+
+### Décision : Vault reste en mode dev (27/10/2026)
+
+On ne passe pas Vault en mode serveur pour l'instant. Raisons :
+
+- **Le sujet exige un lancement en une seule commande.** En mode serveur, Vault doit être déverrouillé à la main (ou avec un fichier de clés local) à chaque redémarrage, ce qui casse cette exigence.
+- **Coût élevé pour un projet d'école.** Il faudrait initialiser Vault, gérer les clés de déverrouillage, créer une policy et un token par service (backend, Grafana, Alertmanager), puis adapter `vault-init`, `grafana-init`, `alertmanager-init` et le healthcheck. Environ une demi-journée à une journée, plus les tests.
+- **Gain limité dans notre cas.** Les secrets restent visibles par les services via le token root partagé, donc la sécurité réelle n'augmente pas beaucoup tant que le backend lit toujours `.env`.
+- **Le mode dev est reconstruit à chaque `up`** : `vault-init` remplit à nouveau les secrets depuis `.env`, ce qui garde le fonctionnement simple.
+
+Limite assumée : les secrets ne sont pas persistants et le token root est partagé. À revoir si le sujet ou l'équipe demande un Vault en mode serveur.

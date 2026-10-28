@@ -126,6 +126,22 @@ describe('GuessEngineService', () => {
     });
   });
 
+  it('accepts single-letter guesses when they appear in the article', () => {
+    const custom = new TokenizerService().tokenize({
+      id: 4, url: '', title: 'A', paragraphs: ['A simple letter.'],
+    });
+    const idx = new ArticleIndexService(lemmatizer, vectors).build(custom);
+    expect(engine.run(idx, createBoard(), 'a')).toMatchObject({ valid: true, revealedCount: 2 });
+  });
+
+  it('accepts possessive apostrophe forms such as "it\'s"', () => {
+    const custom = new TokenizerService().tokenize({
+      id: 5, url: '', title: 'Sentence', paragraphs: ["It's a small thing."],
+    });
+    const idx = new ArticleIndexService(lemmatizer, vectors).build(custom);
+    expect(engine.run(idx, createBoard(), "it's")).toMatchObject({ valid: true, revealedCount: 1 });
+  });
+
   it('colors close words but never revealed or unrelated ones', () => {
     const outcome = engine.run(index, board, 'metal');
     expect(outcome).toMatchObject({ valid: true });

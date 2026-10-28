@@ -29,7 +29,7 @@ export class TokenizerService {
     const tokens: ArticleToken[] = [];
 
     const parts = text.match(
-      /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+|-[\p{L}\p{N}]+)*/gu,
+      /(?:[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+|-[\p{L}\p{N}]+)*)|[\p{L}\p{N}]/gu,
     );
 
     if (!parts) {
