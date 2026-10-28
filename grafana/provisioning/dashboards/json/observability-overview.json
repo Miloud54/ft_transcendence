@@ -1,5 +1,5 @@
 {
-  "title": "Observabilité — Vue d'ensemble",
+  "title": "Observability — Overview",
   "uid": "transcendix-overview",
   "schemaVersion": 39,
   "version": 1,
@@ -11,7 +11,7 @@
     {
       "id": 1,
       "type": "stat",
-      "title": "Cibles UP",
+      "title": "Targets UP",
       "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
@@ -38,7 +38,7 @@
     {
       "id": 2,
       "type": "timeseries",
-      "title": "Requêtes HTTP Prometheus (taux / s)",
+      "title": "Prometheus HTTP requests (rate / s)",
       "gridPos": { "h": 8, "w": 18, "x": 6, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
@@ -49,7 +49,7 @@
     {
       "id": 3,
       "type": "timeseries",
-      "title": "Mémoire Prometheus (Mo)",
+      "title": "Prometheus memory (MB)",
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
@@ -61,7 +61,7 @@
     {
       "id": 4,
       "type": "timeseries",
-      "title": "Requêtes backend par route (taux/s)",
+      "title": "Backend requests per route (rate / s)",
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
@@ -72,7 +72,7 @@
     {
       "id": 5,
       "type": "timeseries",
-      "title": "Latence backend P95 par route",
+      "title": "Backend P95 latency per route",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
@@ -83,7 +83,7 @@
     {
       "id": 6,
       "type": "timeseries",
-      "title": "Mémoire backend (Mo)",
+      "title": "Backend memory (MB)",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [

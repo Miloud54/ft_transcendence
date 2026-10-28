@@ -714,10 +714,6 @@ docker compose exec backend npx jest \
   src/pedantix-engine/tokenizer/tokenizer.service.spec.ts \
   --runInBand --verbose
 
-Pour lancer le script de tests :
-docker compose exec backend node /app/test-wikipedia.js
-
-
 ---------------
 
 Pour lancer le script de collect d'articles :

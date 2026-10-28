@@ -6,54 +6,61 @@ DEV     := $(COMPOSE)
 PROD    := $(COMPOSE) -f docker-compose.prod.yml
 
 .DEFAULT_GOAL := help
-.PHONY: help env up down restart logs ps seed seed-reset prod prod-down prod-logs clean fclean re
+.PHONY: help env up down restart logs ps dev dev-restart dev-logs dev-ps dev-seed dev-seed-reset clean fclean re
 
-help:
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-12s %s\n", $$1, $$2}'
+help: ## Show this help
+	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-15s %s\n", $$1, $$2}'
 
-env: ## create or complete .env from .env.example and enable the git hooks
+env: ## Create or complete .env from .env.example and enable the git hooks
 	@sh .githooks/env-sync.sh
 	@git config core.hooksPath .githooks
 
-up: env 
-	@$(PROD) down >/dev/null 2>&1 || true
-	$(DEV) up -d --build
+# ---- Production (reference) ----
 
-down:
-	$(DEV) down
-
-restart: down up 
-
-logs:
-	$(DEV) logs -f $(s)
-
-ps:
-	$(DEV) ps
-
-seed: ## Run the development seed (only if the database is empty)
-	$(DEV) exec backend npx prisma db seed
-
-seed-reset: ## Reset the development database to the seed data
-	$(DEV) exec -e SEED_FORCE=true backend npx prisma db seed
-
-prod: env ## Build and start prod mode
+up: env ## Build and start the production stack
 	@$(DEV) down >/dev/null 2>&1 || true
 	$(PROD) up -d --build
 
-prod-down: ## Stop prod mode
-	$(PROD) down
+down: ## Stop the running stack, prod or dev (data kept)
+	-@$(PROD) down
+	-@$(DEV) down
 
-prod-logs: ## Prod mode logs
+restart: down up ## Restart the production stack
+
+logs: ## Follow prod logs (one service: make logs s=backend)
 	$(PROD) logs -f $(s)
 
-clean: ## Stop dev & prod
-	-$(DEV) down
-	-$(PROD) down
+ps: ## Show prod container status
+	$(PROD) ps
 
-fclean: ## Stop prod & dev and delete all volumes
+# ---- Development ----
+
+dev: env ## Build and start the development stack (hot reload)
+	@$(PROD) down >/dev/null 2>&1 || true
+	$(DEV) up -d --build
+
+dev-restart: down dev ## Restart the development stack
+
+dev-logs: ## Follow dev logs (one service: make dev-logs s=backend)
+	$(DEV) logs -f $(s)
+
+dev-ps: ## Show dev container status
+	$(DEV) ps
+
+dev-seed: ## Run the development seed (only if the database is empty)
+	$(DEV) exec backend npx prisma db seed
+
+dev-seed-reset: ## Reset the development database to the seed data
+	$(DEV) exec -e SEED_FORCE=true backend npx prisma db seed
+
+# ---- Cleanup ----
+
+clean: down ## Stop both stacks (data kept)
+
+fclean: ## Stop both stacks and DELETE all volumes (database, backups, logs)
 	@echo "This deletes every volume (database, backups, logs). Press Ctrl+C to cancel, Enter to continue."
 	@read _
-	-$(DEV) down -v
 	-$(PROD) down -v
+	-$(DEV) down -v
 
-re: fclean up 
+re: fclean up ## Delete everything and rebuild the production stack

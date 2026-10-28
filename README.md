@@ -27,7 +27,8 @@ Players create or join rooms, play together live against each other, chat, add f
 
 - **Git** (any recent version)
 - **Docker 24+ with Docker Compose 2.20+**, or **Podman 5+** with `podman compose`
-- A modern browser (Chrome, Firefox)
+- **GNU Make**
+- A recent browser: Chrome (reference), Firefox or Brave
 
 Nothing else needs to be installed on the host: Node.js, npm, Prisma, NestJS CLI and every other tool run inside containers, with pinned versions.
 
@@ -46,11 +47,13 @@ cd ft_transcendence
 
 ### 2. Configure the environment
 
-Copy the example file and replace every placeholder value:
+Create the `.env` file from the example, then replace every placeholder value:
 
 ```bash
-cp .env.example .env
+make env
 ```
+
+`make env` creates `.env` from `.env.example` (or adds the variables that are missing from an existing one) and enables the project's git hooks, which keep `.env` in sync when `.env.example` changes. `make up` and `make dev` run it automatically.
 
 ```
 DB_USER, DB_PASSWORD, DB_NAME          PostgreSQL credentials
@@ -72,23 +75,25 @@ The `.env` file is ignored by Git. At startup, `vault-init` copies the secrets i
 
 ### 3. Run the project
 
-**Development** (hot reload, source code mounted into the containers):
+**Production** (reference, compiled images, only the WAF ports are exposed):
 
 ```bash
-docker compose up -d --build
-```
-
-On the first start, the database is filled with test data (users `alice`, `bob`, `charlie`... with the password `password123`). The seed only runs when the database is empty.
-
-**Production** (compiled images, only the WAF ports are exposed):
-
-```bash
-docker compose -f docker-compose.prod.yml up -d --build
+make up
 ```
 
 Demo accounts `demo_alice@demo.local`, `demo_bob@demo.local`, `demo_charlie@demo.local` and `demo_diana@demo.local` are created with `DEMO_PASSWORD`, together with a history of finished games so the dashboard and leaderboard have data to show.
 
-The development and production stacks use the same ports: stop one (`docker compose down` or `docker compose -f docker-compose.prod.yml down`) before starting the other.
+**Development** (hot reload, source code mounted into the containers):
+
+```bash
+make dev
+```
+
+On the first start, the development database is filled with test data (users `alice`, `bob`, `charlie`... with the password `password123`). This seed only runs when the database is empty, and never in production.
+
+Both stacks use the same ports: `make up` stops the development stack and `make dev` stops the production stack before starting.
+
+Podman users without the `docker` alias can run any target with `COMPOSE="podman compose"`, for example `make up COMPOSE="podman compose"`.
 
 ### 4. Open the application
 
@@ -103,12 +108,15 @@ The TLS certificate is self-signed: accept the browser warning on the first visi
 ### Useful commands
 
 ```bash
-docker compose ps                                   # container status
-docker compose logs -f backend                      # follow backend logs
-docker compose exec backend npx prisma db seed      # re-run the development seed
-docker compose exec -e SEED_FORCE=true backend npx prisma db seed   # reset the dev database to seed data
-docker compose down                                 # stop (data kept)
-docker compose down -v                              # stop and delete all volumes (data lost)
+make help                # list all commands
+make ps                  # production container status       (make dev-ps for development)
+make logs s=backend      # follow the logs of one service    (make dev-logs s=backend)
+make restart             # restart the production stack      (make dev-restart)
+make dev-seed            # re-run the development seed
+make dev-seed-reset      # reset the development database to seed data
+make down                # stop the running stack (data kept)
+make fclean              # stop both stacks and delete all volumes (data lost, asks for confirmation)
+make re                  # fclean, then rebuild the production stack
 ```
 
 Database backup and restore procedures are described in [docs/disaster-recovery.md](docs/disaster-recovery.md).
@@ -202,11 +210,11 @@ Production stack (`docker-compose.prod.yml`). The WAF is the only entry point; e
 
 ### Networks
 
-| Network       | Members               | Purpose                                                            |
-|---------------|-----------------------|--------------------------------------------------------------------|
-| `public-net`  | waf                   | Only network reachable from the host (ports 8080/8443)             |
-| `private-net` | all services          | `internal: true`: services talk to each other, no Internet access  |
-| `egress-net`  | backend, alertmanager | Outbound Internet access, limited to the two services that need it |
+```
+public-net    waf                     only network reachable from the host (ports 8080/8443)
+private-net   all services            internal: true, services talk to each other, no Internet access
+egress-net    backend, alertmanager   outbound Internet access, limited to the two services that need it
+```
 
 ### Main flows
 
@@ -386,8 +394,17 @@ Prisma gives one schema shared by the whole team, a generated typed client and v
 A consistent identity across the whole site. The color palette (violet `#4d37fb` and lime `#c8ff16`, each with a full 50-950 scale) is defined once as Tailwind theme tokens in `frontend/app/globals.css`, with the Geist font family for typography. More than 10 reusable components live in `frontend/components/` (modal, stat tile, line and donut charts, logo, password input, navigation and mobile navigation, account menu, user badge, notification center, headers, footer...).
 
 **6. Support for additional browsers (Minor)**
-<!-- TODO: list the tested browsers, how they were tested, and any browser-specific limitations. -->
-*To be completed: tested browsers and browser-specific limitations.*
+Google Chrome is the reference browser required by the subject. The application is also supported on two additional browsers, chosen to cover two different engines:
+
+- **Mozilla Firefox** (Gecko engine): a different rendering and JavaScript engine from Chrome, so it catches real compatibility issues.
+- **Brave** (Chromium engine with its own privacy layer, Shields): it blocks trackers and some third-party requests by default, which tests that the site still works for privacy-focused users.
+
+Every feature was tested in each browser: registration and login (email / password, Google, Discord), profile and avatar upload, friends and notifications, lobby, chat, a full multiplayer game, results, dashboard, leaderboard, legal pages, on desktop and mobile sizes, with the developer console open to check that no error or warning appears. The UI relies only on standard features (Tailwind CSS, WebSockets, `localStorage`), so it looks and behaves the same in all three browsers.
+
+Browser-specific limitations:
+- **All browsers**: the TLS certificate is self-signed, so each browser asks once to accept the risk before showing the site.
+- **Firefox**: the self-signed certificate must be accepted on `https://localhost:8443` before the WebSocket connection (`wss://`) can open; this is done by the same warning page.
+- **Brave**: with Shields set to "Aggressive", third-party images can be blocked, which would hide the default DiceBear avatars; with the default Shields level, everything works.
 
 **7. Standard user management and authentication (Major)**
 Registration and login with hashed passwords (bcrypt) and JWT access / refresh tokens. Users can update their profile, upload an avatar (a generated avatar is used by default), add friends and see their online / offline / in-game status, and each user has a profile page.
@@ -456,7 +473,7 @@ Health endpoints (`@nestjs/terminus`) and Docker health checks, a status page in
 - Persistent chat between lobby and game.
 - Guess validation and semantic proximity (GloVe vectors), Roman and Latin numerals.
 - Integration of the game frontend with the backend, development seed, cheat mode for testing.
-- Browser compatibility testing (Support for additional browsers module).
+- Browser compatibility testing on Firefox and Brave (Support for additional browsers module).
 - **Challenges**: getting meaningful proximity scores from word vectors (vector normalization and removal of dominant components); keeping game state synchronized between all players.
 
 ## Resources

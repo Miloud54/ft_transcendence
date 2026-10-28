@@ -2,7 +2,7 @@
 set -e
 
 until curl -sf -u "elastic:${ELASTIC_PASSWORD}" http://elasticsearch:9200/_security/_authenticate > /dev/null; do
-  echo "En attente qu'Elasticsearch soit prêt..."
+  echo "Waiting for Elasticsearch to be ready..."
   sleep 2
 done
 
@@ -47,4 +47,4 @@ curl -sf -u "elastic:${ELASTIC_PASSWORD}" -X PUT http://elasticsearch:9200/_slm/
   -H 'Content-Type: application/json' \
   -d '{"schedule":"0 30 1 * * ?","name":"<logs-{now/d}>","repository":"logs-archive","config":{"indices":["docker-logs-*"],"include_global_state":false},"retention":{"expire_after":"365d","min_count":1}}'
 
-echo "Comptes kibana_system et logstash_writer configurés."
+echo "kibana_system and logstash_writer accounts configured."
