@@ -271,13 +271,29 @@ describe('GameService (shared board)', () => {
 
     expect(state.status).toBe('finished');
     expect(state.graceRemaining).toBe(0);
-    expect(state.winnerId).toBe('11');
+    // Player 10 found the title first: they win, even though 11 ended the game.
+    expect(state.winnerId).toBe('10');
 
     const saved = Object.fromEntries(
-      db.updates.map((u) => [u.where.game_id_user_id.user_id.toString(), u.data]),
+      db.updates.map((u) => [
+        u.where.game_id_user_id.user_id.toString(),
+        u.data,
+      ]),
     );
-    expect(saved['11']).toEqual({ result: GameResult.WIN, score: 500, rank: 1 });
-    expect(saved['10']).toEqual({ result: GameResult.LOSS, score: 530, rank: 2 });
+    expect(saved['10']).toEqual({
+      result: GameResult.WIN,
+      score: 530,
+      rank: 1,
+      xp_gained: 530 + XP_WIN_BONUS,
+      leveled_up: true,
+    });
+    expect(saved['11']).toEqual({
+      result: GameResult.LOSS,
+      score: 500,
+      rank: 2,
+      xp_gained: 500,
+      leveled_up: true,
+    });
   });
 
   it('rejects guesses once the game is finished', async () => {
