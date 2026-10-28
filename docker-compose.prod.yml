@@ -11,6 +11,8 @@ services:
 
     restart: unless-stopped
     
+    init: true
+
     command: sh -c "node server.js 2>&1 | tee /var/log/app/frontend.log"
 
     volumes:
@@ -49,6 +51,8 @@ services:
       VAULT_ADDR: http://vault:8200
       VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID}
       FRONTEND_URL: https://localhost:8443
+
+    init: true
 
     # migrations and running
     command: sh -c "npx prisma migrate deploy && npm run seed:demo && node dist/main 2>&1 | tee /var/log/app/backend.log"
