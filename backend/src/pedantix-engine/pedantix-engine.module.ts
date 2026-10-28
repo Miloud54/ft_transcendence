@@ -26,7 +26,7 @@ import { GuessEngineService } from './guess/guess-engine.service';
     TokenizerService,
     ArticleViewService,
     LemmatizerService,
-    VectorStoreService, 
+    VectorStoreService,
     ArticleIndexService,
     ProximityService,
     GuessEngineService,

@@ -83,14 +83,11 @@ export class PedantixEngineService {
   }
 
   /** Current board with title words personalized for the requesting player. */
-  getArticleView(
-    gameId: string,
-    playerId?: string,
-  ): BoardView | undefined {
+  getArticleView(gameId: string, playerId?: string): BoardView | undefined {
     const game = this.games.get(gameId);
     if (!game) return undefined;
     const titleRevealedIds = playerId
-      ? game.board.titleRevealedByPlayer.get(playerId) ?? new Set<number>()
+      ? (game.board.titleRevealedByPlayer.get(playerId) ?? new Set<number>())
       : new Set<number>();
     return this.articleView.buildBoardView(
       game.tokenizedArticle,

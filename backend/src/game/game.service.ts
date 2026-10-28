@@ -103,10 +103,7 @@ export class GameService {
       graceRemaining: this.remainingSeconds(this.graceEnds.get(gameId)),
       article:
         game.status === GameStatus.RUNNING
-          ? this.pedantixEngine.getArticleView(
-              gameId,
-              viewerId,
-            )
+          ? this.pedantixEngine.getArticleView(gameId, viewerId)
           : game.status === GameStatus.FINISHED
             ? this.pedantixEngine.getRevealedArticleView(gameId)
             : undefined,
@@ -146,7 +143,10 @@ export class GameService {
 
     const throttleKey = `${gameId}:${userId}`;
     const now = Date.now();
-    if (now - (this.lastGuessAt.get(throttleKey) ?? 0) < MIN_GUESS_INTERVAL_MS) {
+    if (
+      now - (this.lastGuessAt.get(throttleKey) ?? 0) <
+      MIN_GUESS_INTERVAL_MS
+    ) {
       return this.rejected(gameId, userId, rawGuess, 'TOO_FAST');
     }
     this.lastGuessAt.set(throttleKey, now);
@@ -535,7 +535,7 @@ export class GameService {
     }
   }
 
-   async getLeaderboard(limit = 20, sortBy: 'wins' | 'points' = 'wins') {
+  async getLeaderboard(limit = 20, sortBy: 'wins' | 'points' = 'wins') {
     const players = await this.prisma.gamePlayer.findMany({
       where: { result: { not: null }, game: { status: GameStatus.FINISHED } },
       include: { users: true },
@@ -543,7 +543,17 @@ export class GameService {
 
     const statsByUser = new Map<
       string,
-      { user: { user_id: bigint; username: string; avatar: string; lvl: bigint }; wins: number; games: number; totalScore: number }
+      {
+        user: {
+          user_id: bigint;
+          username: string;
+          avatar: string;
+          lvl: bigint;
+        };
+        wins: number;
+        games: number;
+        totalScore: number;
+      }
     >();
 
     for (const player of players) {
@@ -565,7 +575,9 @@ export class GameService {
     }
 
     return Array.from(statsByUser.values())
-      .sort((a, b) => (sortBy === 'points' ? b.totalScore - a.totalScore : b.wins - a.wins))
+      .sort((a, b) =>
+        sortBy === 'points' ? b.totalScore - a.totalScore : b.wins - a.wins,
+      )
       .slice(0, limit)
       .map((entry, index) => ({
         rank: index + 1,
@@ -604,8 +616,12 @@ export class GameService {
     return {
       gameId: game.game_id.toString(),
       articleTitle: game.article_title,
-      byScore: [...players].sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity)),
-      byDiscovery: [...players].sort((a, b) => (a.discoveryRank ?? Infinity) - (b.discoveryRank ?? Infinity)),
+      byScore: [...players].sort(
+        (a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity),
+      ),
+      byDiscovery: [...players].sort(
+        (a, b) => (a.discoveryRank ?? Infinity) - (b.discoveryRank ?? Infinity),
+      ),
     };
   }
 }

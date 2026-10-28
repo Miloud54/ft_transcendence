@@ -38,7 +38,9 @@ describe('LemmatizerService', () => {
   });
 
   it('keeps every reading of ambiguous forms', () => {
-    expect(lemmatizer.lemmas('saw')).toEqual(expect.arrayContaining(['saw', 'see']));
+    expect(lemmatizer.lemmas('saw')).toEqual(
+      expect.arrayContaining(['saw', 'see']),
+    );
     expect(lemmatizer.lemmas('leaves')).toEqual(
       expect.arrayContaining(['leaf', 'leave']),
     );

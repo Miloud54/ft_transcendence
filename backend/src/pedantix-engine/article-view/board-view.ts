@@ -1,6 +1,12 @@
 export type BoardViewToken =
   | { type: 'separator'; display: string }
-  | { type: 'word'; status: 'hidden'; length: number; grade?: number; closestGuess?: string }
+  | {
+      type: 'word';
+      status: 'hidden';
+      length: number;
+      grade?: number;
+      closestGuess?: string;
+    }
   | { type: 'word'; status: 'revealed'; length: number; display: string };
 
 export interface BoardView {
