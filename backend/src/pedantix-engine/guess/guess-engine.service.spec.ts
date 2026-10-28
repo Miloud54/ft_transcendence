@@ -145,6 +145,18 @@ describe('GuessEngineService', () => {
     expect(board.grades.size).toBe(0);
   });
 
+  it('reports a word already revealed by another player as present in the text', () => {
+    engine.run(index, board, 'the');
+    const outcome = engine.run(index, board, 'the', new Set());
+
+    expect(outcome).toMatchObject({
+      valid: true,
+      revealedCount: 0,
+      foundInText: true,
+      bestGrade: 0,
+    });
+  });
+
   it('keeps the best grade and clears it when the word gets revealed', () => {
     engine.run(index, board, 'metal');
     const ironIds = index.byLemma.get('iron') ?? [];

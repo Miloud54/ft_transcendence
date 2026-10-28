@@ -20,7 +20,7 @@ export class ArticleViewService {
   }
 
   /**
-   * Current shared board. Word ids are assigned in reading order (title, then
+   * Current board view. Word ids are assigned in reading order (title, then
    * paragraphs), exactly like ArticleIndexService, so both stay aligned.
    * Hidden words only expose their length and, if close, a 1..4 grade.
    */
@@ -28,15 +28,23 @@ export class ArticleViewService {
     article: ArticleTokenized,
     board: BoardState,
     revealAll = false,
+    titleRevealedIds?: Set<number>,
   ): BoardView {
     let nextId = 0;
-    const convert = (token: ArticleToken): BoardViewToken => {
+    const convert = (
+      token: ArticleToken,
+      isTitle: boolean,
+    ): BoardViewToken => {
       if (token.type === 'separator') {
         return { type: 'separator', display: token.text };
       }
       const id = nextId++;
       const length = token.length ?? 0;
-      if (revealAll || board.revealed.has(id)) {
+      const titleRevealed =
+        !isTitle || titleRevealedIds === undefined
+          ? board.revealed.has(id)
+          : titleRevealedIds.has(id);
+      if (revealAll || titleRevealed) {
         return { type: 'word', status: 'revealed', length, display: token.text };
       }
       const grade = board.grades.get(id);
@@ -54,9 +62,9 @@ export class ArticleViewService {
     };
 
     return {
-      title: { tokens: article.title.tokens.map(convert) },
+      title: { tokens: article.title.tokens.map((token) => convert(token, true)) },
       paragraphs: article.paragraphs.map((paragraph) => ({
-        tokens: paragraph.tokens.map(convert),
+        tokens: paragraph.tokens.map((token) => convert(token, false)),
       })),
     };
   }

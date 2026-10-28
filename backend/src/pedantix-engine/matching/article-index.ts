@@ -42,6 +42,11 @@ export interface BoardState {
   grades: Map<number, number>;
   /** word id -> the guess that produced the current best grade */
   bestGuesses: Map<number, string>;
+  /** Guesses already submitted by each player. */
+  guessedByPlayer: Map<string, Set<string>>;
+  /** Title word ids discovered by each player. */
+  titleRevealedByPlayer: Map<string, Set<number>>;
+  /** Legacy default guess history for direct engine callers without a player id. */
   guessed: Set<string>;
   finished: boolean;
 }
@@ -51,6 +56,8 @@ export function createBoard(): BoardState {
     revealed: new Set(),
     grades: new Map(),
     bestGuesses: new Map(),
+    guessedByPlayer: new Map(),
+    titleRevealedByPlayer: new Map(),
     guessed: new Set(),
     finished: false,
   };

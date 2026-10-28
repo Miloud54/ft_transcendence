@@ -82,11 +82,22 @@ export class PedantixEngineService {
     return this.articleView.buildInitialView(tokenizedArticle);
   }
 
-  /** Current shared board (reveals + proximity grades). */
-  getArticleView(gameId: string): BoardView | undefined {
+  /** Current board with title words personalized for the requesting player. */
+  getArticleView(
+    gameId: string,
+    playerId?: string,
+  ): BoardView | undefined {
     const game = this.games.get(gameId);
     if (!game) return undefined;
-    return this.articleView.buildBoardView(game.tokenizedArticle, game.board);
+    const titleRevealedIds = playerId
+      ? game.board.titleRevealedByPlayer.get(playerId) ?? new Set<number>()
+      : new Set<number>();
+    return this.articleView.buildBoardView(
+      game.tokenizedArticle,
+      game.board,
+      false,
+      titleRevealedIds,
+    );
   }
 
   /** Whole article uncovered, used once the game is finished. */
@@ -101,10 +112,30 @@ export class PedantixEngineService {
   }
 
   /** Applies one guess to the shared board. Synchronous, hence race-free. */
-  applyGuess(gameId: string, rawGuess: string): GuessOutcome | undefined {
+  applyGuess(
+    gameId: string,
+    playerId: string,
+    rawGuess: string,
+  ): GuessOutcome | undefined {
     const game = this.games.get(gameId);
     if (!game) return undefined;
-    return this.guessEngine.run(game.index, game.board, rawGuess);
+    let guessed = game.board.guessedByPlayer.get(playerId);
+    if (!guessed) {
+      guessed = new Set();
+      game.board.guessedByPlayer.set(playerId, guessed);
+    }
+    let titleRevealedIds = game.board.titleRevealedByPlayer.get(playerId);
+    if (!titleRevealedIds) {
+      titleRevealedIds = new Set();
+      game.board.titleRevealedByPlayer.set(playerId, titleRevealedIds);
+    }
+    return this.guessEngine.run(
+      game.index,
+      game.board,
+      rawGuess,
+      guessed,
+      titleRevealedIds,
+    );
   }
 
   markGameFinished(gameId: string): void {
