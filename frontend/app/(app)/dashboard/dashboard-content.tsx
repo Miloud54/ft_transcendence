@@ -38,6 +38,9 @@ type Match = {
   opponents: string[];
 };
 
+/** Same rule as the backend (game.service.ts): one level every 500 XP. */
+const XP_PER_LEVEL = 500;
+
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
@@ -142,7 +145,30 @@ export function DashboardContent() {
             <img src={profile.avatar} alt={profile.username} className="h-16 w-16 rounded-full bg-zinc-100" />
             <div>
               <p className="text-lg font-semibold text-zinc-950">{profile.username}</p>
+              <p className="text-sm text-zinc-500">
+                Level {stats.level} · {stats.xp} XP
+              </p>
             </div>
+          </div>
+
+          <div className="mt-4">
+            <div
+              role="progressbar"
+              aria-label="Progress to the next level"
+              aria-valuemin={0}
+              aria-valuemax={XP_PER_LEVEL}
+              aria-valuenow={stats.xp % XP_PER_LEVEL}
+              className="h-2 overflow-hidden rounded-full bg-zinc-100"
+            >
+              <div
+                className="h-full rounded-full bg-lime-400"
+                style={{ width: `${((stats.xp % XP_PER_LEVEL) / XP_PER_LEVEL) * 100}%` }}
+              />
+            </div>
+            <p className="mt-1 text-xs text-zinc-400">
+              {XP_PER_LEVEL - (stats.xp % XP_PER_LEVEL)} XP to level {stats.level + 1} · 1 XP per point
+              scored, +100 XP per win
+            </p>
           </div>
 
           <dl className="mt-6 grid grid-cols-2 gap-4 text-sm">

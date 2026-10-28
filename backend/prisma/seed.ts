@@ -4,6 +4,7 @@ docker compose exec backend npx prisma db seed
  */
 import { PrismaClient, UserStatus, RoomStatus, GameStatus } from "../generated/prisma";
 import * as bcrypt from "bcrypt";
+import { levelForXp, xpForGame } from "../src/game/xp";
 
 const prisma = new PrismaClient();
 
@@ -34,15 +35,15 @@ const existingUsers = await prisma.user.count();
   const defaultPassword = hashPassword("password123");
 
   const userData = [
-    { username: "alice",   email: "alice@example.com",   status: UserStatus.ONLINE,  xp: 1250, lvl: 5 },
-    { username: "bob",     email: "bob@example.com",     status: UserStatus.IN_GAME, xp: 3400, lvl: 9 },
-    { username: "charlie", email: "charlie@example.com", status: UserStatus.IN_GAME, xp: 800,  lvl: 3 },
-    { username: "diana",   email: "diana@example.com",   status: UserStatus.IN_GAME, xp: 5200, lvl: 12 },
-    { username: "eve",     email: "eve@example.com",     status: UserStatus.OFFLINE, xp: 150,  lvl: 1 },
-    { username: "frank",   email: "frank@example.com",   status: UserStatus.ONLINE,  xp: 2100, lvl: 7 },
-    { username: "grace",   email: "grace@example.com",   status: UserStatus.ONLINE,  xp: 4300, lvl: 10 },
-    { username: "heidi",   email: "heidi@example.com",   status: UserStatus.OFFLINE, xp: 90,   lvl: 1 },
-    { username: "ivan",    email: "ivan@example.com",    status: UserStatus.ONLINE,  xp: 600,  lvl: 2 },
+    { username: "alice",   email: "alice@example.com",   status: UserStatus.ONLINE },
+    { username: "bob",     email: "bob@example.com",     status: UserStatus.IN_GAME },
+    { username: "charlie", email: "charlie@example.com", status: UserStatus.IN_GAME },
+    { username: "diana",   email: "diana@example.com",   status: UserStatus.IN_GAME },
+    { username: "eve",     email: "eve@example.com",     status: UserStatus.OFFLINE },
+    { username: "frank",   email: "frank@example.com",   status: UserStatus.ONLINE },
+    { username: "grace",   email: "grace@example.com",   status: UserStatus.ONLINE },
+    { username: "heidi",   email: "heidi@example.com",   status: UserStatus.OFFLINE },
+    { username: "ivan",    email: "ivan@example.com",    status: UserStatus.ONLINE },
   ];
 
   const users: Record<string, { user_id: bigint }> = {};
@@ -54,8 +55,8 @@ const existingUsers = await prisma.user.count();
         email: u.email,
         password: defaultPassword,
         avatar: `https://api.dicebear.com/10.x/critters/svg?seed=${u.username}`,        
-        xp: BigInt(u.xp),
-        lvl: BigInt(u.lvl),
+        xp: BigInt(0),
+        lvl: BigInt(1),
         status: u.status,
       },
     });
@@ -224,6 +225,11 @@ const existingUsers = await prisma.user.count();
     ],
   });
 
+  // XP earned through the finished games, with the same rule as real games.
+  const xpByUsername = new Map<string, number>();
+  const addXp = (username: string, score: number, won: boolean) =>
+    xpByUsername.set(username, (xpByUsername.get(username) ?? 0) + xpForGame(score, won));
+
   for (const { game, winner, others, discoveryOrder } of finishedGames) {
     const discoveryRankByUsername = new Map<string, number>(
       discoveryOrder.map((username, index) => [username, index + 1]),
@@ -235,10 +241,12 @@ const existingUsers = await prisma.user.count();
         user_id: users[winner].user_id,
         result: "WIN",
         score: 1000,
+        xp_gained: xpForGame(1000, true),
         rank: 1,
         discovery_rank: discoveryRankByUsername.get(winner),
       },
     });
+    addXp(winner, 1000, true);
 
     for (const [index, username] of others.entries()) {
       await prisma.gamePlayer.create({
@@ -247,11 +255,20 @@ const existingUsers = await prisma.user.count();
           user_id: users[username].user_id,
           result: "LOSS",
           score: 850 - index * 120,
+          xp_gained: xpForGame(850 - index * 120, false),
           rank: index + 2,
           discovery_rank: discoveryRankByUsername.get(username),
         },
       });
+      addXp(username, 850 - index * 120, false);
     }
+  }
+
+  for (const [username, xp] of xpByUsername) {
+    await prisma.user.update({
+      where: { user_id: users[username].user_id },
+      data: { xp: BigInt(xp), lvl: BigInt(levelForXp(xp)) },
+    });
   }
 
   // ---------------------------------------------------------------------------

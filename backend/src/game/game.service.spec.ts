@@ -12,6 +12,7 @@ import { ProximityService } from 'src/pedantix-engine/proximity/proximity.servic
 import { VectorStoreService } from 'src/pedantix-engine/proximity/vector-store.service';
 import { TokenizerService } from 'src/pedantix-engine/tokenizer/tokenizer.service';
 import { GameService, SCORE_PER_WORD, SCORE_TITLE } from './game.service';
+import { XP_WIN_BONUS } from './xp';
 
 function makeVectors() {
   const dir = mkdtempSync(join(tmpdir(), 'vec-'));
@@ -44,7 +45,14 @@ describe('GameService (shared board)', () => {
   const lemmatizer = new LemmatizerService();
   const vectors = makeVectors();
   let service: GameService;
-  let db: { game: any; players: any[]; updates: any[]; gameUpdate: any };
+  let db: {
+    game: any;
+    players: any[];
+    updates: any[];
+    gameUpdate: any;
+    xp: Map<bigint, bigint>;
+    lvl: Map<bigint, bigint>;
+  };
 
   beforeEach(async () => {
     db = {
@@ -55,6 +63,14 @@ describe('GameService (shared board)', () => {
       ],
       updates: [],
       gameUpdate: null,
+      xp: new Map([
+        [10n, 0n],
+        [11n, 450n],
+      ]),
+      lvl: new Map([
+        [10n, 1n],
+        [11n, 1n],
+      ]),
     };
     const prisma: any = {
       game: {
@@ -71,6 +87,14 @@ describe('GameService (shared board)', () => {
           null,
         findMany: async () => db.players,
         update: async (args: any) => db.updates.push(args),
+      },
+      user: {
+        update: async ({ where, data }: any) => {
+          const id = where.user_id;
+          if (data.xp) db.xp.set(id, (db.xp.get(id) ?? 0n) + data.xp.increment);
+          if (data.lvl) db.lvl.set(id, data.lvl);
+          return { user_id: id, xp: db.xp.get(id), lvl: db.lvl.get(id) };
+        },
       },
       room: { update: async () => ({}) },
       roomPlayer: { findMany: async () => [] },
@@ -208,12 +232,21 @@ describe('GameService (shared board)', () => {
       result: GameResult.WIN,
       score: 530,
       rank: 1,
+      xp_gained: 530 + XP_WIN_BONUS,
+      leveled_up: true,
     });
     expect(saved['10']).toEqual({
       result: GameResult.LOSS,
       score: 30,
       rank: 2,
+      xp_gained: 30,
+      leveled_up: false,
     });
+    // XP = score + win bonus; player 11 started at 450 XP and reaches level 3
+    expect(db.xp.get(11n)).toBe(BigInt(450 + 530 + XP_WIN_BONUS));
+    expect(db.lvl.get(11n)).toBe(3n);
+    expect(db.xp.get(10n)).toBe(30n);
+    expect(db.lvl.get(10n)).toBe(1n);
     expect(db.gameUpdate.article_title).toBe('Iron Tower');
     expect(db.gameUpdate.ended_at).toBeInstanceOf(Date);
   });

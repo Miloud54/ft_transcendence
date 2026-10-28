@@ -17,13 +17,13 @@ type GameSocket = Socket<
   DefaultEventsMap,
   DefaultEventsMap,
   DefaultEventsMap,
-  { userId?: string }
+  { userId?: string; gameId?: string }
 >;
 type GameServer = Server<
   DefaultEventsMap,
   DefaultEventsMap,
   DefaultEventsMap,
-  { userId?: string }
+  { userId?: string; gameId?: string }
 >;
 type GamePayload = { gameId: string };
 type GuessPayload = GamePayload & { guess: string };
@@ -79,7 +79,11 @@ export class GameGateway
   }
 
   handleDisconnect(client: GameSocket) {
+    const gameId = client.data.gameId;
     client.data.userId = undefined;
+    client.data.gameId = undefined;
+    // A closed tab or lost connection changes the online count of the game.
+    if (gameId) void this.emitGameState(gameId);
   }
 
   @SubscribeMessage('game:join')
@@ -94,10 +98,9 @@ export class GameGateway
       throw new WsException('You have left this game and cannot rejoin');
     }
     await client.join(gameSocketName(gameId));
-    client.emit(
-      'game:state',
-      await this.gameService.getState(gameId, client.data.userId),
-    );
+    client.data.gameId = gameId;
+    // Everyone receives the new state, so the online count includes this player.
+    await this.emitGameState(gameId);
   }
 
   @SubscribeMessage('game:leave')
@@ -109,6 +112,7 @@ export class GameGateway
     const gameId = this.requireGameId(payload);
     await this.gameService.leaveGame(gameId, userId);
     await client.leave(gameSocketName(gameId));
+    client.data.gameId = undefined;
   }
 
   @SubscribeMessage('game:guess')
@@ -167,12 +171,20 @@ export class GameGateway
 
   private async emitGameState(gameId: string) {
     const sockets = await this.server.in(gameSocketName(gameId)).fetchSockets();
+    // Players with at least one open tab on the game, whatever their room status.
+    const onlinePlayerIds = [
+      ...new Set(
+        sockets
+          .map((socket) => socket.data.userId)
+          .filter((userId): userId is string => Boolean(userId)),
+      ),
+    ];
     await Promise.all(
       sockets.map(async (socket) => {
-        socket.emit(
-          'game:state',
-          await this.gameService.getState(gameId, socket.data.userId),
-        );
+        socket.emit('game:state', {
+          ...(await this.gameService.getState(gameId, socket.data.userId)),
+          onlinePlayerIds,
+        });
       }),
     );
   }

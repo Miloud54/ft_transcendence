@@ -173,6 +173,8 @@ model GamePlayer {
   score   Int?
   rank    Int?
   discovery_rank Int?
+  xp_gained      Int     @default(0)
+  leveled_up     Boolean @default(false)
   
     @@unique([game_id, user_id])
 	@@map("Game_players")
