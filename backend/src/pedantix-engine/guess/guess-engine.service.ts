@@ -85,9 +85,12 @@ export class GuessEngineService {
 
     guessed.add(normalized);
 
+    // Title words found by this player; without a per-player set (single board),
+    // the shared board is the reference.
+    const titleProgress = titleRevealedIds ?? board.revealed;
     const titleFound =
       index.titleWordIds.length > 0 &&
-      index.titleWordIds.every((id) => titleRevealedIds?.has(id));
+      index.titleWordIds.every((id) => titleProgress.has(id));
 
     return {
       valid: true,

@@ -146,7 +146,8 @@ export class PedantixEngineService {
     if (titleIds.length === 0) return false;
 
     return playerIds.every((playerId) => {
-      const revealed = game.board.titleRevealedByPlayer.get(playerId) ?? new Set();
+      const revealed =
+        game.board.titleRevealedByPlayer.get(playerId) ?? new Set();
       return titleIds.every((id) => revealed.has(id));
     });
   }

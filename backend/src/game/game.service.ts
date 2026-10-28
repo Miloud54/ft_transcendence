@@ -184,14 +184,17 @@ export class GameService {
     };
 
     if (outcome.titleFound) {
-      const activePlayers = [...(await this.prisma.gamePlayer.findMany({
-        where: { game_id: game.game_id },
-      }))]
+      const activePlayers = [
+        ...(await this.prisma.gamePlayer.findMany({
+          where: { game_id: game.game_id },
+        })),
+      ]
         .map((player) => player.user_id.toString())
         .filter((id) => !this.leftPlayers.get(gameId)?.has(id));
 
       if (this.pedantixEngine.hasAllPlayersFoundTitle(gameId, activePlayers)) {
-        await this.finishGame(gameId, userId);
+        // The winner is the first player who found the title, not the last one.
+        await this.finishGame(gameId, this.winners.get(gameId) ?? userId);
         return result;
       }
 
