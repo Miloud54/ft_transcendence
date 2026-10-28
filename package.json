@@ -1,5 +1,9 @@
 {
+  "scripts": {
+    "test:browser-console": "playwright test"
+  },
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
     "tsx": "^4.23.15"
   }
 }
