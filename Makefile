@@ -4,6 +4,8 @@
 COMPOSE ?= docker compose
 DEV     := $(COMPOSE)
 PROD    := $(COMPOSE) -f docker-compose.prod.yml
+ENGINE  ?= $(firstword $(COMPOSE))
+running  = $(shell $(ENGINE) ps -aq --filter label=com.docker.compose.project=$(1) 2>/dev/null)
 
 .DEFAULT_GOAL := help
 .PHONY: help env up down restart logs ps dev dev-restart dev-logs dev-ps dev-seed dev-seed-reset clean fclean re
@@ -22,8 +24,8 @@ up: env ## Build and start the production stack
 	$(PROD) up -d --build
 
 down: ## Stop the running stack, prod or dev (data kept)
-	-@$(PROD) down
-	-@$(DEV) down
+	@$(if $(call running,transcendence-prod),$(PROD) down,true)
+	@$(if $(call running,transcendence-dev),$(DEV) down,true)
 
 restart: down up ## Restart the production stack
 
