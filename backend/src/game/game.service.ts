@@ -183,6 +183,17 @@ export class GameService {
     };
 
     if (outcome.titleFound) {
+      const activePlayers = [...(await this.prisma.gamePlayer.findMany({
+        where: { game_id: game.game_id },
+      }))]
+        .map((player) => player.user_id.toString())
+        .filter((id) => !this.leftPlayers.get(gameId)?.has(id));
+
+      if (this.pedantixEngine.hasAllPlayersFoundTitle(gameId, activePlayers)) {
+        await this.finishGame(gameId, userId);
+        return result;
+      }
+
       this.winners.set(gameId, userId);
       this.startTitleGracePeriod(gameId);
     }

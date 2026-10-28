@@ -59,7 +59,7 @@ export class GuessEngineService {
 
     // --- reveal ---
     const matched = isFullTitle
-      ? index.titleWordIds
+      ? [...index.titleWordIds]
       : unique(lemmas.flatMap((lemma) => index.byLemma.get(lemma) ?? []));
     const revealsTitleWord = matched.some((id) =>
       index.titleWordIds.includes(id),
@@ -87,7 +87,7 @@ export class GuessEngineService {
 
     const titleFound =
       index.titleWordIds.length > 0 &&
-      index.titleWordIds.every((id) => board.revealed.has(id));
+      index.titleWordIds.every((id) => titleRevealedIds?.has(id));
 
     return {
       valid: true,
