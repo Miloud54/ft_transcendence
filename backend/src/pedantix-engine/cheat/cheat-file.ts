@@ -27,8 +27,7 @@ export function isCheatEnabled(): boolean {
 export async function writeCheatFile(
   gameId: string,
   article: Article,
-  dir: string = process.env.PEDANTIX_CHEAT_DIR ??
-    join(process.cwd(), 'cheat'),
+  dir: string = process.env.PEDANTIX_CHEAT_DIR ?? join(process.cwd(), 'cheat'),
 ): Promise<string | null> {
   if (!isCheatEnabled()) return null;
 

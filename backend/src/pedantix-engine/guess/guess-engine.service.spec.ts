@@ -41,8 +41,14 @@ function makeVectors(): VectorStoreService {
     flat.push(...v.map((x) => x / norm));
   }
   writeFileSync(join(dir, 'words.json'), JSON.stringify(words));
-  writeFileSync(join(dir, 'vectors.bin'), Buffer.from(new Float32Array(flat).buffer));
-  writeFileSync(join(dir, 'meta.json'), JSON.stringify({ dim: 3, count: words.length }));
+  writeFileSync(
+    join(dir, 'vectors.bin'),
+    Buffer.from(new Float32Array(flat).buffer),
+  );
+  writeFileSync(
+    join(dir, 'meta.json'),
+    JSON.stringify({ dim: 3, count: words.length }),
+  );
   const store = new VectorStoreService();
   store.load(dir);
   return store;
@@ -79,7 +85,12 @@ describe('GuessEngineService', () => {
   it('reveals every occurrence and inflection (tower -> towers)', () => {
     const outcome = engine.run(index, board, 'tower');
     expect(outcome).toMatchObject({ valid: true, revealedCount: 4 });
-    expect(revealedTexts().sort()).toEqual(['tower', 'tower', 'tower', 'towers']);
+    expect(revealedTexts().sort()).toEqual([
+      'tower',
+      'tower',
+      'tower',
+      'towers',
+    ]);
   });
 
   it('is -> reveals be/is/are in the text', () => {
@@ -97,27 +108,49 @@ describe('GuessEngineService', () => {
   });
 
   it('rejects gibberish, empty, multi-word and duplicates', () => {
-    expect(engine.run(index, board, 'asdfghjk')).toMatchObject({ reason: 'NOT_A_WORD' });
+    expect(engine.run(index, board, 'asdfghjk')).toMatchObject({
+      reason: 'NOT_A_WORD',
+    });
     expect(engine.run(index, board, '   ')).toMatchObject({ reason: 'EMPTY' });
-    expect(engine.run(index, board, 'two words')).toMatchObject({ reason: 'SINGLE_WORD_ONLY' });
+    expect(engine.run(index, board, 'two words')).toMatchObject({
+      reason: 'SINGLE_WORD_ONLY',
+    });
     expect(engine.run(index, board, 'tower')).toMatchObject({ valid: true });
-    expect(engine.run(index, board, 'Tower')).toMatchObject({ reason: 'ALREADY_GUESSED' });
+    expect(engine.run(index, board, 'Tower')).toMatchObject({
+      reason: 'ALREADY_GUESSED',
+    });
   });
 
   it('accepts numbers: reveals them when in the text, otherwise just no match', () => {
     const custom = new TokenizerService().tokenize({
-      id: 3, url: '', title: 'Tower', paragraphs: ['Built in 1889, it is tall.'],
+      id: 3,
+      url: '',
+      title: 'Tower',
+      paragraphs: ['Built in 1889, it is tall.'],
     });
     const idx = new ArticleIndexService(lemmatizer, vectors).build(custom);
     const b = createBoard();
-    expect(engine.run(idx, b, '1889')).toMatchObject({ valid: true, revealedCount: 1, bestGrade: 0 });
-    expect(engine.run(idx, b, '1900')).toMatchObject({ valid: true, revealedCount: 0, bestGrade: 0 });
-    expect(engine.run(idx, b, '1900')).toMatchObject({ reason: 'ALREADY_GUESSED' });
+    expect(engine.run(idx, b, '1889')).toMatchObject({
+      valid: true,
+      revealedCount: 1,
+      bestGrade: 0,
+    });
+    expect(engine.run(idx, b, '1900')).toMatchObject({
+      valid: true,
+      revealedCount: 0,
+      bestGrade: 0,
+    });
+    expect(engine.run(idx, b, '1900')).toMatchObject({
+      reason: 'ALREADY_GUESSED',
+    });
   });
 
   it('accepts proper nouns that only exist in the article', () => {
     const custom = new TokenizerService().tokenize({
-      id: 2, url: '', title: 'Zorblax', paragraphs: ['Zorblax rules the iron tower.'],
+      id: 2,
+      url: '',
+      title: 'Zorblax',
+      paragraphs: ['Zorblax rules the iron tower.'],
     });
     const idx = new ArticleIndexService(lemmatizer, vectors).build(custom);
     expect(engine.run(idx, createBoard(), 'zorblax')).toMatchObject({
@@ -128,18 +161,30 @@ describe('GuessEngineService', () => {
 
   it('accepts single-letter guesses when they appear in the article', () => {
     const custom = new TokenizerService().tokenize({
-      id: 4, url: '', title: 'A', paragraphs: ['A simple letter.'],
+      id: 4,
+      url: '',
+      title: 'A',
+      paragraphs: ['A simple letter.'],
     });
     const idx = new ArticleIndexService(lemmatizer, vectors).build(custom);
-    expect(engine.run(idx, createBoard(), 'a')).toMatchObject({ valid: true, revealedCount: 2 });
+    expect(engine.run(idx, createBoard(), 'a')).toMatchObject({
+      valid: true,
+      revealedCount: 2,
+    });
   });
 
   it('accepts possessive apostrophe forms such as "it\'s"', () => {
     const custom = new TokenizerService().tokenize({
-      id: 5, url: '', title: 'Sentence', paragraphs: ["It's a small thing."],
+      id: 5,
+      url: '',
+      title: 'Sentence',
+      paragraphs: ["It's a small thing."],
     });
     const idx = new ArticleIndexService(lemmatizer, vectors).build(custom);
-    expect(engine.run(idx, createBoard(), "it's")).toMatchObject({ valid: true, revealedCount: 1 });
+    expect(engine.run(idx, createBoard(), "it's")).toMatchObject({
+      valid: true,
+      revealedCount: 1,
+    });
   });
 
   it('colors close words but never revealed or unrelated ones', () => {
@@ -148,11 +193,16 @@ describe('GuessEngineService', () => {
     if (!outcome.valid) return;
     // "metal" appears once -> revealed; "iron" is close -> graded
     const grades = Object.fromEntries(
-      [...board.grades].map(([id, grade]) => [index.words[id].text.toLowerCase(), grade]),
+      [...board.grades].map(([id, grade]) => [
+        index.words[id].text.toLowerCase(),
+        grade,
+      ]),
     );
     expect(grades.iron).toBeGreaterThanOrEqual(3);
     expect(grades.paris).toBeUndefined();
-    expect([...board.grades.keys()].some((id) => board.revealed.has(id))).toBe(false);
+    expect([...board.grades.keys()].some((id) => board.revealed.has(id))).toBe(
+      false,
+    );
   });
 
   it('never grades from a stopword guess', () => {
@@ -178,12 +228,18 @@ describe('GuessEngineService', () => {
     const ironIds = index.byLemma.get('iron') ?? [];
     expect(ironIds.every((id) => board.grades.has(id))).toBe(true);
     engine.run(index, board, 'iron');
-    expect(ironIds.every((id) => !board.grades.has(id) && board.revealed.has(id))).toBe(true);
+    expect(
+      ironIds.every((id) => !board.grades.has(id) && board.revealed.has(id)),
+    ).toBe(true);
   });
 
   it('detects the title once every title word is revealed', () => {
-    expect(engine.run(index, board, 'iron')).toMatchObject({ titleFound: false });
-    expect(engine.run(index, board, 'tower')).toMatchObject({ titleFound: true });
+    expect(engine.run(index, board, 'iron')).toMatchObject({
+      titleFound: false,
+    });
+    expect(engine.run(index, board, 'tower')).toMatchObject({
+      titleFound: true,
+    });
     expect(board.finished).toBe(false);
     expect(engine.run(index, board, 'tall')).toMatchObject({ valid: true });
   });
@@ -213,10 +269,17 @@ describe('GuessEngineService', () => {
 
   it('works without vector files (no proximity, permissive validation)', () => {
     const noVectors = new VectorStoreService();
-    const noProx = new GuessEngineService(lemmatizer, noVectors, new ProximityService(noVectors));
+    const noProx = new GuessEngineService(
+      lemmatizer,
+      noVectors,
+      new ProximityService(noVectors),
+    );
     const idx = new ArticleIndexService(lemmatizer, noVectors).build(tokenized);
     const b = createBoard();
-    expect(noProx.run(idx, b, 'tower')).toMatchObject({ valid: true, bestGrade: 0 });
+    expect(noProx.run(idx, b, 'tower')).toMatchObject({
+      valid: true,
+      bestGrade: 0,
+    });
     expect(noProx.run(idx, b, 'qqq1')).toMatchObject({ reason: 'NOT_A_WORD' });
   });
 });

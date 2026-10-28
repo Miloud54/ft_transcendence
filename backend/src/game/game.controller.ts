@@ -1,4 +1,12 @@
-import { Controller, Get, Param, Patch, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { GameService } from './game.service';
 import type { Request } from 'express';
@@ -17,7 +25,10 @@ export class GameController {
 
   @Get('leaderboard')
   getLeaderboard(@Query('sortBy') sortBy?: string) {
-    return this.gameService.getLeaderboard(20, sortBy === 'points' ? 'points' : 'wins');
+    return this.gameService.getLeaderboard(
+      20,
+      sortBy === 'points' ? 'points' : 'wins',
+    );
   }
 
   @Get(':gameId/results')

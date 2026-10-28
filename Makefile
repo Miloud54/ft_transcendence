@@ -55,6 +55,9 @@ dev-seed: ## Run the development seed (only if the database is empty)
 dev-seed-reset: ## Reset the development database to the seed data
 	$(DEV) exec -e SEED_FORCE=true backend npx prisma db seed
 
+dev-clean-cache: ## Delete the Next.js dev build cache (frontend/.next)
+	rm -rf frontend/.next
+
 # ---- Cleanup ----
 
 clean: down ## Stop both stacks (data kept)

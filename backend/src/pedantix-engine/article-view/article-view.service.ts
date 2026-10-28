@@ -31,10 +31,7 @@ export class ArticleViewService {
     titleRevealedIds?: Set<number>,
   ): BoardView {
     let nextId = 0;
-    const convert = (
-      token: ArticleToken,
-      isTitle: boolean,
-    ): BoardViewToken => {
+    const convert = (token: ArticleToken, isTitle: boolean): BoardViewToken => {
       if (token.type === 'separator') {
         return { type: 'separator', display: token.text };
       }
@@ -45,7 +42,12 @@ export class ArticleViewService {
           ? board.revealed.has(id)
           : titleRevealedIds.has(id);
       if (revealAll || titleRevealed) {
-        return { type: 'word', status: 'revealed', length, display: token.text };
+        return {
+          type: 'word',
+          status: 'revealed',
+          length,
+          display: token.text,
+        };
       }
       const grade = board.grades.get(id);
       if (!grade) {
@@ -62,7 +64,9 @@ export class ArticleViewService {
     };
 
     return {
-      title: { tokens: article.title.tokens.map((token) => convert(token, true)) },
+      title: {
+        tokens: article.title.tokens.map((token) => convert(token, true)),
+      },
       paragraphs: article.paragraphs.map((paragraph) => ({
         tokens: paragraph.tokens.map((token) => convert(token, false)),
       })),

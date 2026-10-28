@@ -19,6 +19,12 @@ type GameSocket = Socket<
   DefaultEventsMap,
   { userId?: string }
 >;
+type GameServer = Server<
+  DefaultEventsMap,
+  DefaultEventsMap,
+  DefaultEventsMap,
+  { userId?: string }
+>;
 type GamePayload = { gameId: string };
 type GuessPayload = GamePayload & { guess: string };
 
@@ -35,7 +41,7 @@ export class GameGateway
   implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit
 {
   @WebSocketServer()
-  private server!: Server;
+  private server!: GameServer;
 
   constructor(
     private readonly gameService: GameService,

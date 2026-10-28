@@ -27,8 +27,14 @@ function makeVectors() {
     return entries[w].map((x) => x / n);
   });
   writeFileSync(join(dir, 'words.json'), JSON.stringify(words));
-  writeFileSync(join(dir, 'vectors.bin'), Buffer.from(new Float32Array(flat).buffer));
-  writeFileSync(join(dir, 'meta.json'), JSON.stringify({ dim: 3, count: words.length }));
+  writeFileSync(
+    join(dir, 'vectors.bin'),
+    Buffer.from(new Float32Array(flat).buffer),
+  );
+  writeFileSync(
+    join(dir, 'meta.json'),
+    JSON.stringify({ dim: 3, count: words.length }),
+  );
   const store = new VectorStoreService();
   store.load(dir);
   return store;
@@ -61,7 +67,8 @@ describe('GameService (shared board)', () => {
       },
       gamePlayer: {
         findUnique: async ({ where }: any) =>
-          db.players.find((p) => p.user_id === where.game_id_user_id.user_id) ?? null,
+          db.players.find((p) => p.user_id === where.game_id_user_id.user_id) ??
+          null,
         findMany: async () => db.players,
         update: async (args: any) => db.updates.push(args),
       },
@@ -72,14 +79,22 @@ describe('GameService (shared board)', () => {
     const engine = new PedantixEngineService(
       {
         selectArticle: async () => ({
-          id: 1, url: '', title: 'Iron Tower',
-          paragraphs: ['The tower is made of iron. A tall tower. Not a banana.'],
+          id: 1,
+          url: '',
+          title: 'Iron Tower',
+          paragraphs: [
+            'The tower is made of iron. A tall tower. Not a banana.',
+          ],
         }),
       } as any,
       new TokenizerService(),
       new ArticleViewService(),
       new ArticleIndexService(lemmatizer, vectors),
-      new GuessEngineService(lemmatizer, vectors, new ProximityService(vectors)),
+      new GuessEngineService(
+        lemmatizer,
+        vectors,
+        new ProximityService(vectors),
+      ),
     );
     await engine.prepareGame('1');
     service = new GameService(
@@ -96,7 +111,11 @@ describe('GameService (shared board)', () => {
 
   it('shares reveals between players and scores 30 per found word', async () => {
     const first = await service.submitGuess('1', '10', 'tower');
-    expect(first).toMatchObject({ valid: true, score: SCORE_PER_WORD, revealedCount: 3 });
+    expect(first).toMatchObject({
+      valid: true,
+      score: SCORE_PER_WORD,
+      revealedCount: 3,
+    });
 
     const state = await service.getState('1');
     const revealed = state.article!.paragraphs[0].tokens.filter(
@@ -143,7 +162,10 @@ describe('GameService (shared board)', () => {
     later();
     const otherPlayerGuess = await service.submitGuess('1', '11', 'iron');
     expect(otherPlayerGuess).toMatchObject({ valid: true });
-    expect((await service.getState('1')).attempts).toEqual({ '10': 1, '11': 1 });
+    expect((await service.getState('1')).attempts).toEqual({
+      '10': 1,
+      '11': 1,
+    });
   });
 
   it('throttles guess spam', async () => {
@@ -159,7 +181,10 @@ describe('GameService (shared board)', () => {
 
     expect(state.status).toBe('running');
     expect(state.graceRemaining).toBe(300);
-    expect(state.scores).toEqual({ '10': SCORE_PER_WORD, '11': SCORE_PER_WORD + SCORE_TITLE });
+    expect(state.scores).toEqual({
+      '10': SCORE_PER_WORD,
+      '11': SCORE_PER_WORD + SCORE_TITLE,
+    });
 
     await service.submitGuess('1', '10', 'banana');
     await jest.advanceTimersByTimeAsync(5 * 60_000);
@@ -174,10 +199,21 @@ describe('GameService (shared board)', () => {
     expect(hidden).toHaveLength(0);
 
     const saved = Object.fromEntries(
-      db.updates.map((u) => [u.where.game_id_user_id.user_id.toString(), u.data]),
+      db.updates.map((u) => [
+        u.where.game_id_user_id.user_id.toString(),
+        u.data,
+      ]),
     );
-    expect(saved['11']).toEqual({ result: GameResult.WIN, score: 530, rank: 1 });
-    expect(saved['10']).toEqual({ result: GameResult.LOSS, score: 30, rank: 2 });
+    expect(saved['11']).toEqual({
+      result: GameResult.WIN,
+      score: 530,
+      rank: 1,
+    });
+    expect(saved['10']).toEqual({
+      result: GameResult.LOSS,
+      score: 30,
+      rank: 2,
+    });
     expect(db.gameUpdate.article_title).toBe('Iron Tower');
     expect(db.gameUpdate.ended_at).toBeInstanceOf(Date);
   });
@@ -186,6 +222,8 @@ describe('GameService (shared board)', () => {
     await service.submitGuess('1', '10', 'iron tower');
     expect((await service.getState('1')).status).toBe('running');
     await jest.advanceTimersByTimeAsync(5 * 60_000);
-    await expect(service.submitGuess('1', '11', 'banana')).rejects.toThrow('not running');
+    await expect(service.submitGuess('1', '11', 'banana')).rejects.toThrow(
+      'not running',
+    );
   });
 });
