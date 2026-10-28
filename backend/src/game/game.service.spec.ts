@@ -154,16 +154,27 @@ describe('GameService (shared board)', () => {
 
   it('keeps the game open for five minutes after the title is found', async () => {
     await service.submitGuess('1', '10', 'iron'); // +30 for player 10
-    await service.submitGuess('1', '11', 'tower'); // +30, completes title: +500
-    let state = await service.getState('1');
+    await service.submitGuess('1', '11', 'iron tower'); // completes title: +500
+    let state = await service.getState('1', '11');
 
     expect(state.status).toBe('running');
     expect(state.graceRemaining).toBe(300);
     expect(state.scores).toEqual({ '10': SCORE_PER_WORD, '11': SCORE_PER_WORD + SCORE_TITLE });
 
+    const winnerHidden = state.article!.paragraphs[0].tokens.filter(
+      (t) => t.type === 'word' && t.status === 'hidden',
+    );
+    expect(winnerHidden).toHaveLength(0);
+
+    const opponentState = await service.getState('1', '10');
+    const opponentHidden = opponentState.article!.paragraphs[0].tokens.filter(
+      (t) => t.type === 'word' && t.status === 'hidden',
+    );
+    expect(opponentHidden.length).toBeGreaterThan(0);
+
     await service.submitGuess('1', '10', 'banana');
     await jest.advanceTimersByTimeAsync(5 * 60_000);
-    state = await service.getState('1');
+    state = await service.getState('1', '10');
 
     expect(state.status).toBe('finished');
     expect(state.winnerId).toBe('11');
@@ -180,6 +191,24 @@ describe('GameService (shared board)', () => {
     expect(saved['10']).toEqual({ result: GameResult.LOSS, score: 30, rank: 2 });
     expect(db.gameUpdate.article_title).toBe('Iron Tower');
     expect(db.gameUpdate.ended_at).toBeInstanceOf(Date);
+  });
+
+  it('finishes immediately when every player has found the title before the grace timer ends', async () => {
+    await service.submitGuess('1', '10', 'iron tower');
+    expect((await service.getState('1')).status).toBe('running');
+
+    await service.submitGuess('1', '11', 'iron tower');
+    const state = await service.getState('1');
+
+    expect(state.status).toBe('finished');
+    expect(state.graceRemaining).toBe(0);
+    expect(state.winnerId).toBe('11');
+
+    const saved = Object.fromEntries(
+      db.updates.map((u) => [u.where.game_id_user_id.user_id.toString(), u.data]),
+    );
+    expect(saved['11']).toEqual({ result: GameResult.WIN, score: 500, rank: 1 });
+    expect(saved['10']).toEqual({ result: GameResult.LOSS, score: 530, rank: 2 });
   });
 
   it('rejects guesses once the game is finished', async () => {

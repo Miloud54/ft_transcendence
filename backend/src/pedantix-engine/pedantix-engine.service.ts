@@ -92,10 +92,13 @@ export class PedantixEngineService {
     const titleRevealedIds = playerId
       ? game.board.titleRevealedByPlayer.get(playerId) ?? new Set<number>()
       : new Set<number>();
+    const titleFound = game.index.titleWordIds.every((id) =>
+      titleRevealedIds.has(id),
+    );
     return this.articleView.buildBoardView(
       game.tokenizedArticle,
       game.board,
-      false,
+      titleFound,
       titleRevealedIds,
     );
   }
@@ -136,6 +139,19 @@ export class PedantixEngineService {
       guessed,
       titleRevealedIds,
     );
+  }
+
+  hasAllPlayersFoundTitle(gameId: string, playerIds: string[]): boolean {
+    const game = this.games.get(gameId);
+    if (!game || playerIds.length === 0) return false;
+
+    const titleIds = game.index.titleWordIds;
+    if (titleIds.length === 0) return false;
+
+    return playerIds.every((playerId) => {
+      const revealed = game.board.titleRevealedByPlayer.get(playerId) ?? new Set();
+      return titleIds.every((id) => revealed.has(id));
+    });
   }
 
   markGameFinished(gameId: string): void {
