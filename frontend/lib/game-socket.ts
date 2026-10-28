@@ -18,6 +18,8 @@ export type GameState = {
   attempts: Record<string, number>;
   winnerId?: string;
   leftPlayerIds?: string[];
+  /** Players with an open connection to the game (closing the tab removes them). */
+  onlinePlayerIds?: string[];
 };
 
 export type ArticleToken =

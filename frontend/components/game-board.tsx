@@ -340,7 +340,14 @@ export function GameBoard({
                  <div className="rounded-lg border border-zinc-200 bg-white px-4 py-2">
             <span className="block text-xs text-zinc-400">Players</span>
             <strong className="text-zinc-900">
-              {players.filter((player) => !gameState?.leftPlayerIds?.includes(player.id)).length} online
+              {
+                players.filter(
+                  (player) =>
+                    !gameState?.leftPlayerIds?.includes(player.id) &&
+                    (gameState?.onlinePlayerIds?.includes(player.id) ?? true),
+                ).length
+              }{" "}
+              online
             </strong>
           </div>
           <button

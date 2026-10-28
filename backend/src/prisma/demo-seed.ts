@@ -6,16 +6,12 @@ import {
   RoomStatus,
   UserStatus,
 } from '../../generated/prisma';
+import { levelForXp, xpForGame } from '../game/xp';
 import { loadSecretsFromVault } from '../vault';
 
 const HISTORY_ROOM_CODE = 'DEMOHIST';
 
-const DEMO_PLAYERS = [
-  { username: 'demo_alice', xp: 3200, lvl: 8 },
-  { username: 'demo_bob', xp: 1800, lvl: 5 },
-  { username: 'demo_charlie', xp: 950, lvl: 3 },
-  { username: 'demo_diana', xp: 1400, lvl: 4 },
-];
+const DEMO_PLAYERS = ['demo_alice', 'demo_bob', 'demo_charlie', 'demo_diana'];
 
 // Each ranking lists players from 1st to last; the 1st one wins.
 const DEMO_GAMES = [
@@ -67,6 +63,18 @@ const DEMO_GAMES = [
   },
 ];
 
+const scoreFor = (gameIndex: number, position: number) =>
+  1000 - position * 150 - (gameIndex % 3) * 40;
+
+// XP earned through the demo history, with the same rule as real games.
+function demoXp(username: string): number {
+  return DEMO_GAMES.reduce((total, demoGame, gameIndex) => {
+    const position = demoGame.ranking.indexOf(username);
+    if (position === -1) return total;
+    return total + xpForGame(scoreFor(gameIndex, position), position === 0);
+  }, 0);
+}
+
 const daysAgo = (days: number, extraMinutes = 0) =>
   new Date(Date.now() - days * 24 * 60 * 60_000 + extraMinutes * 60_000);
 
@@ -82,21 +90,21 @@ async function main() {
     const password = await bcrypt.hash(secrets.demo_password, 10);
     const userIds = new Map<string, bigint>();
 
-    for (const player of DEMO_PLAYERS) {
+    for (const username of DEMO_PLAYERS) {
       const user = await prisma.user.upsert({
-        where: { username: player.username },
+        where: { username },
         update: { password },
         create: {
-          username: player.username,
-          email: `${player.username}@demo.local`,
+          username,
+          email: `${username}@demo.local`,
           password,
-          avatar: `https://api.dicebear.com/10.x/critters/svg?seed=${player.username}`,
-          xp: BigInt(player.xp),
-          lvl: BigInt(player.lvl),
+          avatar: `https://api.dicebear.com/10.x/critters/svg?seed=${username}`,
+          xp: BigInt(0),
+          lvl: BigInt(1),
           status: UserStatus.OFFLINE,
         },
       });
-      userIds.set(player.username, user.user_id);
+      userIds.set(username, user.user_id);
     }
 
     const existingRoom = await prisma.room.findUnique({
@@ -123,9 +131,9 @@ async function main() {
       });
 
       await tx.roomPlayer.createMany({
-        data: DEMO_PLAYERS.map((player) => ({
+        data: DEMO_PLAYERS.map((username) => ({
           room_id: room.room_id,
-          user_id: userIds.get(player.username)!,
+          user_id: userIds.get(username)!,
         })),
       });
 
@@ -145,10 +153,19 @@ async function main() {
             game_id: game.game_id,
             user_id: userIds.get(username)!,
             result: index === 0 ? GameResult.WIN : GameResult.LOSS,
-            score: 1000 - index * 150 - (gameIndex % 3) * 40,
+            score: scoreFor(gameIndex, index),
+            xp_gained: xpForGame(scoreFor(gameIndex, index), index === 0),
             rank: index + 1,
             discovery_rank: index + 1,
           })),
+        });
+      }
+
+      for (const username of DEMO_PLAYERS) {
+        const xp = demoXp(username);
+        await tx.user.update({
+          where: { user_id: userIds.get(username)! },
+          data: { xp: BigInt(xp), lvl: BigInt(levelForXp(xp)) },
         });
       }
     });

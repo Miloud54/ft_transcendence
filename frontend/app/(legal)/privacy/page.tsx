@@ -24,7 +24,7 @@ export default function PrivacyPage() {
             Discord, we store the identifier of that account instead of a
             password. You can also upload an avatar. While you play, we
             record your game results (score, rank, win or loss), your match
-            history, your friends list and your online status.
+            history, your experience points and level, your friends list and your online status.
           </p>
         </div>
 

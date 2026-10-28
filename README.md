@@ -17,7 +17,7 @@ Players create or join rooms, play together live against each other, chat, add f
 - **Semantic proximity**: wrong guesses are scored against the hidden words using GloVe word vectors.
 - **Accounts**: email/password registration, Google and Discord OAuth 2.0, avatar upload, online / in-game status.
 - **Social**: friends list, friend requests and room invitations with real-time notifications, room chat shared between lobby and game.
-- **Stats**: personal dashboard (games played, win rate, average score, best rank), match history, achievements, global leaderboard.
+- **Stats**: personal dashboard (games played, win rate, average score, best rank), match history, achievements, XP and levels, global leaderboard.
 - **Security**: HTTPS-only access through a Web Application Firewall (Nginx + ModSecurity + OWASP CRS), secrets stored in HashiCorp Vault.
 - **Observability**: centralized logs (ELK), metrics and alerting (Prometheus, Grafana, Alertmanager to Discord), health checks, status page, automated database backups.
 
@@ -294,6 +294,8 @@ Game_players       game_player_id   BigInt     PK
                    score            Int
                    rank             Int        final rank in the game
                    discovery_rank   Int        order in which the player found the title
+                   xp_gained        Int        XP earned in this game (default 0)
+                   leveled_up       Boolean    true if this game made the player reach a new level
                    (game_id, user_id) is unique
 
 Friendships        friendship_id    BigInt     PK
@@ -336,9 +338,10 @@ RoomInvitations    invitation_id    BigInt     PK
 - **Results and play again** (edidier): end-of-game ranking page, play again in the same room, back to lobby / back to game.
 
 ### Statistics
-- **Dashboard and statistics** (edidier): games played, wins, win rate, average score, best rank, charts.
+- **Dashboard and statistics** (edidier): games played, wins, win rate, average score, best rank, charts, level and XP progress bar.
 - **Match history** (edidier): "My games" page listing past games and results.
 - **Achievements and leaderboard** (edidier): unlockable achievements, global leaderboard sorted by wins or points.
+- **XP rewards** (edidier): XP and levels earned at the end of each game, "+N XP" and "Level up!" feedback on the results page, progress bar on the dashboard.
 
 ### Security and infrastructure
 - **WAF and HTTPS** (mamakaro): single HTTPS entry point that filters every request with ModSecurity and the OWASP CRS.
@@ -370,8 +373,9 @@ RoomInvitations    invitation_id    BigInt     PK
 14   DevOps           Log management with ELK                                  Major    2      mamakaro
 15   DevOps           Monitoring with Prometheus and Grafana                   Major    2      edidier
 16   DevOps           Health checks, status page, backups, disaster recovery   Minor    1      edidier
+17   Gaming           Gamification system to reward users for their actions    Minor    1      edidier
 
-     Total: 9 Major x 2 + 7 Minor x 1 = 25 points
+     Total: 9 Major x 2 + 8 Minor x 1 = 26 points
 ```
 
 In addition to the modules, the project ships a **production version**: multi-stage `Dockerfile.prod` images for the frontend and the backend and a `docker-compose.prod.yml` where only the WAF is exposed (mamakaro, bde-la-p).
@@ -410,7 +414,7 @@ Browser-specific limitations:
 Registration and login with hashed passwords (bcrypt) and JWT access / refresh tokens. Users can update their profile, upload an avatar (a generated avatar is used by default), add friends and see their online / offline / in-game status, and each user has a profile page.
 
 **8. Game statistics and match history (Minor)**
-Every finished game stores each player's result, score and rank in `Game_players`. The backend aggregates them into statistics (wins, losses, win rate, best rank), a match history ("My games"), achievements (first victory, veteran, champion, on a roll) and a global leaderboard sorted by wins or points.
+Every finished game stores each player's result, score and rank in `Game_players`. The backend aggregates them into statistics (wins, losses, win rate, best rank, level), a match history ("My games" with the date, result, score and opponents of each game), the achievements and level progression shown on the dashboard, and a global leaderboard sorted by wins or points. This module is about tracking and displaying what happened; rewarding the player is the job of the gamification module (17).
 
 **9. Remote authentication with OAuth 2.0 (Minor)**
 Lets players sign in without creating a password. Implemented with Passport strategies for Google and Discord; the callbacks go through the WAF and redirect to the frontend with the issued tokens.
@@ -436,6 +440,14 @@ The backend exposes metrics with `prom-client`; Prometheus scrapes them, Grafana
 **16. Health checks, status page, backups and disaster recovery (Minor)**
 Health endpoints (`@nestjs/terminus`) and Docker health checks, a status page in the frontend, a `backup` container taking a compressed `pg_dump` every 24 hours (the last 7 are kept), and a documented restore procedure in [docs/disaster-recovery.md](docs/disaster-recovery.md).
 
+**17. Gamification system to reward users for their actions (Minor)**
+Rewards keep players coming back for another game. Three mechanisms work together:
+- **XP / level system**: at the end of each game, every player earns 1 XP per point scored, plus 100 XP for a win (players who leave earn nothing); a new level is reached every 500 XP. The rules live in one place (`backend/src/game/xp.ts`), shared by the game and the seeds.
+- **Achievements**: first victory, veteran (5 games), champion (finish first), on a roll (5 wins), each displayed with its unlock condition.
+- **Leaderboard**: global ranking by wins or by points, showing each player's level.
+
+Everything is persistent: XP and level are stored on `Users`, and the XP earned and any level-up are stored for each game on `Game_players` (`xp_gained`, `leveled_up`), in the same transaction as the game results. Visual feedback: the results page shows "+N XP" to each player and a "Level up!" badge when a level is reached, the points ranking shows the XP earned by everyone, and the dashboard shows a progress bar to the next level with the rules written below it.
+
 ## Individual Contributions
 
 ### bde-la-p (Brunhilde) — Product Owner
@@ -448,6 +460,7 @@ Health endpoints (`@nestjs/terminus`) and Docker health checks, a status page in
 ### edidier (Emilie) — Project Manager
 - Frontend foundations: layout, header, sidebar, home, landing, legal pages, design and logo, responsive design, animations.
 - Custom design system: color palette, typography and reusable components.
+- Gamification: XP and level system, XP feedback on the results page, progress bar.
 - Authentication: email / password, JWT, Google and Discord OAuth, link between backend and frontend.
 - User management: profiles, avatars (default and uploaded), status.
 - Rooms: unique join code, open games list, leave / kick / close lobby, play again, back to game.

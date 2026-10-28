@@ -11,6 +11,7 @@ import { GameResult, GameStatus, RoomStatus } from 'generated/prisma';
 
 import { UserService } from 'src/user/user.service';
 import { PresenceGateway } from 'src/user/presence.gateway';
+import { levelForXp, xpForGame } from './xp';
 
 /** Points for a guess that uncovers at least one new word. */
 export const SCORE_PER_WORD = 30;
@@ -457,6 +458,25 @@ export class GameService {
 
       for (const [position, player] of ranked.entries()) {
         const id = player.user_id.toString();
+
+        // Players who left the game earn no XP.
+        const xpGained = leftPlayers.has(id)
+          ? 0
+          : xpForGame(scores.get(id) ?? 0, id === winner);
+        let leveledUp = false;
+        if (xpGained > 0) {
+          const user = await transaction.user.update({
+            where: { user_id: player.user_id },
+            data: { xp: { increment: BigInt(xpGained) } },
+          });
+          const newLevel = levelForXp(Number(user.xp));
+          leveledUp = newLevel > Number(user.lvl);
+          await transaction.user.update({
+            where: { user_id: player.user_id },
+            data: { lvl: BigInt(newLevel) },
+          });
+        }
+
         await transaction.gamePlayer.update({
           where: {
             game_id_user_id: {
@@ -468,6 +488,8 @@ export class GameService {
             result: id === winner ? GameResult.WIN : GameResult.LOSS,
             score: scores.get(id) ?? 0,
             rank: position + 1,
+            xp_gained: xpGained,
+            leveled_up: leveledUp,
           },
         });
       }
@@ -622,6 +644,8 @@ export class GameService {
       score: player.score,
       rank: player.rank,
       discoveryRank: player.discovery_rank,
+      xpGained: player.xp_gained,
+      leveledUp: player.leveled_up,
     }));
 
     return {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { API_URL, createRematchRoom } from "@/lib/room-api";
+import { useCurrentUser } from "@/lib/current-user-context";
 
 type ResultPlayer = {
   userId: string;
@@ -13,6 +14,8 @@ type ResultPlayer = {
   score: number | null;
   rank: number | null;
   discoveryRank: number | null;
+  xpGained: number;
+  leveledUp: boolean;
 };
 
 type GameResults = {
@@ -89,6 +92,7 @@ function RankingCard({
 
 export function ResultsContent({ gameId }: { gameId: string }) {
   const router = useRouter();
+  const { user } = useCurrentUser();
   const [results, setResults] = useState<GameResults | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCreatingRematch, setIsCreatingRematch] = useState(false);
@@ -115,6 +119,7 @@ export function ResultsContent({ gameId }: { gameId: string }) {
   }
 
   const winner = results.byDiscovery[0];
+  const you = results.byScore.find((player) => player.userId === user?.id);
 
   async function handlePlayAgain() {
     if (!results) return;
@@ -144,6 +149,23 @@ export function ResultsContent({ gameId }: { gameId: string }) {
         </p>
       </div>
 
+      {you && (
+        <div
+          role="status"
+          className="mx-auto flex w-fit flex-wrap items-center justify-center gap-2 rounded-full bg-violet-700 px-5 py-2 text-sm font-semibold text-white"
+        >
+          <span>+{you.xpGained} XP</span>
+          {you.leveledUp && (
+            <span className="rounded-full bg-lime-400 px-2.5 py-0.5 text-xs font-bold text-violet-950">
+              Level up!
+            </span>
+          )}
+          {you.xpGained === 0 && (
+            <span className="text-xs font-normal text-violet-200">No XP for leaving or scoring 0</span>
+          )}
+        </div>
+      )}
+
       <div className="grid gap-6 text-left sm:grid-cols-2">
         <RankingCard
           title="By page discovery order"
@@ -154,7 +176,7 @@ export function ResultsContent({ gameId }: { gameId: string }) {
         <RankingCard
           title="By points"
           entries={results.byScore}
-          metric={(entry) => `${entry.score ?? "—"} pts`}
+          metric={(entry) => `${entry.score ?? "—"} pts · +${entry.xpGained} XP`}
         />
       </div>
 
