@@ -114,8 +114,8 @@ export class GuessEngineService {
     if (this.vectors.isReady) {
       return lemmas.some((lemma) => this.vectors.has(lemma));
     }
-    // Dev fallback without vector files: accept any alphabetic word.
-    return /^\p{L}+(?:['-]\p{L}+)*$/u.test(normalized);
+    // Dev fallback without vector files: accept single letters and alphabetic words.
+    return /^(?:\p{L}|\p{L}+(?:['-]\p{L}+)*)$/u.test(normalized);
   }
 }
 
