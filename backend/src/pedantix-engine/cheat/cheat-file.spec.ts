@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { writeCheatFile } from '../../../cheat/cheat-file';
+import { writeCheatFile } from './cheat-file';
 
 const article = {
   id: 1,

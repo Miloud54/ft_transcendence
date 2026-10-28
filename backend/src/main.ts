@@ -15,6 +15,9 @@ async function bootstrap() {
   process.env.DISCORD_CLIENT_SECRET = secrets.discord_client_secret;
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // The WAF is the only client of the backend: trust its X-Forwarded-For so that
+  // req.ip (used by the rate limiter) is the real client IP, not the WAF's.
+  app.set('trust proxy', 1);
   app.useStaticAssets(join(__dirname, '..', 'uploads'), { prefix: '/uploads' });
   app.enableCors({
     origin: process.env.FRONTEND_URL ?? 'https://localhost:8443',

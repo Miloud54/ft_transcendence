@@ -9,7 +9,7 @@ AUTH="elastic:${ELASTIC_PASSWORD}"
 
 # 1. Attendre que Kibana soit pret (/api/status repond 503 tant qu'il demarre)
 until curl -sf -o /dev/null -u "$AUTH" "$KIBANA/api/status"; do
-  echo "En attente que Kibana soit pret..."
+  echo "Waiting for Kibana to be ready..."
   sleep 5
 done
 
@@ -29,4 +29,4 @@ curl -sf -u "$AUTH" -X POST "$KIBANA/api/data_views/default" \
   -H 'kbn-xsrf: true' -H 'Content-Type: application/json' \
   -d '{"data_view_id":"59debe14-6ba0-46dd-81a4-2b76f004ee96","force":true}'
 
-echo "Kibana configure : dashboard, data view par defaut, bfetch desactive."
+echo "Kibana configured: dashboard imported, default data view set, bfetch disabled."

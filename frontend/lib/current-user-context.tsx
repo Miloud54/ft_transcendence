@@ -44,11 +44,7 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false));
 
     if (token) {
-      const socketOrigin =
-        window.location.port === "3000"
-          ? "http://localhost:3001"
-          : window.location.origin;
-      const presenceSocket = io(`${socketOrigin}/presence`, {
+      const presenceSocket = io(`${window.location.origin}/presence`, {
         auth: { token },
         reconnection: true,
       });

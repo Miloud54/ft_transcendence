@@ -5,3 +5,11 @@ node_modules
 /generated/prisma
 
 /cheat/*.txt
+
+# Compiled output that must never be committed
+/prisma/*.js
+/prisma/*.d.ts
+/prisma/*.js.map
+/cheat/*.js
+/cheat/*.d.ts
+/cheat/*.js.map

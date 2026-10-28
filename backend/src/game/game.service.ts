@@ -32,6 +32,7 @@ export type GameState = {
   scores: Record<string, number>;
   attempts: Record<string, number>;
   winnerId?: string;
+  leftPlayerIds: string[];
 };
 
 export type GuessRejection = Extract<
@@ -112,6 +113,7 @@ export class GameService {
       scores: Object.fromEntries(this.scores.get(gameId) ?? []),
       attempts: Object.fromEntries(this.attempts.get(gameId) ?? []),
       winnerId: this.winners.get(gameId),
+      leftPlayerIds: [...(this.leftPlayers.get(gameId) ?? [])],
     };
   }
 

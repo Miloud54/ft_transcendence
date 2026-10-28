@@ -157,6 +157,7 @@ services:
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       xpack.security.http.ssl.enabled: "false" # HTTP simple + mot de passe (réseau interne déjà isolé, pas de HTTPS pour éviter la gestion de certificats)
       path.repo: /usr/share/elasticsearch/snapshots 
+      cluster.routing.allocation.disk.threshold_enabled: "false" # 42 machines have small, nearly full disks: never block indices
     
     healthcheck:
       test: ["CMD-SHELL", "curl -sf -u elastic:$$ELASTIC_PASSWORD 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s' || exit 1"]

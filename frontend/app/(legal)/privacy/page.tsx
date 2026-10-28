@@ -10,7 +10,7 @@ export default function PrivacyPage() {
       <h1 className="text-3xl font-semibold text-zinc-950">
         Privacy Policy
       </h1>
-      <p className="mt-2 text-sm text-zinc-500">Last updated: August 28, 2026</p>
+      <p className="mt-2 text-sm text-zinc-500">Last updated: October 28, 2026</p>
 
       <div className="mt-8 space-y-8 text-zinc-700">
         <div>
@@ -19,11 +19,12 @@ export default function PrivacyPage() {
           </h2>
           <p className="mt-2">
             To create an account and play on Transcendix, we collect your
-            email address, a username, a password (stored only in hashed
-            form, never in plain text) and, if you add one, an avatar. While
-            you play, we record your game statistics (wins, losses, time
-            played, number of hints used), your match history, as well as
-            the messages you send in chat.
+            email address, a username and a password (stored only as a salted
+            hash, never in plain text). If you sign in with Google or
+            Discord, we store the identifier of that account instead of a
+            password. You can also upload an avatar. While you play, we
+            record your game results (score, rank, win or loss), your match
+            history, your friends list and your online status.
           </p>
         </div>
 
@@ -45,11 +46,12 @@ export default function PrivacyPage() {
             3. Sharing with third parties
           </h2>
           <p className="mt-2">
-            When you request a hint during a match, the text of the article
-            to guess (never your identity or account data) is sent to a
-            third-party artificial intelligence provider to generate the
-            hint. We do not sell or share your personal data for advertising
-            purposes.
+            We do not sell or share your personal data for advertising
+            purposes. A few external services are involved in running the
+            game: Google and Discord, only if you choose to sign in with
+            them; DiceBear, which serves the default avatar images displayed
+            in your browser; and Wikipedia, from which the game articles are
+            retrieved (no user data is sent to Wikipedia).
           </p>
         </div>
 
@@ -58,15 +60,30 @@ export default function PrivacyPage() {
             4. Retention and deletion
           </h2>
           <p className="mt-2">
-            Your data is kept for as long as your account is active. You can
-            request deletion of your account and associated data at any time
-            from your settings, or by contacting us.
+            Your account data is kept for as long as your account exists.
+            Chat messages are not stored in our database: they are kept in
+            memory for the duration of a room session only and are lost when
+            the server restarts. Technical logs, which may contain your IP
+            address, are kept for 30 days for security and debugging
+            purposes. You can request the deletion of your account and
+            associated data at any time by contacting us.
           </p>
         </div>
 
         <div>
           <h2 className="text-lg font-semibold text-zinc-950">
-            5. Your rights
+            5. Cookies and local storage
+          </h2>
+          <p className="mt-2">
+            Transcendix does not use advertising or tracking cookies. Your
+            session tokens are stored in your browser&apos;s local storage so
+            that you stay signed in, and are removed when you log out.
+          </p>
+        </div>
+
+        <div>
+          <h2 className="text-lg font-semibold text-zinc-950">
+            6. Your rights
           </h2>
           <p className="mt-2">
             You can request access to, correction of, or deletion of your

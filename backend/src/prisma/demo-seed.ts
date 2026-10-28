@@ -19,16 +19,52 @@ const DEMO_PLAYERS = [
 
 // Each ranking lists players from 1st to last; the 1st one wins.
 const DEMO_GAMES = [
-  { article: 'Napoleon Bonaparte', daysAgo: 1, ranking: ['demo_alice', 'demo_bob', 'demo_charlie'] },
-  { article: 'Great Wall of China', daysAgo: 2, ranking: ['demo_alice', 'demo_diana', 'demo_bob', 'demo_charlie'] },
+  {
+    article: 'Napoleon Bonaparte',
+    daysAgo: 1,
+    ranking: ['demo_alice', 'demo_bob', 'demo_charlie'],
+  },
+  {
+    article: 'Great Wall of China',
+    daysAgo: 2,
+    ranking: ['demo_alice', 'demo_diana', 'demo_bob', 'demo_charlie'],
+  },
   { article: 'Marie Curie', daysAgo: 3, ranking: ['demo_bob', 'demo_alice'] },
-  { article: 'The Beatles', daysAgo: 4, ranking: ['demo_alice', 'demo_charlie', 'demo_diana'] },
-  { article: 'Mount Everest', daysAgo: 5, ranking: ['demo_diana', 'demo_alice', 'demo_bob'] },
-  { article: 'William Shakespeare', daysAgo: 6, ranking: ['demo_alice', 'demo_bob', 'demo_charlie', 'demo_diana'] },
-  { article: 'Photosynthesis', daysAgo: 8, ranking: ['demo_charlie', 'demo_diana'] },
-  { article: 'Eiffel Tower', daysAgo: 9, ranking: ['demo_alice', 'demo_diana'] },
-  { article: 'Albert Einstein', daysAgo: 11, ranking: ['demo_bob', 'demo_charlie', 'demo_alice'] },
-  { article: 'Amazon River', daysAgo: 13, ranking: ['demo_alice', 'demo_bob', 'demo_diana'] },
+  {
+    article: 'The Beatles',
+    daysAgo: 4,
+    ranking: ['demo_alice', 'demo_charlie', 'demo_diana'],
+  },
+  {
+    article: 'Mount Everest',
+    daysAgo: 5,
+    ranking: ['demo_diana', 'demo_alice', 'demo_bob'],
+  },
+  {
+    article: 'William Shakespeare',
+    daysAgo: 6,
+    ranking: ['demo_alice', 'demo_bob', 'demo_charlie', 'demo_diana'],
+  },
+  {
+    article: 'Photosynthesis',
+    daysAgo: 8,
+    ranking: ['demo_charlie', 'demo_diana'],
+  },
+  {
+    article: 'Eiffel Tower',
+    daysAgo: 9,
+    ranking: ['demo_alice', 'demo_diana'],
+  },
+  {
+    article: 'Albert Einstein',
+    daysAgo: 11,
+    ranking: ['demo_bob', 'demo_charlie', 'demo_alice'],
+  },
+  {
+    article: 'Amazon River',
+    daysAgo: 13,
+    ranking: ['demo_alice', 'demo_bob', 'demo_diana'],
+  },
 ];
 
 const daysAgo = (days: number, extraMinutes = 0) =>
@@ -67,7 +103,9 @@ async function main() {
       where: { code: HISTORY_ROOM_CODE },
     });
     if (existingRoom) {
-      console.log('Demo game history already exists, only passwords were updated.');
+      console.log(
+        'Demo game history already exists, only passwords were updated.',
+      );
       return;
     }
 

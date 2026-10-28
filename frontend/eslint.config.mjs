@@ -6,6 +6,13 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   // Override default ignores of eslint-config-next.
+  {
+    // Avatars are tiny SVGs from DiceBear or user uploads: next/image brings no
+    // benefit here and would require allowing external SVGs.
+    rules: {
+      "@next/next/no-img-element": "off",
+    },
+  },
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",

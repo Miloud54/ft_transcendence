@@ -1,9 +1,7 @@
 import { io, type Socket } from "socket.io-client";
 
 function getSocketOrigin() {
-  return window.location.port === "3000"
-    ? "http://localhost:3001"
-    : window.location.origin;
+  return window.location.origin;
 }
 
 
@@ -19,6 +17,7 @@ export type GameState = {
   scores: Record<string, number>;
   attempts: Record<string, number>;
   winnerId?: string;
+  leftPlayerIds?: string[];
 };
 
 export type ArticleToken =

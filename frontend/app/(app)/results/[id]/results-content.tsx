@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { API_URL, createRematchRoom } from "@/lib/room-api";
-import { useCurrentUser } from "@/lib/current-user-context";
 
 type ResultPlayer = {
   userId: string;
@@ -90,7 +89,6 @@ function RankingCard({
 
 export function ResultsContent({ gameId }: { gameId: string }) {
   const router = useRouter();
-  const { user } = useCurrentUser();
   const [results, setResults] = useState<GameResults | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCreatingRematch, setIsCreatingRematch] = useState(false);
