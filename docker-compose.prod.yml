@@ -434,8 +434,7 @@ services:
       - egress-net
   
   waf:
-    image: docker.io/owasp/modsecurity-crs:4.25-nginx-lts
-
+    image: docker.io/owasp/modsecurity-crs:4.25-nginx-202610051210-lts
     user: "0:0"
 
     stop_signal: SIGTERM
