@@ -448,7 +448,7 @@ services:
       - private-net
   
   waf:
-    image: docker.io/owasp/modsecurity-crs:4.25-nginx-lts
+    image: docker.io/owasp/modsecurity-crs:4.25-nginx-202610051210-lts
 
     container_name: transcendence-waf
 
