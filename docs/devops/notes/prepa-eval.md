@@ -130,6 +130,52 @@ Vault stocke les secrets (mots de passe, clés) à un seul endroit, et les servi
 - Gain réel limité tant que le backend lit toujours `.env` et que le token root est partagé.
 - La décision est documentée dans `docs/devops/notes/architecture.md`, section 5.
 
+### Se connecter à Vault
+Vault n'a **aucun port publié** (`8200` reste interne à `private-net`) : on passe par le conteneur.
+
+```bash
+grep VAULT_DEV_ROOT_TOKEN_ID .env          # récupérer le token root (ne pas l'afficher en démo)
+docker exec -it transcendence-vault sh     # prod : transcendence-prod-vault-1
+vault login                                # coller le token
+vault status                               # état de Vault
+vault kv list secret/                      # chemins de secrets (backend attendu)
+vault kv get secret/backend                # contenu des secrets du backend
+```
+
+- `VAULT_ADDR` est déjà défini dans le conteneur ; seul le token manque.
+- `vault login` est nécessaire car Vault est lancé avec `-dev-no-store-token` (il ne garde pas le token).
+- En une ligne, sans entrer dans le conteneur :
+  `docker exec -e VAULT_TOKEN="$(grep VAULT_DEV_ROOT_TOKEN_ID .env | cut -d= -f2)" transcendence-vault vault kv list secret/`
+
+### Lire `vault status`
+
+```
+Seal Type       shamir
+Initialized     true
+Sealed          false
+Total Shares    1
+Threshold       1
+Version         1.17.6
+Storage Type    inmem
+Cluster Name    vault-cluster-41c88487
+Cluster ID      c8fed9ea-e282-9dc8-5c72-8dd37e170c2d
+HA Enabled      false
+```
+
+| Ligne | Sens | Ce que ça dit du projet |
+| --- | --- | --- |
+| `Seal Type shamir` | la clé maîtresse est découpée en morceaux (algorithme de Shamir) | méthode standard de Vault |
+| `Initialized true` | Vault a été initialisé (clés créées) | fait automatiquement en mode dev |
+| `Sealed false` | Vault est **déverrouillé** : il peut lire et servir les secrets | mode dev = toujours déverrouillé au démarrage |
+| `Total Shares 1` | nombre de morceaux de la clé maîtresse | en mode serveur, typiquement `5` |
+| `Threshold 1` | morceaux nécessaires pour déverrouiller | en mode serveur, typiquement `3` (sur 5) |
+| `Version 1.17.6` | version de Vault | image `hashicorp/vault:1.17` |
+| `Storage Type inmem` | stockage **en mémoire** | secrets perdus au redémarrage, réécrits par `vault-init` |
+| `Cluster Name / ID` | identifiants générés automatiquement | changent à chaque redémarrage (rien n'est persistant) |
+| `HA Enabled false` | pas de haute disponibilité (une seule instance) | normal pour un seul conteneur |
+
+**Phrase à retenir :** « `Sealed false` + `Storage inmem` + `1/1` partage = mode dev : toujours ouvert, rien sur disque. En prod on aurait `Sealed true` au démarrage, un stockage disque et un seuil 3 sur 5. »
+
 ### Limites à reconnaître
 - Token root partagé : un service compromis peut lire tous les secrets.
 - Secrets aussi présents dans l'environnement des conteneurs (`.env` → `docker-compose`) : un conteneur compromis peut lire ses propres variables.
@@ -207,3 +253,181 @@ Il crée `kibana_system` et `logstash_writer` avec les mots de passe de `.env`. 
 - [ ] Montrer un blocage WAF : requête avec payload suspect, puis `docker logs transcendence-waf | grep is_interrupted`.
 - [ ] Corriger ou expliquer l'incohérence `manage` avant l'oral.
 - [ ] Savoir expliquer le schéma du flux de logs de mémoire.
+
+---
+
+## 5. Antisèche démo : commandes et ports
+
+Commandes pour le stack **dev** (`make up`). En **prod** (`make prod`) : remplacer `docker compose` par `docker compose -f docker-compose.prod.yml`, et les noms `transcendence-<service>` par `transcendence-prod-<service>-1`.
+
+### Ports et accès
+
+| Service | Accès depuis le navigateur / l'hôte | Port interne | Publié sur l'hôte ? |
+| --- | --- | --- | --- |
+| **WAF** (site) | `https://localhost:8443` | 8443 | ✅ seul point d'entrée |
+| **WAF** (HTTP) | `http://localhost:8080` → redirige vers 8443 | 8080 | ✅ |
+| **Kibana** | `https://localhost:8443/kibana/` (via le WAF) | 5601 | ❌ |
+| **Grafana** | `https://localhost:8443/grafana/` (via le WAF) | 3000 | ❌ |
+| **Elasticsearch** | `docker exec` uniquement | 9200 | ❌ |
+| **Vault** | `docker exec` uniquement | 8200 | ❌ |
+| Prometheus (dev) | `http://127.0.0.1:9090` | 9090 | ⚠️ `127.0.0.1` seulement, dev seulement |
+| Prisma Studio (dev) | `http://127.0.0.1:5555` | 5555 | ⚠️ `127.0.0.1` seulement, dev seulement |
+
+### État général
+
+```bash
+docker compose ps                         # tout doit être healthy / running
+docker network ls                         # public-net, private-net, egress-net
+docker network inspect <projet>_private-net | grep Internal   # "Internal": true
+```
+
+### Démo WAF
+
+```bash
+# 1. Le site répond en HTTPS
+curl -k -s -o /dev/null -w "%{http_code}\n" https://localhost:8443/                                # 200
+
+# 2. HTTP redirige vers HTTPS
+curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" http://localhost:8080/                     # 301/302 → https://localhost:8443/
+
+# 3. Attaque XSS bloquée
+curl -k -s -o /dev/null -w "%{http_code}\n" "https://localhost:8443/?q=<script>alert(1)</script>"   # 403
+
+# 4. Injection SQL bloquée
+curl -k -s -o /dev/null -w "%{http_code}\n" "https://localhost:8443/?id=1'%20OR%20'1'='1"           # 403
+
+# 5. Preuve dans les logs
+docker compose logs --tail=20 waf | grep is_interrupted                                             # is_interrupted:true
+
+# 6. Config Nginx valide
+docker compose run --rm --no-deps waf nginx -t                                                      # syntax is ok
+```
+
+`-k` : accepte le certificat auto-signé. `-s` : silencieux. `-o /dev/null` : jette le corps de la réponse. `-w "%{http_code}"` : n'affiche que le code HTTP.
+
+### Démo Elasticsearch / ELK
+
+```bash
+# 1. Sans mot de passe : refusé
+docker compose exec elasticsearch curl -s -o /dev/null -w "%{http_code}\n" http://localhost:9200     # 401
+
+# 2. Santé du cluster (green ou yellow attendu, jamais red)
+docker compose exec elasticsearch sh -c \
+  'curl -s -u "elastic:$ELASTIC_PASSWORD" "localhost:9200/_cluster/health?pretty"'
+
+# 3. Santé en une ligne
+docker compose exec elasticsearch sh -c \
+  'curl -s -u "elastic:$ELASTIC_PASSWORD" "localhost:9200/_cat/health?v"'
+
+# 4. Index de logs (un par jour : docker-logs-AAAA.MM.JJ)
+docker compose exec elasticsearch sh -c \
+  'curl -s -u "elastic:$ELASTIC_PASSWORD" "localhost:9200/_cat/indices/docker-logs-*?v"'
+
+# 5. Healthcheck vu par Docker
+docker ps --filter name=elasticsearch                                                               # (healthy)
+
+# 6. Logstash tourne sans erreur d'authentification
+docker compose logs --tail=20 logstash                                                              # Pipelines running, pas de 401/403
+
+# 7. Seulement les warnings / erreurs d'ES (les logs INFO sont très bavards)
+docker logs transcendence-elasticsearch 2>&1 | grep -E '"log.level": ?"(WARN|ERROR)"'
+```
+
+Puis dans Kibana : `https://localhost:8443/kibana/` → Discover → Data View `docker-logs-*` → montrer des logs de `frontend`, `backend`, `db` et `waf`.
+
+| Statut | Sens |
+| --- | --- |
+| 🟢 green | tous les shards primaires et répliques sont en place |
+| 🟡 yellow | tous les primaires sont là, il manque des répliques (normal avec un seul nœud) |
+| 🔴 red | au moins un primaire manque : des données sont inaccessibles |
+
+### Démo Vault
+
+```bash
+docker compose exec vault vault status                    # Sealed false, Storage inmem
+docker exec -it transcendence-vault sh                    # entrer dans le conteneur
+vault login                                               # coller VAULT_DEV_ROOT_TOKEN_ID (.env)
+vault kv list secret/                                     # backend
+vault kv get secret/backend                               # les secrets (attention à l'écran partagé)
+```
+
+Montrer aussi que Vault n'est pas joignable depuis l'hôte :
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8200    # 000 (connexion refusée)
+```
+
+### Sous Podman (machines de 42)
+
+Podman reprend presque toutes les commandes de Docker : on remplace `docker` par `podman`. Le projet se lance avec `podman compose` (voir le README), et le socket Podman doit tourner :
+
+```bash
+systemctl --user enable --now podman.socket   # une seule fois
+make up COMPOSE="podman compose"              # dev
+make prod COMPOSE="podman compose"            # prod
+```
+
+| Docker | Podman |
+| --- | --- |
+| `docker compose ...` | `podman compose ...` |
+| `docker compose -f docker-compose.prod.yml ...` | `podman compose -f docker-compose.prod.yml ...` |
+| `docker exec / logs / ps / inspect` | `podman exec / logs / ps / inspect` |
+| `docker network ls / inspect` | `podman network ls / inspect` |
+| `docker volume ls / rm` | `podman volume ls / rm` |
+| — | `podman healthcheck run <conteneur>` : lance le healthcheck à la main (exit `0` = sain) |
+
+**À vérifier sur place :**
+- **Noms des conteneurs** : en dev, ils sont fixés par `container_name` (`transcendence-waf`…), donc identiques. En prod, le format dépend du moteur utilisé par `podman compose` (`transcendence-prod-waf-1` ou `transcendence-prod_waf_1`). Lancer `podman ps` d'abord.
+- **Rootless** : Podman tourne sans root. `podman ps` ne montre que tes conteneurs, et `root` dans un conteneur correspond en fait à ton utilisateur (c'est pour ça que certains services avaient `user: "0:0"`).
+- `podman network inspect` écrit `"internal": true` en minuscules.
+
+#### État général
+
+```bash
+podman compose ps                                         # tout healthy / running
+podman ps --format "{{.Names}}\t{{.Status}}"              # noms exacts + état de santé
+podman network ls                                         # public-net, private-net, egress-net
+podman network inspect <projet>_private-net | grep -i internal   # "internal": true
+```
+
+#### Démo WAF
+
+Les `curl` vers `localhost:8443` / `8080` ne changent pas : ils partent de la machine, pas de Docker ou de Podman.
+
+```bash
+curl -k -s -o /dev/null -w "%{http_code}\n" https://localhost:8443/                                # 200
+curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" http://localhost:8080/                     # 301 → https
+curl -k -s -o /dev/null -w "%{http_code}\n" "https://localhost:8443/?q=<script>alert(1)</script>"   # 403
+curl -k -s -o /dev/null -w "%{http_code}\n" "https://localhost:8443/?id=1'%20OR%20'1'='1"           # 403
+podman compose logs --tail=20 waf | grep is_interrupted                                             # is_interrupted:true
+podman compose run --rm --no-deps waf nginx -t                                                      # syntax is ok
+```
+
+#### Démo Elasticsearch / ELK
+
+```bash
+podman compose exec elasticsearch curl -s -o /dev/null -w "%{http_code}\n" http://localhost:9200    # 401
+
+podman compose exec elasticsearch sh -c \
+  'curl -s -u "elastic:$ELASTIC_PASSWORD" "localhost:9200/_cluster/health?pretty"'                 # green / yellow
+
+podman compose exec elasticsearch sh -c \
+  'curl -s -u "elastic:$ELASTIC_PASSWORD" "localhost:9200/_cat/indices/docker-logs-*?v"'
+
+podman healthcheck run transcendence-elasticsearch && echo healthy                                 # healthcheck à la main
+podman inspect transcendence-elasticsearch --format '{{.State.Health.Status}}'                      # healthy
+podman compose logs --tail=20 logstash                                                              # Pipelines running
+podman logs transcendence-elasticsearch 2>&1 | grep -E '"log.level": ?"(WARN|ERROR)"'
+```
+
+#### Démo Vault
+
+```bash
+podman compose exec vault vault status                    # Sealed false, Storage inmem
+podman exec -it transcendence-vault sh                    # entrer dans le conteneur
+vault login                                               # coller VAULT_DEV_ROOT_TOKEN_ID (.env)
+vault kv list secret/                                     # backend
+vault kv get secret/backend                               # attention à l'écran partagé
+
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8200   # 000 : Vault non joignable depuis l'hôte
+```
