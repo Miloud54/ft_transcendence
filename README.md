@@ -12,7 +12,7 @@ Players create or join rooms, play together live against each other, chat, add f
 
 ### Key features
 
-- **Multiplayer rooms**: create a lobby, share its unique code, invite friends, or join an open game. A room hosts several games in a row ("play again").
+- **Multiplayer rooms**: create a lobby, share its unique code, invite friends, or join an open game. A room can hosts several games in a row ("play again").
 - **Real-time gameplay** over WebSockets: live guesses, countdown, timer, live in-game leaderboard and end-of-game results.
 - **Semantic proximity**: wrong guesses are scored against the hidden words using GloVe word vectors.
 - **Accounts**: email/password registration, Google and Discord OAuth 2.0, avatar upload, online / in-game status.
@@ -121,6 +121,18 @@ make re                  # fclean, then rebuild the production stack
 
 Database backup and restore procedures are described in [docs/disaster-recovery.md](docs/disaster-recovery.md).
 
+### Testing
+
+Backend tests are run with Jest inside the backend container.
+
+Make sure the development stack is running (`make dev`), then execute:
+
+```bash
+docker compose exec backend npx jest --runInBand --verbose
+```
+
+This runs the backend test suite sequentially and displays detailed results for each test.
+
 ## Team Information
 
 - **bde-la-p** (Brunhilde): *Product Owner, Developer*.
@@ -130,9 +142,9 @@ Database backup and restore procedures are described in [docs/disaster-recovery.
 - **mamakaro** (Maria): *Tech Lead, Developer*.
   Technical decisions and architecture of the infrastructure. Built the security layer (WAF, Vault), the ELK stack, Docker networks and the production deployment.
 - **ofayad** (Odile): *Developer*.
-  Designed the Room / Game architecture and built the Pedantix game engine (article selection, game lifecycle). Set up Prisma.
+  Designed the Room / Game architecture and specifications and built the Pedantix game engine (Wikipedia article selection, tokenization, masked article views and game lifecycle). Set up Prisma.
 - **zoeschne** (Zoé): *Developer*.
-  Built the rooms and real-time layer (WebSocket gateways, live join, chat), guess validation and semantic proximity, and the database seed.
+  Built the rooms and real-time layer (WebSocket gateways, live join, chat), guess validation and semantic proximity, and the database migrations and seed.
 
 ## Project Management
 
@@ -332,7 +344,7 @@ RoomInvitations    invitation_id    BigInt     PK
 
 ### Game
 - **Rooms / lobbies** (zoeschne, edidier, bde-la-p): create a room, join it with its unique code or from the open games list, invite friends, kick a guest, close the lobby.
-- **Game engine** (ofayad, zoeschne): random Wikipedia article selection, masked words, guess normalization, title detection, end conditions.
+- **Game engine** (ofayad, zoeschne): random Wikipedia article selection and preparation, tokenizer and masked article views, guess normalization, title detection, end conditions.
 - **Semantic proximity** (zoeschne): closeness score for wrong guesses, computed with GloVe vectors.
 - **Game interface** (bde-la-p, edidier, zoeschne): article board, attempts list, countdown and timer, live leaderboard, animations.
 - **Results and play again** (edidier): end-of-game ranking page, play again in the same room, back to lobby / back to game.
@@ -345,7 +357,7 @@ RoomInvitations    invitation_id    BigInt     PK
 
 ### Security and infrastructure
 - **WAF and HTTPS** (mamakaro): single HTTPS entry point that filters every request with ModSecurity and the OWASP CRS.
-- **Secrets management** (mamakaro, ofayad): all secrets stored in Vault and loaded by the backend at startup.
+- **Secrets management** (mamakaro): all secrets stored in Vault and loaded by the backend at startup.
 - **Logging** (mamakaro): frontend, backend, database and WAF logs centralized in ELK, with Kibana dashboards and secret redaction.
 - **Monitoring and alerting** (edidier): Prometheus metrics, Grafana dashboards, Alertmanager alerts sent to Discord.
 - **Health checks, status page and backups** (edidier): health endpoints, public status page, daily database backups with rotation, disaster recovery procedure.
@@ -426,7 +438,7 @@ The dashboard turns the stored game data into insights: stat tiles (games played
 The WAF (Nginx + ModSecurity + OWASP Core Rule Set) is the only exposed service and forces HTTPS; every port that bypassed it was closed, and targeted exclusion rules fix false positives (Google OAuth scopes, Kibana). Vault stores all secrets (database password, JWT secret, OAuth credentials...); a one-shot `vault-init` container writes them at startup and the backend reads them through `node-vault`.
 
 **12. Complete web-based game (Major)**
-An original multiplayer word game inspired by Pedantix, chosen because it is a game we enjoy playing ourselves. The engine selects an article (curated library with a Wikipedia API fallback), masks its words, normalizes guesses (including Roman and Latin numerals), scores wrong guesses with semantic proximity, and ends the game after a short grace period once the first player finds the title. Players play live against each other, with a clear ranking and win / loss result.
+An original multiplayer word game inspired by Pedantix, chosen because it is a game we enjoy playing ourselves. The engine selects an article (using a curated local library as a fallback if the API selection fails), tokenizes its content and masks its words, normalizes guesses (including Roman and Latin numerals), scores wrong guesses with semantic proximity, and ends the game after a short grace period once the first player finds the title. Players play live against each other, with a clear ranking and win / loss result.
 
 **13. Multiplayer game (more than two players) (Major)**
 A room accepts between `min_players` and `max_players` players, who all race on the same article at the same time. All game state lives on the server and is broadcast to every client, so all players see the same game and the same live leaderboard.
@@ -476,10 +488,11 @@ Everything is persistent: XP and level are stored on `Users`, and the XP earned 
 - **Challenges**: WAF false positives breaking legitimate requests (Google login, Kibana saves, CSS), solved with targeted exclusion rules; Podman-specific issues (SELinux volume labels, `depends_on` on one-shot containers); log masking that broke log parsing.
 
 ### ofayad (Odile)
-- Architecture and documentation of the Room and Game modules.
-- Pedantix engine: article selection from Wikipedia (with a curated library and fallback to reduce API calls), game lifecycle.
-- Prisma setup, Vault dependency in the backend, code style fixes (ESLint, Prettier).
-- **Challenges**: designing an engine independent from the WebSocket layer; limiting calls to the Wikipedia API while still getting good articles.
+- Architecture, documentation and specifications of the Room and Game modules.
+- Pedantix engine: Wikipedia article selection and filtering, HTML content extraction and cleaning, with a curated local library as a fallback.
+- Article processing: tokenizer, word segmentation and masked article view generation for the frontend.
+- Prisma setup, code style fixes (ESLint, Prettier).
+- **Challenges**: designing an engine independent from the WebSocket layer; ensuring reliable article selection despite Wikipedia API limitations (failures and timeouts).
 
 ### zoeschne (Zoé)
 - Room creation, live join, start button, Socket.IO gateways for rooms and games.
@@ -520,4 +533,4 @@ AI was not used to generate features unsupervised: every suggestion was read, un
 
 ## Further Documentation
 
-Technical notes are available in [docs/](docs/): backend modules and game rules, security (WAF, Vault), Docker architecture, production deployment, CI/CD and disaster recovery.
+Technical notes are available in [docs/](docs/): rules for backend module (Room, Game, Pedantix Engine), security (WAF, Vault), Docker architecture, production deployment, CI/CD and disaster recovery.
