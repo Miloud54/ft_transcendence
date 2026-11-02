@@ -60,6 +60,12 @@ server {
     add_header X-Frame-Options "DENY" always;
     server_tokens off;
 
+    # Prometheus metrics are scraped inside the Docker network (backend:3000):
+    # never expose them to the outside.
+    location = /api/metrics {
+        return 404;
+    }
+
     # Uploaded avatars are user content: an SVG can contain JavaScript, so forbid
     # any script when such a file is opened directly in the browser.
     # add_header here disables the server-level ones: repeat them.
