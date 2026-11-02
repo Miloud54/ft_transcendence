@@ -24,11 +24,13 @@ describe('writeCheatFile', () => {
     expect(existsSync(dir)).toBe(false);
   });
 
-  it('never writes in production', async () => {
+  it('writes in production when enabled', async () => {
     process.env.PEDANTIX_CHEAT = 'true';
     process.env.NODE_ENV = 'production';
     const dir = join(mkdtempSync(join(tmpdir(), 'cheat-')), 'out');
-    expect(await writeCheatFile('1', article, dir)).toBeNull();
+    expect(await writeCheatFile('1', article, dir)).toBe(
+      join(dir, 'game-1.txt'),
+    );
   });
 
   it('writes the article as plain text, per game and as latest', async () => {

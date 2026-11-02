@@ -6,12 +6,9 @@ import { Article } from '../article/article';
 
 const logger = new Logger('CheatFile');
 
-/** Debug helper: enabled with PEDANTIX_CHEAT=true, never in production. */
+/** Debug helper: enabled with PEDANTIX_CHEAT=true in any environment. */
 export function isCheatEnabled(): boolean {
-  return (
-    process.env.PEDANTIX_CHEAT === 'true' &&
-    process.env.NODE_ENV !== 'production'
-  );
+  return process.env.PEDANTIX_CHEAT === 'true';
 }
 
 /**

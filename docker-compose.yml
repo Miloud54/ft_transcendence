@@ -38,6 +38,9 @@ services:
     #comment next line if not on school pc
     user: "0:0"
 
+    env_file:
+      - ./backend/.env
+
     depends_on:
       db:
         condition: service_healthy
@@ -51,7 +54,6 @@ services:
       VAULT_ADDR: http://vault:8200
       VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID}
       FRONTEND_URL: https://localhost:8443
-      # PEDANTIX_CHEAT: "true" #debug
 
 
     working_dir: /app

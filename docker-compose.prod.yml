@@ -38,6 +38,9 @@ services:
 
     restart: unless-stopped
 
+    env_file:
+      - ./backend/.env
+
     depends_on:
       db:
         condition: service_healthy
@@ -60,6 +63,7 @@ services:
     volumes:
       - app_logs:/var/log/app
       - uploads:/app/uploads #profile photos kept while container is restarted
+      - ./backend/cheat:/app/cheat:Z,U
 
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]

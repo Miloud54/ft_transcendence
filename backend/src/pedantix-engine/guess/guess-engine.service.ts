@@ -114,6 +114,9 @@ export class GuessEngineService {
     if (lemmas.some((lemma) => index.byLemma.has(lemma))) return true;
     // Numbers (years, quantities) are fair guesses even when absent from the text.
     if (/^\d{1,12}$/.test(normalized)) return true;
+    // Single letters are allowed by rule (not through words.json, which must
+    // stay in sync with vectors.bin; see vector-data.spec.ts).
+    if (/^\p{L}$/u.test(normalized)) return true;
     if (this.vectors.isReady) {
       return lemmas.some((lemma) => this.vectors.has(lemma));
     }

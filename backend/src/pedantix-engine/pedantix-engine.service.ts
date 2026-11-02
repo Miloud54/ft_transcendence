@@ -173,7 +173,7 @@ export class PedantixEngineService {
       board: createBoard(),
     });
 
-    // Debug only (PEDANTIX_CHEAT=true): dump the secret article to backend/cheat/.
+    // When enabled (PEDANTIX_CHEAT=true), dump the secret article to backend/cheat/.
     void writeCheatFile(gameId, article);
   }
 }

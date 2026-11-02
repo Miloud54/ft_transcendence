@@ -67,7 +67,7 @@ DISCORD_CLIENT_ID,
 DISCORD_CLIENT_SECRET                  Discord OAuth application
 DISCORD_WEBHOOK_URL                    Discord channel receiving Alertmanager alerts
 GRAFANA_ADMIN_PASSWORD                 Grafana "admin" password
-PEDANTIX_CHEAT                         true = writes the hidden article to backend/cheat/ (development only)
+PEDANTIX_CHEAT                         true = writes the hidden article to backend/cheat/
 DEMO_PASSWORD                          password of the production demo accounts (empty = no demo accounts)
 ```
 

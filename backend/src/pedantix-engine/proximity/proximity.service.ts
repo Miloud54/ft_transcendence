@@ -23,6 +23,7 @@ export class ProximityService {
     guessLemmas: string[],
   ): number {
     if (!this.vectors.isReady) return 0;
+    if (normalizedGuess.length < 2) return 0; // single letters are never graded
     if (STOPWORDS.has(normalizedGuess) || /\d/.test(normalizedGuess)) return 0;
 
     const candidates = [normalizedGuess, ...guessLemmas]
