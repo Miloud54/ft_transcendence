@@ -3,6 +3,7 @@ import { RoomService } from './room.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UserService } from 'src/user/user.service';
 import { GameService } from 'src/game/game.service';
+import { BadRequestException } from '@nestjs/common';
 
 jest.mock('src/game/game.service', () => ({
   GameService: class MockGameService {},
@@ -35,5 +36,15 @@ describe('RoomService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('rejects rematch player IDs that are not numeric', async () => {
+    await expect(
+      service.createRematch('1', {
+        minPlayers: 2,
+        maxPlayers: 2,
+        playerIds: ['abc'],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });
