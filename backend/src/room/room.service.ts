@@ -102,6 +102,9 @@ export class RoomService {
       where: {
         invitee_id: BigInt(userId),
         status: RoomInvitationStatus.PENDING,
+        room: {
+          status: RoomStatus.OPEN,
+        },
       },
       include: {
         room: {

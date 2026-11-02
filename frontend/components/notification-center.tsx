@@ -26,6 +26,7 @@ export function NotificationCenter() {
   const [roomInvitations, setRoomInvitations] = useState<RoomInvitation[]>([]);
   const [rematchNotices, setRematchNotices] = useState<RematchNotice[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [roomInvitationError, setRoomInvitationError] = useState<string | null>(null);
   const resolvedFriendRequestIds = useRef(new Set<string>());
 
   useEffect(() => {
@@ -105,6 +106,7 @@ export function NotificationCenter() {
 
   async function respondToRoom(invitation: RoomInvitation, action: "accept" | "decline") {
     setBusyId(invitation.roomId);
+    setRoomInvitationError(null);
     try {
       if (action === "accept") {
         await acceptRoomInvitation(invitation.roomId);
@@ -125,6 +127,15 @@ export function NotificationCenter() {
           }
           return next;
         });
+      }
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error ? requestError.message : "Could not respond to the room invitation";
+      setRoomInvitationError(message);
+      if (message === "This room is no longer open" || message === "Room not found") {
+        setRoomInvitations((current) =>
+          current.filter((item) => item.roomId !== invitation.roomId),
+        );
       }
     } finally {
       setBusyId(null);
@@ -202,6 +213,11 @@ export function NotificationCenter() {
                   </div>
                 </div>
               ))}
+              {roomInvitationError && (
+                <p role="alert" className="px-2 text-sm text-red-600">
+                  {roomInvitationError}
+                </p>
+              )}
             </div>
           )}
         </div>
