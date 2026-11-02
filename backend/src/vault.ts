@@ -25,9 +25,18 @@ export async function loadSecretsFromVault(
     token: process.env.VAULT_TOKEN,
   });
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const response = (await client.read(
-      'secret/data/backend',
-    )) as VaultKvV2Response;
+    let response: VaultKvV2Response;
+    try {
+      response = (await client.read(
+        'secret/data/backend',
+      )) as VaultKvV2Response;
+    } catch (error) {
+      // The raw axios error contains the request headers, including the Vault token:
+      // only keep its message so the token never reaches the logs.
+      throw new Error(
+        `Vault request failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+    }
     const secrets = response.data.data;
 
     if (secrets?.db_password && secrets?.jwt_secret) {
