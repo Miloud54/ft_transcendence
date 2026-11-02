@@ -27,9 +27,11 @@ type PasswordInputProps = {
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   minLength?: number;
   required?: boolean;
+  /** "current-password" on sign-in forms, "new-password" when choosing a password. */
+  autoComplete: "current-password" | "new-password";
 };
 
-export function PasswordInput({ id, name, value, onChange, minLength, required }: PasswordInputProps) {
+export function PasswordInput({ id, name, value, onChange, minLength, required, autoComplete }: PasswordInputProps) {
   const [isVisible, setIsVisible] = useState(false);
 
   return (
@@ -40,6 +42,7 @@ export function PasswordInput({ id, name, value, onChange, minLength, required }
         type={isVisible ? "text" : "password"}
         required={required}
         minLength={minLength}
+        autoComplete={autoComplete}
         value={value}
         onChange={onChange}
         className="w-full rounded-md border border-zinc-300 px-3 py-2 pr-10 text-sm"

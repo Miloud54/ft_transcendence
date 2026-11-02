@@ -18,12 +18,17 @@ map $http_upgrade $connection_upgrade {
     '' close;
 }
 
+# frontend and backend get a new IP when their container is recreated: "resolve"
+# makes nginx look the name up again (resolver set by the image, valid=5s)
+# instead of keeping the IP found at startup, which caused 502 errors.
 upstream frontend_upstream {
-    server frontend:3000;
+    zone frontend_upstream 64k;
+    server frontend:3000 resolve;
 }
 
 upstream backend_upstream {
-    server backend:3000;
+    zone backend_upstream 64k;
+    server backend:3000 resolve;
 }
 
 server {

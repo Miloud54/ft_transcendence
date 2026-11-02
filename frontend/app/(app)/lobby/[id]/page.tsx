@@ -298,11 +298,11 @@ export default function LobbyPage({
               key={player.id}
               variants={fadeUp}
               whileHover={{ y: -4 }}
-              className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white p-6"
+              className="flex min-w-0 flex-col items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white p-6"
             >
-              <Link href={`/dashboard?user=${encodeURIComponent(player.id)}`} className="flex flex-col items-center gap-2 hover:underline">
+              <Link href={`/dashboard?user=${encodeURIComponent(player.id)}`} className="flex min-w-0 max-w-full flex-col items-center gap-2 hover:underline">
                 <img src={player.avatarUrl} alt={player.username} className="h-12 w-12 rounded-full bg-violet-100 object-cover" />
-                <span className="text-sm font-medium text-zinc-950">{player.username}</span>
+                <span className="max-w-full truncate text-sm font-medium text-zinc-950" title={player.username}>{player.username}</span>
                 <span className="text-xs font-medium text-zinc-400">
                   {index === 0 ? "Host" : "In lobby"}
                 </span>

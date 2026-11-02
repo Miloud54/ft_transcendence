@@ -51,6 +51,12 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   async googleCallback(@Req() req: Request, @Res() res: Response) {
+    if (!req.user) {
+      return this.redirectToLogin(
+        res,
+        'Google sign-in was cancelled or failed. Please try again.',
+      );
+    }
     const result = await this.authService.loginWithOAuth(
       req.user as OAuthProfile,
     );
@@ -64,10 +70,22 @@ export class AuthController {
   @Get('discord/callback')
   @UseGuards(DiscordAuthGuard)
   async discordCallback(@Req() req: Request, @Res() res: Response) {
+    if (!req.user) {
+      return this.redirectToLogin(
+        res,
+        'Discord sign-in was cancelled or failed. Please try again.',
+      );
+    }
     const result = await this.authService.loginWithOAuth(
       req.user as OAuthProfile,
     );
     this.redirectWithTokens(res, result);
+  }
+
+  private redirectToLogin(res: Response, message: string) {
+    const frontendUrl = process.env.FRONTEND_URL ?? 'https://localhost:8443';
+    const params = new URLSearchParams({ error: message });
+    res.redirect(`${frontendUrl}/login?${params.toString()}`);
   }
 
   private redirectWithTokens(

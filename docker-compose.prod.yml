@@ -358,6 +358,7 @@ services:
 
     volumes:
       - grafana_secrets:/secrets
+      - grafana_data:/grafana-data
 
     networks:
       - private-net
@@ -366,6 +367,8 @@ services:
     command:
       - |
         vault kv get -field=grafana_admin_password secret/backend > /secrets/grafana_admin_password
+        # Grafana runs as uid 472: give it its data volume (a root-owned grafana.db made it crash-loop)
+        chown -R 472:0 /grafana-data
 
   grafana:
     image: docker.io/grafana/grafana:13.2.1

@@ -252,6 +252,7 @@ export function FriendsContent() {
           Search for friends
         </label>
         <input
+          autoComplete="off"
           id="friend-search"
           type="search"
           placeholder="Add friends"
@@ -265,8 +266,8 @@ export function FriendsContent() {
         {visibleResults.length > 0 && (
           <div className="mt-2 w-full overflow-hidden rounded-md border border-zinc-200 bg-white sm:max-w-md">
             {visibleResults.map((result) => (
-              <div key={result.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                <span className="text-sm text-zinc-950">{result.username}</span>
+              <div key={result.id} className="flex min-w-0 items-center justify-between gap-3 px-3 py-2">
+                <span className="min-w-0 flex-1 truncate text-sm text-zinc-950" title={result.username}>{result.username}</span>
                 <button
                   type="button"
                   disabled={friendIds.has(result.id) || result.relationship !== "NONE"}
@@ -293,9 +294,9 @@ export function FriendsContent() {
           <h2 className="text-sm font-semibold text-violet-950">Friend requests</h2>
           <div className="mt-3 space-y-2">
             {requests.map((requestItem) => (
-              <div key={requestItem.id} className="flex items-center justify-between gap-3 rounded-lg bg-white p-3">
-                <span className="text-sm text-zinc-950">{requestItem.username} wants to be your friend</span>
-                <div className="flex gap-2">
+              <div key={requestItem.id} className="flex min-w-0 items-center justify-between gap-3 rounded-lg bg-white p-3">
+                <span className="min-w-0 flex-1 truncate text-sm text-zinc-950" title={`${requestItem.username} wants to be your friend`}>{requestItem.username} wants to be your friend</span>
+                <div className="flex shrink-0 gap-2">
                   <button
                     type="button"
                     onClick={() => void respondToRequest(requestItem, "accept")}
@@ -332,7 +333,7 @@ export function FriendsContent() {
             key={friend.id}
             variants={fadeUp}
             whileHover={{ y: -4 }}
-            className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-5"
+            className="flex min-w-0 items-center gap-3 rounded-xl border border-zinc-200 bg-white p-5"
           >
             <div className="relative h-11 w-11 shrink-0">
               <img src={friend.avatar} alt={friend.username} className="h-11 w-11 rounded-full bg-violet-100 object-cover" />
@@ -346,8 +347,8 @@ export function FriendsContent() {
                 }`}
               />
             </div>
-            <Link href={`/dashboard?user=${encodeURIComponent(friend.id)}`} className="min-w-0 hover:underline">
-              <p className="text-sm font-medium text-zinc-950">{friend.username}</p>
+            <Link href={`/dashboard?user=${encodeURIComponent(friend.id)}`} className="min-w-0 flex-1 hover:underline">
+              <p className="truncate text-sm font-medium text-zinc-950" title={friend.username}>{friend.username}</p>
               <p className="text-xs text-zinc-400">
                 {friend.status === "ONLINE" ? "Online" : friend.status === "IN_GAME" ? "In game" : "Offline"}
               </p>
@@ -355,7 +356,7 @@ export function FriendsContent() {
             <button
               type="button"
               onClick={() => void removeFriend(friend)}
-              className="ml-auto rounded-md border border-violet-200 px-2 py-1 text-xs font-semibold text-violet-700 transition-colors hover:bg-violet-50"
+              className="ml-auto shrink-0 rounded-md border border-violet-200 px-2 py-1 text-xs font-semibold text-violet-700 transition-colors hover:bg-violet-50"
             >
               Remove
             </button>
