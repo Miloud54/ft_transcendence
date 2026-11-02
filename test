@@ -1,8 +1,0 @@
-[❌] A5 : Sans fichier
-
-❌ PATCH /users/me/avatar : 500
-
-[❌] A6 : Fichier texte
-
-echo "Ceci est un fichier texte" > notes.txt
-❌ PATCH /users/me/avatar : 500
