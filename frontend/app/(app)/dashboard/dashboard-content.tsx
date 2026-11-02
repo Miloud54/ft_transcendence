@@ -141,10 +141,10 @@ export function DashboardContent() {
           style={{ borderTopColor: "#4d37fb" }}
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-violet-600">Profile</p>
-          <div className="mt-3 flex items-center gap-4">
+          <div className="mt-3 flex min-w-0 items-center gap-4">
             <img src={profile.avatar} alt={profile.username} className="h-16 w-16 rounded-full bg-zinc-100" />
-            <div>
-              <p className="text-lg font-semibold text-zinc-950">{profile.username}</p>
+            <div className="min-w-0">
+              <p className="truncate text-lg font-semibold text-zinc-950" title={profile.username}>{profile.username}</p>
               <p className="text-sm text-zinc-500">
                 Level {stats.level} · {stats.xp} XP
               </p>

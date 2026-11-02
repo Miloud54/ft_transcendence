@@ -167,10 +167,15 @@ function RoomChatContent({ roomId }: { roomId: string | null }) {
       <div className="flex-1 space-y-2 overflow-y-auto bg-zinc-50 p-3">
         {messages.length === 0 && <p className="text-xs text-zinc-400">No messages yet.</p>}
         {messages.map((message, index) => (
-          <div key={index} className="flex items-start gap-2">
+          <div key={index} className="flex min-w-0 items-start gap-2">
             <img src={message.avatar} alt={message.username} className="h-6 w-6 rounded-full bg-zinc-200" />
-            <div className="text-sm">
-              <span className="font-medium text-zinc-800">{message.username}</span>{" "}
+            <div className="min-w-0 flex-1 break-words text-sm">
+              <span
+                className="inline-block max-w-[45%] truncate align-bottom font-medium text-zinc-800"
+                title={message.username}
+              >
+                {message.username}
+              </span>{" "}
               <span className="text-zinc-600">{message.text}</span>
             </div>
           </div>

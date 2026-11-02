@@ -10,9 +10,9 @@ export function CurrentUserBadge() {
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="hidden text-right sm:block">
-        <p className="text-sm font-medium text-white">{user.username}</p>
+    <div className="flex min-w-0 items-center gap-3">
+      <div className="hidden min-w-0 max-w-40 text-right sm:block">
+        <p className="truncate text-sm font-medium text-white" title={user.username}>{user.username}</p>
       </div>
       <img
         src={user.avatar}

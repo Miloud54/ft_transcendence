@@ -96,9 +96,9 @@ export function LeaderboardContent() {
             <motion.div
               key={entry.id}
               variants={fadeUp}
-              className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 last:border-0"
+              className="flex min-w-0 items-center justify-between gap-4 border-b border-zinc-100 px-5 py-4 last:border-0"
             >
-              <div className="flex items-center gap-4">
+              <div className="flex min-w-0 items-center gap-4">
                 <span
                   className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${
                     entry.rank === 1 ? "bg-lime-400 text-violet-950" : "bg-zinc-100 text-zinc-600"
@@ -107,12 +107,12 @@ export function LeaderboardContent() {
                   {entry.rank}
                 </span>
                 <img src={entry.avatar} alt={entry.username} className="h-8 w-8 rounded-full bg-zinc-100" />
-                <div>
-                  <p className="text-sm font-medium text-zinc-950">{entry.username}</p>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-zinc-950" title={entry.username}>{entry.username}</p>
                   <p className="text-xs text-zinc-400">Level {entry.level}</p>
                 </div>
               </div>
-              <span className="text-sm font-semibold text-violet-700">
+              <span className="shrink-0 text-sm font-semibold text-violet-700">
                 {sortBy === "points" ? `${entry.totalScore} pts` : `${entry.wins} wins`}
               </span>
             </motion.div>
