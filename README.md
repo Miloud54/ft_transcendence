@@ -32,7 +32,7 @@ Players create or join rooms, play together live against each other, chat, add f
 
 Nothing else needs to be installed on the host: Node.js, npm, Prisma, NestJS CLI and every other tool run inside containers, with pinned versions.
 
-**Podman users:** `podman compose` talks to the Podman API socket, which must be running:
+**Podman users:** `podman compose` talks to the Podman API socket. `make up`, `make dev` and `make down` start it automatically; to start it by hand:
 
 ```bash
 systemctl --user enable --now podman.socket
@@ -108,7 +108,6 @@ The TLS certificate is self-signed: accept the browser warning on the first visi
 ### Useful commands
 
 ```bash
-make help                # list all commands
 make ps                  # production container status       (make dev-ps for development)
 make logs s=backend      # follow the logs of one service    (make dev-logs s=backend)
 make restart             # restart the production stack      (make dev-restart)

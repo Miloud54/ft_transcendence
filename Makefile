@@ -1,71 +1,66 @@
-# Usage: make <target>   (make help for the list)
-# Podman users without the docker alias: make up COMPOSE="podman compose"
+NAME			=	ft_transcendence
+COMPOSE			?=	docker compose
+DEV				=	$(COMPOSE)
+PROD			=	$(COMPOSE) -f docker-compose.prod.yml
+ENGINE			?=	$(firstword $(COMPOSE))
+running			=	$(shell $(ENGINE) ps -aq --filter label=com.docker.compose.project=$(1) 2>/dev/null)
+PODMAN_SOCKET	=	command -v podman >/dev/null 2>&1 && command -v systemctl >/dev/null 2>&1 \
+					&& systemctl --user enable --now podman.socket >/dev/null 2>&1 || true
 
-COMPOSE ?= docker compose
-DEV     := $(COMPOSE)
-PROD    := $(COMPOSE) -f docker-compose.prod.yml
-ENGINE  ?= $(firstword $(COMPOSE))
-running  = $(shell $(ENGINE) ps -aq --filter label=com.docker.compose.project=$(1) 2>/dev/null)
+all: up
 
-.DEFAULT_GOAL := help
-.PHONY: help env up down restart logs ps dev dev-restart dev-logs dev-ps dev-seed dev-seed-reset clean fclean re
-
-help: ## Show this help
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-15s %s\n", $$1, $$2}'
-
-env: ## Create or complete .env from .env.example and enable the git hooks
+env:
 	@sh .githooks/env-sync.sh
 	@git config core.hooksPath .githooks
 
-# ---- Production (reference) ----
-
-up: env ## Build and start the production stack
+up: env
+	@$(PODMAN_SOCKET)
 	@$(DEV) down >/dev/null 2>&1 || true
 	$(PROD) up -d --build
 
-down: ## Stop the running stack, prod or dev (data kept)
-	@$(if $(call running,transcendence-prod),$(PROD) down,true)
-	@$(if $(call running,transcendence-dev),$(DEV) down,true)
+down:
+	@$(PODMAN_SOCKET)
+	@$(if $(call running,$(NAME)-prod),$(PROD) down,true)
+	@$(if $(call running,$(NAME)-dev),$(DEV) down,true)
 
-restart: down up ## Restart the production stack
+restart: down up
 
-logs: ## Follow prod logs (one service: make logs s=backend)
+logs:
 	$(PROD) logs -f $(s)
 
-ps: ## Show prod container status
+ps:
 	$(PROD) ps
 
-# ---- Development ----
-
-dev: env ## Build and start the development stack (hot reload)
+dev: env
+	@$(PODMAN_SOCKET)
 	@$(PROD) down >/dev/null 2>&1 || true
 	$(DEV) up -d --build
 
-dev-restart: down dev ## Restart the development stack
+dev-restart: down dev
 
-dev-logs: ## Follow dev logs (one service: make dev-logs s=backend)
+dev-logs:
 	$(DEV) logs -f $(s)
 
-dev-ps: ## Show dev container status
+dev-ps:
 	$(DEV) ps
 
-dev-seed: ## Run the development seed (only if the database is empty)
+dev-seed:
 	$(DEV) exec backend npx prisma db seed
 
-dev-seed-reset: ## Reset the development database to the seed data
+dev-seed-reset:
 	$(DEV) exec -e SEED_FORCE=true backend npx prisma db seed
 
-dev-clean-cache: ## Delete the Next.js dev build cache (frontend/.next)
+dev-clean-cache:
 	rm -rf frontend/.next
 
-# ---- Cleanup ----
+clean: down
 
-clean: down ## Stop both stacks (data kept)
-
-fclean: ## Stop both stacks and DELETE all volumes (database, backups, logs)
+fclean: clean
 	@echo "This deletes every volume (database, backups, logs). Press Ctrl+C to cancel, Enter to continue."
 	@read _
 	-$(PROD) down -v
 	-$(DEV) down -v
 
-re: fclean up ## Delete everything and rebuild the production stack
+re: fclean all
+
+.PHONY: all env up down restart logs ps dev dev-restart dev-logs dev-ps dev-seed dev-seed-reset dev-clean-cache clean fclean re
