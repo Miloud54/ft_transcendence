@@ -90,6 +90,10 @@ export class GameService {
   }
 
   async getState(gameId: string, viewerId?: string): Promise<GameState> {
+    if (!/^\d+$/.test(gameId)) {
+      throw new NotFoundException('Game not found');
+    }
+
     const game = await this.prisma.game.findUnique({
       where: { game_id: BigInt(gameId) },
     });

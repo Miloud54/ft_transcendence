@@ -16,6 +16,19 @@ export type Room = {
   players: RoomPlayer[];
 };
 
+export type GameStateResponse = {
+  gameId: string;
+  status: string;
+  countdownRemaining: number;
+  graceRemaining: number;
+  scores: Record<string, number>;
+  attempts: Record<string, number>;
+};
+
+export function getGameState(gameId: string) {
+  return roomRequest<GameStateResponse>(`/game/${encodeURIComponent(gameId)}`);
+}
+
 async function roomRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("accessToken");
   const headers = new Headers(options.headers);
