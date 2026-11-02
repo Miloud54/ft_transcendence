@@ -60,6 +60,19 @@ server {
     add_header X-Frame-Options "DENY" always;
     server_tokens off;
 
+    # Uploaded avatars are user content: an SVG can contain JavaScript, so forbid
+    # any script when such a file is opened directly in the browser.
+    # add_header here disables the server-level ones: repeat them.
+    location /api/uploads/ {
+        proxy_pass http://backend_upstream/uploads/;
+        proxy_set_header Host $host;
+        add_header Content-Security-Policy "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox" always;
+        add_header Strict-Transport-Security "max-age=31536000" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+    }
+
+
     location /api/ {
         proxy_pass http://backend_upstream/;
         proxy_set_header Host $host;
