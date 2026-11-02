@@ -58,6 +58,14 @@ const GRADE_TEXT_CLASSES = [
   "text-white",
 ];
 
+const GRADE_CURSOR_CLASSES = [
+  "bg-zinc-400",
+  "bg-lime-200",
+  "bg-lime-400",
+  "bg-violet-200",
+  "bg-violet-400",
+];
+
 function ArticleText({
   paragraph,
   className = "text-base leading-8 text-zinc-700 sm:text-lg",
@@ -225,9 +233,11 @@ export function GameBoard({
   const paragraphs = articleParagraphs(gameState);
   const titleWords = articleTitle(gameState);
   const bodyWords = paragraphs.flat().filter((word) => word.kind === "word");
+  const articleWords = [...titleWords, ...bodyWords].filter((word) => word.kind === "word");
   const discoveredCount = bodyWords.filter((word) => word.status === "found").length;
-  const hottestGrade = Math.max(0, ...bodyWords.map((word) => word.grade));
-  const temperaturePercent = Math.round((hottestGrade / 4) * 100);  
+  const hottestGrade = Math.max(0, ...articleWords.map((word) => word.grade));
+  const temperatureGrade = lastGuess?.valid ? lastGuess.bestGrade : hottestGrade;
+  const temperaturePercent = temperatureGrade === 0 ? 0 : (temperatureGrade - 0.5) * 25;
   const isSolved = gameState?.status === "finished";
   const isTitleFound = (gameState?.graceRemaining ?? 0) > 0;
   const titleText = titleWords.map((word) => word.label).join("");
@@ -419,8 +429,14 @@ export function GameBoard({
               <h2 className="font-semibold text-zinc-950">Temperature</h2>
               <span className="text-xs text-zinc-400">proximity</span>
             </div>
-            <div className="mt-5 h-3 overflow-hidden rounded-full bg-gradient-to-r from-lime-400 to-violet-700">
-              <div className="h-full border-r-2 border-white" style={{ width: `${temperaturePercent}%` }} />
+            <div
+              className="relative mt-5 h-3 rounded-full bg-gradient-to-r from-lime-400 to-violet-700"
+              aria-label={`Temperature grade ${temperatureGrade} of 4`}
+            >
+              <span
+                className={`absolute top-1/2 h-5 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow ${GRADE_CURSOR_CLASSES[Math.min(temperatureGrade, 4)]}`}
+                style={{ left: `${temperaturePercent}%` }}
+              />
             </div>
             <div className="mt-2 flex justify-between text-[11px] text-zinc-400"><span>Cold</span><span>Scorching</span></div>
 
