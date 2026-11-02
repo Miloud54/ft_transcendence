@@ -11,6 +11,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import type { DefaultEventsMap, Server, Socket } from 'socket.io';
 import { RoomService } from './room.service';
+import { isTokenOfType, TokenPayload } from '../auth/token';
 
 type AuthenticatedSocket = Socket<
   DefaultEventsMap,
@@ -66,9 +67,9 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     try {
-      const payload = this.jwtService.verify<{ sub: string; email: string }>(
-        token,
-      );
+      const payload = this.jwtService.verify<TokenPayload>(token);
+      if (!isTokenOfType(payload, 'access'))
+        throw new Error('Not an access token');
       client.data.user = {
         userId: payload.sub,
         email: payload.email,

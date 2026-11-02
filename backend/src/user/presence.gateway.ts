@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import type { DefaultEventsMap, Server, Socket } from 'socket.io';
 import { UserService } from './user.service';
+import { isTokenOfType, TokenPayload } from '../auth/token';
 
 type PresenceSocket = Socket<
   DefaultEventsMap,
@@ -52,7 +53,9 @@ export class PresenceGateway
     }
 
     try {
-      const payload = this.jwtService.verify<{ sub: string }>(token);
+      const payload = this.jwtService.verify<TokenPayload>(token);
+      if (!isTokenOfType(payload, 'access'))
+        throw new Error('Not an access token');
       client.data.userId = payload.sub;
       await client.join(this.userRoom(payload.sub));
       const count = (this.connections.get(payload.sub) ?? 0) + 1;

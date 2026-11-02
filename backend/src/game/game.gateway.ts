@@ -12,6 +12,7 @@ import { OnModuleInit } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { GameService } from './game.service';
 import type { DefaultEventsMap, Server, Socket } from 'socket.io';
+import { isTokenOfType, TokenPayload } from '../auth/token';
 
 type GameSocket = Socket<
   DefaultEventsMap,
@@ -68,7 +69,9 @@ export class GameGateway
       return;
     }
     try {
-      const payload = this.jwtService.verify<{ sub: string }>(token);
+      const payload = this.jwtService.verify<TokenPayload>(token);
+      if (!isTokenOfType(payload, 'access'))
+        throw new Error('Not an access token');
       client.data.userId = payload.sub;
     } catch {
       client.emit('auth:error', {

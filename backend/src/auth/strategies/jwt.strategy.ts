@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { isTokenOfType, TokenPayload } from '../token';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -12,7 +13,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: { sub: string; email: string }) {
+  validate(payload: TokenPayload) {
+    // A refresh token is valid JWT too: only access tokens open the API.
+    if (!isTokenOfType(payload, 'access')) {
+      throw new UnauthorizedException();
+    }
     return { userId: payload.sub, email: payload.email };
   }
 }

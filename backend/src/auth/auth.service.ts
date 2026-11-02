@@ -7,8 +7,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UserError } from '../common/user-error';
 import { isPasswordTooLong } from './password.rule';
-
-type RefreshPayload = { sub: string; email: string };
+import { isTokenOfType, TokenPayload } from './token';
 
 export type OAuthProfile = {
   provider: 'google' | 'discord';
@@ -112,18 +111,22 @@ export class AuthService {
   }
 
   refresh(refreshToken: string) {
-    let payload: RefreshPayload;
+    let payload: TokenPayload;
 
     try {
-      payload = this.jwtService.verify<RefreshPayload>(refreshToken);
+      payload = this.jwtService.verify<TokenPayload>(refreshToken);
     } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+    if (!isTokenOfType(payload, 'refresh')) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
     const accessToken = this.jwtService.sign({
       sub: payload.sub,
       email: payload.email,
-    });
+      type: 'access',
+    } satisfies TokenPayload);
 
     return { accessToken };
   }
@@ -229,8 +232,14 @@ export class AuthService {
     const publicUser = toPublicUser(user);
     const payload = { sub: publicUser.id, email: publicUser.email };
 
-    const accessToken = this.jwtService.sign(payload);
-    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+    const accessToken = this.jwtService.sign({
+      ...payload,
+      type: 'access',
+    } satisfies TokenPayload);
+    const refreshToken = this.jwtService.sign(
+      { ...payload, type: 'refresh' } satisfies TokenPayload,
+      { expiresIn: '7d' },
+    );
 
     return { user: publicUser, accessToken, refreshToken };
   }
