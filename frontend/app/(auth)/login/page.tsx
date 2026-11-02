@@ -27,6 +27,13 @@ export default function LoginPage() {
     // A new attempt replaces the message that came from the URL.
     if (urlError) window.history.replaceState({}, "", window.location.pathname);
     setError(null);
+
+    // The browser accepts "a@b"; the server requires a domain with a dot.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -38,7 +45,8 @@ export default function LoginPage() {
 
       const data = await response.json();
 
-      if (!response.ok) {
+      // Expected mistakes (wrong password, email taken...) come back as 200 + { ok: false }.
+      if (!response.ok || data.ok === false) {
         setError(Array.isArray(data.message) ? data.message.join(", ") : data.message);
         return;
       }

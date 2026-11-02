@@ -34,7 +34,8 @@ async function roomRequest<T>(path: string, options: RequestInit = {}): Promise<
   });
   const data = await response.json().catch(() => null);
 
-  if (!response.ok) {
+  // Expected mistakes (invalid code, full room...) come back as 200 + { ok: false }.
+  if (!response.ok || data?.ok === false) {
     const message = Array.isArray(data?.message)
       ? data.message.join(", ")
       : data?.message ?? "Room request failed";

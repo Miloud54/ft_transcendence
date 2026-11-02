@@ -77,6 +77,18 @@ export function AccountMenu() {
     event.preventDefault();
     setError(null);
     setSuccess(false);
+
+    if (username.length > 30) {
+      setError("Username must be 30 characters or fewer.");
+      return;
+    }
+
+    // Same rule as the backend: no spaces, so a blank username is refused.
+    if (!/^[A-Za-z0-9_.-]+$/.test(username)) {
+      setError("Username can only contain letters, numbers, dots, dashes and underscores.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -92,7 +104,7 @@ export function AccountMenu() {
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok || data.ok === false) {
         setError(Array.isArray(data.message) ? data.message.join(", ") : data.message);
         return;
       }
@@ -112,6 +124,12 @@ export function AccountMenu() {
     event.preventDefault();
     setPasswordError(null);
     setPasswordSuccess(false);
+
+    // bcrypt ignores everything after 72 bytes, so longer passwords are refused.
+    if (new TextEncoder().encode(newPassword).length > 72) {
+      setPasswordError("Password is too long (72 characters maximum).");
+      return;
+    }
 
     if (newPassword !== confirmNewPassword) {
       setPasswordError("Passwords do not match.");
@@ -133,7 +151,7 @@ export function AccountMenu() {
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok || data.ok === false) {
         setPasswordError(Array.isArray(data.message) ? data.message.join(", ") : data.message);
         return;
       }
@@ -222,6 +240,8 @@ export function AccountMenu() {
 
             <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
               <input
+                id="avatar-file"
+                name="avatar-file"
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
@@ -268,7 +288,6 @@ export function AccountMenu() {
               value={username}
               onChange={(event) => setUsername(event.target.value)}
               minLength={3}
-              maxLength={30}
               required
               className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
             />

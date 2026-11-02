@@ -4,6 +4,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import { loadSecretsFromVault } from './vault';
+import { UserErrorFilter } from './common/user-error';
 
 async function bootstrap() {
   const secrets = await loadSecretsFromVault();
@@ -23,6 +24,7 @@ async function bootstrap() {
     origin: process.env.FRONTEND_URL ?? 'https://localhost:8443',
     credentials: true,
   });
+  app.useGlobalFilters(new UserErrorFilter());
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
   );

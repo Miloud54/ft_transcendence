@@ -48,10 +48,28 @@ function RoomChatContent({ roomId }: { roomId: string | null }) {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const socketRef = useRef<ReturnType<typeof connectToRoom>>(null);
   const isOpenRef = useRef(isOpen);
+  const messageListRef = useRef<HTMLDivElement>(null);
+  // Follow new messages, unless the user scrolled up to read older ones.
+  const stickToBottomRef = useRef(true);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
+    if (isOpen) stickToBottomRef.current = true;
   }, [isOpen]);
+
+  useEffect(() => {
+    const list = messageListRef.current;
+    if (list && stickToBottomRef.current) {
+      list.scrollTop = list.scrollHeight;
+    }
+  }, [messages, isOpen]);
+
+  function handleMessageListScroll() {
+    const list = messageListRef.current;
+    if (!list) return;
+    stickToBottomRef.current =
+      list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+  }
 
   useEffect(() => {
     if (!roomId) return;
@@ -120,6 +138,8 @@ function RoomChatContent({ roomId }: { roomId: string | null }) {
     }
 
     setConnectionError(null);
+    // Sending a message always brings the conversation back to the latest one.
+    stickToBottomRef.current = true;
     socketRef.current.emit("chat:send", { roomId, text });
     setDraft("");
   }
@@ -164,7 +184,11 @@ function RoomChatContent({ roomId }: { roomId: string | null }) {
           {connectionError}
         </p>
       )}
-      <div className="flex-1 space-y-2 overflow-y-auto bg-zinc-50 p-3">
+      <div
+        ref={messageListRef}
+        onScroll={handleMessageListScroll}
+        className="flex-1 space-y-2 overflow-y-auto bg-zinc-50 p-3"
+      >
         {messages.length === 0 && <p className="text-xs text-zinc-400">No messages yet.</p>}
         {messages.map((message, index) => (
           <div key={index} className="flex min-w-0 items-start gap-2">
@@ -183,6 +207,8 @@ function RoomChatContent({ roomId }: { roomId: string | null }) {
       </div>
       <form onSubmit={handleSubmit} className="flex gap-2 border-t border-zinc-200 p-3">
         <input
+          id="chat-message"
+          name="chat-message"
           autoComplete="off"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
