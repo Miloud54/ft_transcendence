@@ -17,6 +17,7 @@ import {
   UserStatus,
 } from 'generated/prisma';
 import { GameService } from 'src/game/game.service';
+import { UserError } from '../common/user-error';
 
 type RoomWithPlayers = Prisma.RoomGetPayload<{
   include: {
@@ -194,8 +195,8 @@ export class RoomService {
 
   async create(userId: string, dto: CreateRoomDto) {
     if (dto.minPlayers > dto.maxPlayers) {
-      throw new BadRequestException(
-        'minPlayers cannot be greater than maxPlayers',
+      throw new UserError(
+        'The minimum number of players cannot be greater than the maximum',
       );
     }
 
@@ -247,8 +248,8 @@ export class RoomService {
     dto: { minPlayers: number; maxPlayers: number; playerIds: string[] },
   ) {
     if (dto.minPlayers > dto.maxPlayers) {
-      throw new BadRequestException(
-        'minPlayers cannot be greater than maxPlayers',
+      throw new UserError(
+        'The minimum number of players cannot be greater than the maximum',
       );
     }
 
@@ -356,7 +357,7 @@ export class RoomService {
     });
 
     if (!room) {
-      throw new NotFoundException('Invalid room code');
+      throw new UserError('Invalid room code');
     }
 
     return this.join(room.room_id.toString(), userId);
@@ -372,12 +373,12 @@ export class RoomService {
     }
 
     if (room.status !== RoomStatus.OPEN) {
-      throw new ConflictException('Room is not open');
+      throw new UserError('This room is no longer open');
     }
 
     const requester = await this.userService.findById(userId);
     if (requester.status === 'IN_GAME') {
-      throw new ConflictException(
+      throw new UserError(
         'You cannot join another room while you are in a game',
       );
     }
@@ -391,7 +392,7 @@ export class RoomService {
     }
 
     if (room.players.length >= room.max_players) {
-      throw new ConflictException('Room is full');
+      throw new UserError('This room is full');
     }
 
     if (!alreadyJoined) {
@@ -581,10 +582,10 @@ export class RoomService {
       throw new NotFoundException('Room not found');
     }
     if (room.status !== RoomStatus.OPEN) {
-      throw new ConflictException('Room is not open');
+      throw new UserError('This room is no longer open');
     }
     if (room.players.length >= room.max_players) {
-      throw new ConflictException('Room is full');
+      throw new UserError('This room is full');
     }
 
     const invitation = await this.prisma.roomInvitation.findUnique({

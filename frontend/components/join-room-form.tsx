@@ -18,6 +18,12 @@ export function JoinRoomForm() {
       return;
     }
 
+    // Room codes are 4 to 10 characters long (same rule as the server).
+    if (roomId.length < 4 || roomId.length > 10) {
+      setError("A room code has between 4 and 10 characters.");
+      return;
+    }
+
     setError(null);
     setIsSubmitting(true);
 
@@ -35,6 +41,8 @@ export function JoinRoomForm() {
     <form onSubmit={handleSubmit}>
       <div className="flex gap-2">
         <input
+          id="room-code"
+          name="room-code"
           autoComplete="off"
           value={code}
           onChange={(event) => setCode(event.target.value)}

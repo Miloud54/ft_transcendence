@@ -1,14 +1,12 @@
-import {
-  ConflictException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserStatus } from '../../generated/prisma';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { UserError } from '../common/user-error';
+import { isPasswordTooLong } from './password.rule';
 
 type RefreshPayload = { sub: string; email: string };
 
@@ -55,12 +53,24 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
+    // Emails are stored in lowercase; usernames keep their case but are unique
+    // whatever the case ("Alice" and "alice" cannot both exist).
+    const email = dto.email.trim().toLowerCase();
     const existing = await this.prisma.user.findFirst({
-      where: { OR: [{ email: dto.email }, { username: dto.username }] },
+      where: {
+        OR: [
+          { email: { equals: email, mode: 'insensitive' } },
+          { username: { equals: dto.username, mode: 'insensitive' } },
+        ],
+      },
     });
 
     if (existing) {
-      throw new ConflictException('Email or username already in use');
+      throw new UserError(
+        existing.email.toLowerCase() === email
+          ? 'This email is already used by another account'
+          : 'This username is already taken',
+      );
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, SALT_ROUNDS);
@@ -68,7 +78,7 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         username: dto.username,
-        email: dto.email,
+        email,
         password: hashedPassword,
         avatar: DEFAULT_AVATAR,
         xp: 0n,
@@ -82,18 +92,19 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+    const user = await this.prisma.user.findFirst({
+      where: { email: { equals: dto.email.trim(), mode: 'insensitive' } },
     });
 
-    if (!user || !user.password) {
-      throw new UnauthorizedException('Invalid credentials');
+    // bcrypt would only compare the first 72 bytes: a longer password is wrong.
+    if (!user || !user.password || isPasswordTooLong(dto.password)) {
+      throw new UserError('Invalid email or password');
     }
 
     const passwordMatches = await bcrypt.compare(dto.password, user.password);
 
     if (!passwordMatches) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UserError('Invalid email or password');
     }
 
     const activeUser = await this.markOnline(user.user_id);
@@ -128,8 +139,8 @@ export class AuthService {
           });
 
     if (!user && profile.email) {
-      const existingByEmail = await this.prisma.user.findUnique({
-        where: { email: profile.email },
+      const existingByEmail = await this.prisma.user.findFirst({
+        where: { email: { equals: profile.email, mode: 'insensitive' } },
       });
 
       if (existingByEmail) {
@@ -162,7 +173,7 @@ export class AuthService {
           ? await this.prisma.user.create({
               data: {
                 username,
-                email: profile.email,
+                email: profile.email.toLowerCase(),
                 password: null,
                 avatar: DEFAULT_AVATAR,
                 xp: 0n,
@@ -174,7 +185,7 @@ export class AuthService {
           : await this.prisma.user.create({
               data: {
                 username,
-                email: profile.email,
+                email: profile.email.toLowerCase(),
                 password: null,
                 avatar: DEFAULT_AVATAR,
                 xp: 0n,
@@ -202,7 +213,11 @@ export class AuthService {
     let username = sanitized;
     let suffix = 0;
 
-    while (await this.prisma.user.findUnique({ where: { username } })) {
+    while (
+      await this.prisma.user.findFirst({
+        where: { username: { equals: username, mode: 'insensitive' } },
+      })
+    ) {
       suffix += 1;
       username = `${sanitized}${suffix}`;
     }

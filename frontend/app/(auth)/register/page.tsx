@@ -19,6 +19,30 @@ export default function RegisterPage() {
     event.preventDefault();
     setError(null);
 
+    // The browser accepts "a@b"; the server requires a domain with a dot.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    // No maxLength on the input: it silently cut long names instead of explaining why.
+    if (username.length > 30) {
+      setError("Username must be 30 characters or fewer.");
+      return;
+    }
+
+    // Same rule as the backend: no spaces, so a blank username is refused.
+    if (!/^[A-Za-z0-9_.-]+$/.test(username)) {
+      setError("Username can only contain letters, numbers, dots, dashes and underscores.");
+      return;
+    }
+
+    // bcrypt ignores everything after 72 bytes, so longer passwords are refused.
+    if (new TextEncoder().encode(password).length > 72) {
+      setError("Password is too long (72 characters maximum).");
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
       return;
@@ -35,7 +59,8 @@ export default function RegisterPage() {
 
       const data = await response.json();
 
-      if (!response.ok) {
+      // Expected mistakes (wrong password, email taken...) come back as 200 + { ok: false }.
+      if (!response.ok || data.ok === false) {
         setError(Array.isArray(data.message) ? data.message.join(", ") : data.message);
         return;
       }
@@ -97,7 +122,6 @@ export default function RegisterPage() {
             autoComplete="username"
             required
             minLength={3}
-            maxLength={30}
             value={username}
             onChange={(event) => setUsername(event.target.value)}
             className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"

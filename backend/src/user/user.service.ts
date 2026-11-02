@@ -2,7 +2,6 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,6 +14,8 @@ import {
 } from '../../generated/prisma';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UserError } from '../common/user-error';
+import { isPasswordTooLong } from '../auth/password.rule';
 
 const SALT_ROUNDS = 10;
 
@@ -493,19 +494,35 @@ export class UserService {
   }
 
   async update(userId: string, dto: UpdateUserDto) {
+    if (dto.email) dto.email = dto.email.trim().toLowerCase();
     if (dto.username || dto.email) {
       const existing = await this.prisma.user.findFirst({
         where: {
           user_id: { not: BigInt(userId) },
           OR: [
-            ...(dto.username ? [{ username: dto.username }] : []),
-            ...(dto.email ? [{ email: dto.email }] : []),
+            ...(dto.username
+              ? [
+                  {
+                    username: {
+                      equals: dto.username,
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                ]
+              : []),
+            ...(dto.email
+              ? [{ email: { equals: dto.email, mode: 'insensitive' as const } }]
+              : []),
           ],
         },
       });
 
       if (existing) {
-        throw new ConflictException('Username or email already in use');
+        throw new UserError(
+          dto.email && existing.email.toLowerCase() === dto.email
+            ? 'This email is already used by another account'
+            : 'This username is already taken',
+        );
       }
     }
 
@@ -534,18 +551,15 @@ export class UserService {
     });
 
     if (!user || !user.password) {
-      throw new UnauthorizedException(
-        'Password change is not available for this account',
-      );
+      throw new UserError('Password change is not available for this account');
     }
 
-    const passwordMatches = await bcrypt.compare(
-      dto.currentPassword,
-      user.password,
-    );
+    const passwordMatches =
+      !isPasswordTooLong(dto.currentPassword) &&
+      (await bcrypt.compare(dto.currentPassword, user.password));
 
     if (!passwordMatches) {
-      throw new UnauthorizedException('Current password is incorrect');
+      throw new UserError('Current password is incorrect');
     }
 
     const hashedPassword = await bcrypt.hash(dto.newPassword, SALT_ROUNDS);

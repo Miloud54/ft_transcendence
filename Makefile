@@ -70,10 +70,10 @@ dev-ps:
 	$(DEV) ps
 
 dev-seed:
-	$(DEV) exec backend npx prisma db seed
+	$(DEV) exec backend sh -c 'eval "$$(npx tsx src/load-vault-env.ts)" && npx prisma db seed'
 
 dev-seed-reset:
-	$(DEV) exec -e SEED_FORCE=true backend npx prisma db seed
+	$(DEV) exec -e SEED_FORCE=true backend sh -c 'eval "$$(npx tsx src/load-vault-env.ts)" && npx prisma db seed'
 
 dev-clean-cache:
 	rm -rf frontend/.next
