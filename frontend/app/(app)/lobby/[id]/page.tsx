@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { connectToRoom } from "@/lib/room-socket";
+import { LobbyNotFound } from "@/components/lobby-not-found";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -14,6 +15,7 @@ import {
   leaveRoom,
   removePlayerFromRoom,
   startRoom,
+  getRoom,
   type Friend,
   type FriendRequest,
   type Room,
@@ -31,6 +33,7 @@ export default function LobbyPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const invalidRoomId = !/^\d+$/.test(id);
   const router = useRouter();
   const { user } = useCurrentUser();
   const [room, setRoom] = useState<Room | null>(null);
@@ -47,6 +50,7 @@ export default function LobbyPage({
   const [isLeavingLobby, setIsLeavingLobby] = useState(false);
   const [removingPlayerId, setRemovingPlayerId] = useState<string | null>(null);
   const [isCanceling, setIsCanceling] = useState(false);
+  const [isLoadingRoom, setIsLoadingRoom] = useState(true);
 
   async function handleCopyCode() {
     if (!room) return;
@@ -97,6 +101,19 @@ export default function LobbyPage({
       setRemovingPlayerId(null);
     }
   }
+
+  useEffect(() => {
+    if (invalidRoomId) {
+      return;
+    }
+
+    getRoom(id)
+      .then(setRoom)
+      .catch((requestError: unknown) => {
+        setError(requestError instanceof Error ? requestError.message : "This lobby is unavailable.");
+      })
+      .finally(() => setIsLoadingRoom(false));
+  }, [id, invalidRoomId]);
 
   useEffect(() => {
     void Promise.all([getFriends(), getFriendRequests()])
@@ -187,23 +204,37 @@ export default function LobbyPage({
   }
 
   useEffect(() => {
+  if (invalidRoomId || isLoadingRoom || error) {
+    return;
+  }
+
   const socket = connectToRoom(id, (nextRoom) => {
     setRoom(nextRoom as Room);
   }, (data) => {
     const started = data as { game: { id: string } };
     router.push(`/game/${started.game.id}?room=${id}`);
+  }, {
+    onStatus: (status, message) => {
+      if (status === "error") {
+        setError(message ?? "Could not connect to the lobby.");
+      }
+    },
   });
 
   return () => {
     socket?.disconnect();
   };
-}, [id, router]);
+}, [error, id, invalidRoomId, isLoadingRoom, router]);
 
-  if (error) {
-    return <p className="text-sm text-[#d03b3b]">{error}</p>;
+  if (invalidRoomId) {
+    return <LobbyNotFound message="The lobby ID is not valid." />;
   }
 
-  if (!room) {
+  if (error) {
+    return <LobbyNotFound message={error} />;
+  }
+
+  if (isLoadingRoom || !room) {
     return <p className="text-sm text-zinc-500">Loading room...</p>;
   }
 
