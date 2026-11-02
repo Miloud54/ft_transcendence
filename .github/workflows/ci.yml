@@ -31,7 +31,8 @@ jobs:
       run:
         working-directory: backend
     env:
-      DATABASE_URL: postgresql://user:password@localhost:5432/db
+      # Dummy value: prisma generate needs a URL but never connects to it.
+      DATABASE_URL: postgresql://build:build@localhost:5432/build
 
     steps:
       - uses: actions/checkout@v4

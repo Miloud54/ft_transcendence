@@ -31,11 +31,11 @@ The backend is exposed at `http://localhost:3001`. The examples below use `curl`
 ```bash
 curl -sS -X POST http://localhost:3001/auth/register \
   -H 'Content-Type: application/json' \
-  -d '{"username":"room-owner","email":"room-owner@example.com","password":"password123"}'
+  -d '{"username":"room-owner","email":"room-owner@example.com","password":"<choose-a-password>"}'
 
 curl -sS -X POST http://localhost:3001/auth/register \
   -H 'Content-Type: application/json' \
-  -d '{"username":"room-player","email":"room-player@example.com","password":"password123"}'
+  -d '{"username":"room-player","email":"room-player@example.com","password":"<choose-a-password>"}'
 ```
 
 Copy each response's `accessToken` and export them:
