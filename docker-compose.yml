@@ -51,6 +51,7 @@ services:
       VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID}
       FRONTEND_URL: https://localhost:8443
       PEDANTIX_CHEAT: ${PEDANTIX_CHEAT:-false} # set in the root .env (true writes the hidden article to backend/cheat/)
+      SEED_PASSWORD: ${SEED_PASSWORD:-} # password of the development test accounts
 
 
     working_dir: /app

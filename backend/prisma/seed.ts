@@ -16,7 +16,14 @@ function hashPassword(plain: string): string {
 const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000);
 
 async function main() {
-const existingUsers = await prisma.user.count();
+  // No password in the code: the test accounts use SEED_PASSWORD from the root .env.
+  const seedPassword = process.env.SEED_PASSWORD;
+  if (!seedPassword) {
+    console.log("No SEED_PASSWORD in .env, skipping the development seed.");
+    return;
+  }
+
+  const existingUsers = await prisma.user.count();
   if (existingUsers > 0 && process.env.SEED_FORCE !== "true") {
     console.log(`Database already contains ${existingUsers} users, skipping seed (set SEED_FORCE=true to reset).`);
     return;
@@ -32,7 +39,7 @@ const existingUsers = await prisma.user.count();
   // USERS
   // ---------------------------------------------------------------------------
   console.log("👤 Seeding users...");
-  const defaultPassword = hashPassword("password123");
+  const defaultPassword = hashPassword(seedPassword);
 
   const userData = [
     { username: "alice",   email: "alice@example.com",   status: UserStatus.ONLINE },
@@ -284,7 +291,7 @@ const existingUsers = await prisma.user.count();
 
   console.log("\n✅ Seed complete:");
   console.log(`   Users: ${u} | Rooms: ${r} | Room_players: ${rp} | Games: ${g} | Game_players: ${gp}`);
-  console.log("   Default password for seeded users: password123");
+  console.log("   Password of the seeded users: SEED_PASSWORD from the root .env");
 }
 
 main()

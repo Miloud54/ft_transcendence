@@ -69,6 +69,7 @@ DISCORD_WEBHOOK_URL                    Discord channel receiving Alertmanager al
 GRAFANA_ADMIN_PASSWORD                 Grafana "admin" password
 PEDANTIX_CHEAT                         true = writes the hidden article to backend/cheat/
 DEMO_PASSWORD                          password of the production demo accounts (empty = no demo accounts)
+SEED_PASSWORD                          password of the development test accounts (empty = no development seed)
 ```
 
 The `.env` file is ignored by Git. At startup, `vault-init` copies the secrets into Vault, and the backend reads them from there.
@@ -89,7 +90,7 @@ Demo accounts `demo_alice@demo.local`, `demo_bob@demo.local`, `demo_charlie@demo
 make dev
 ```
 
-On the first start, the development database is filled with test data (users `alice`, `bob`, `charlie`... with the password `password123`). This seed only runs when the database is empty, and never in production.
+On the first start, the development database is filled with test data (users `alice@example.com`, `bob@example.com`, `charlie@example.com`... with the password set in `SEED_PASSWORD`). This seed only runs when the database is empty, and never in production.
 
 Both stacks use the same ports: `make up` stops the development stack and `make dev` stops the production stack before starting.
 
