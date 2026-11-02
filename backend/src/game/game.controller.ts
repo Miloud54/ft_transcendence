@@ -32,6 +32,14 @@ export class GameController {
     );
   }
 
+  @Get(':gameId')
+  getState(
+    @Param('gameId') gameId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.gameService.getState(gameId, request.user.userId);
+  }
+
   @Get(':gameId/results')
   getResults(@Param('gameId', ParsePositiveIntPipe) gameId: string) {
     return this.gameService.getResults(gameId);
