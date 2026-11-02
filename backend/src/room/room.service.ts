@@ -255,7 +255,12 @@ export class RoomService {
 
     const candidateIds = dto.playerIds
       .filter((id) => id !== userId)
-      .map((id) => BigInt(id));
+      .map((id) => {
+        if (!/^[1-9]\d*$/.test(id)) {
+          throw new BadRequestException('Invalid player ID');
+        }
+        return BigInt(id);
+      });
 
     const onlineUsers = candidateIds.length
       ? await this.prisma.user.findMany({
