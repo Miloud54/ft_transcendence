@@ -1,5 +1,6 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   ConflictException,
   Delete,
@@ -24,6 +25,18 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import type { Request } from 'express';
 import { UpdateStatusDto } from './dto/update-status.dto';
+
+export function avatarFileFilter(
+  req: Request,
+  file: Express.Multer.File,
+  callback: (error: Error | null, acceptFile: boolean) => void,
+) {
+  if (!file.mimetype.startsWith('image/')) {
+    callback(new BadRequestException('Only image files are allowed'), false);
+    return;
+  }
+  callback(null, true);
+}
 
 @UseGuards(JwtAuthGuard)
 @Controller('users')
@@ -201,16 +214,17 @@ export class UserController {
         },
       }),
       limits: { fileSize: 2 * 1024 * 1024 },
-      fileFilter: (req, file, callback) => {
-        if (!file.mimetype.startsWith('image/')) {
-          callback(new Error('Only image files are allowed'), false);
-          return;
-        }
-        callback(null, true);
-      },
+      fileFilter: avatarFileFilter,
     }),
   )
-  uploadAvatar(@Req() req: Request, @UploadedFile() file: Express.Multer.File) {
+  uploadAvatar(
+    @Req() req: Request,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Avatar file is required');
+    }
+
     const { userId } = req.user as { userId: string };
     return this.userService.updateAvatar(userId, file.filename);
   }
