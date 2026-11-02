@@ -50,7 +50,6 @@ services:
     environment:
       DB_USER: ${DB_USER}
       DB_NAME: ${DB_NAME}
-      DATABASE_URL: "postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}"
       VAULT_ADDR: http://vault:8200
       VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID}
       FRONTEND_URL: https://localhost:8443
@@ -58,7 +57,7 @@ services:
 
     working_dir: /app
 
-    command: sh -c "npm ci && npx prisma generate && npm run prisma:deploy && npx prisma db seed && npm run start:dev 2>&1 | tee /var/log/app/backend.log"
+    command: sh -c "npm ci && eval \"$$(npx tsx src/load-vault-env.ts)\" && npx prisma generate && npm run prisma:deploy && npx prisma db seed && npm run start:dev 2>&1 | tee /var/log/app/backend.log"
 
     ports:
       - "127.0.0.1:5555:5555"
