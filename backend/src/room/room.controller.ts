@@ -16,6 +16,7 @@ import { RoomGateway } from './room.gateway';
 import { PresenceGateway } from '../user/presence.gateway';
 import { JoinByCodeDto } from './dto/join-by-code.dto';
 import { CreateRematchDto } from './dto/create-rematch.dto';
+import { ParsePositiveIntPipe } from '../common/pipes/parse-positive-int.pipe';
 
 type AuthenticatedRequest = Request & {
   user: {
@@ -46,7 +47,7 @@ export class RoomController {
 
   @Get(':roomId')
   @UseGuards(JwtAuthGuard)
-  get(@Param('roomId') roomId: string) {
+  get(@Param('roomId', ParsePositiveIntPipe) roomId: string) {
     return this.roomService.find(roomId);
   }
 
@@ -96,7 +97,7 @@ export class RoomController {
   @Post(':roomId/join')
   @UseGuards(JwtAuthGuard)
   async join(
-    @Param('roomId') roomId: string,
+    @Param('roomId', ParsePositiveIntPipe) roomId: string,
     @Req() request: AuthenticatedRequest,
   ) {
     const room = await this.roomService.join(roomId, request.user.userId);
@@ -108,8 +109,8 @@ export class RoomController {
   @Delete(':roomId/players/:playerId')
   @UseGuards(JwtAuthGuard)
   async removePlayer(
-    @Param('roomId') roomId: string,
-    @Param('playerId') playerId: string,
+    @Param('roomId', ParsePositiveIntPipe) roomId: string,
+    @Param('playerId', ParsePositiveIntPipe) playerId: string,
     @Req() request: AuthenticatedRequest,
   ) {
     const room = await this.roomService.removePlayer(
@@ -125,7 +126,7 @@ export class RoomController {
   @Post(':roomId/leave')
   @UseGuards(JwtAuthGuard)
   async leave(
-    @Param('roomId') roomId: string,
+    @Param('roomId', ParsePositiveIntPipe) roomId: string,
     @Req() request: AuthenticatedRequest,
   ) {
     const room = await this.roomService.leave(roomId, request.user.userId);
@@ -137,7 +138,7 @@ export class RoomController {
   @Delete(':roomId')
   @UseGuards(JwtAuthGuard)
   async cancel(
-    @Param('roomId') roomId: string,
+    @Param('roomId', ParsePositiveIntPipe) roomId: string,
     @Req() request: AuthenticatedRequest,
   ) {
     const result = await this.roomService.cancelRoom(
@@ -153,8 +154,8 @@ export class RoomController {
   @Post(':roomId/invite/:friendId')
   @UseGuards(JwtAuthGuard)
   async inviteFriend(
-    @Param('roomId') roomId: string,
-    @Param('friendId') friendId: string,
+    @Param('roomId', ParsePositiveIntPipe) roomId: string,
+    @Param('friendId', ParsePositiveIntPipe) friendId: string,
     @Req() request: AuthenticatedRequest,
   ) {
     const invitation = await this.roomService.inviteFriend(
@@ -173,7 +174,7 @@ export class RoomController {
   @Post(':roomId/invitation/accept')
   @UseGuards(JwtAuthGuard)
   async acceptInvitation(
-    @Param('roomId') roomId: string,
+    @Param('roomId', ParsePositiveIntPipe) roomId: string,
     @Req() request: AuthenticatedRequest,
   ) {
     const room = await this.roomService.acceptInvitation(
@@ -187,7 +188,7 @@ export class RoomController {
   @Post(':roomId/invitation/decline')
   @UseGuards(JwtAuthGuard)
   async declineInvitation(
-    @Param('roomId') roomId: string,
+    @Param('roomId', ParsePositiveIntPipe) roomId: string,
     @Req() request: AuthenticatedRequest,
   ) {
     const result = await this.roomService.declineInvitation(
@@ -204,7 +205,7 @@ export class RoomController {
   @Post(':roomId/start')
   @UseGuards(JwtAuthGuard)
   async start(
-    @Param('roomId') roomId: string,
+    @Param('roomId', ParsePositiveIntPipe) roomId: string,
     @Req() request: AuthenticatedRequest,
   ) {
     const result = await this.roomService.start(roomId, request.user.userId);

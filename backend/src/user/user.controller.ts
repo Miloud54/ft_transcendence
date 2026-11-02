@@ -24,6 +24,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import type { Request } from 'express';
 import { UpdateStatusDto } from './dto/update-status.dto';
+import { ParsePositiveIntPipe } from '../common/pipes/parse-positive-int.pipe';
 
 @UseGuards(JwtAuthGuard)
 @Controller('users')
@@ -46,7 +47,7 @@ export class UserController {
   }
 
   @Get(':profileId')
-  getProfile(@Param('profileId') profileId: string) {
+  getProfile(@Param('profileId', ParsePositiveIntPipe) profileId: string) {
     return this.userService.findById(profileId);
   }
 
@@ -69,7 +70,7 @@ export class UserController {
   }
 
   @Get(':profileId/stats')
-  getProfileStats(@Param('profileId') profileId: string) {
+  getProfileStats(@Param('profileId', ParsePositiveIntPipe) profileId: string) {
     return this.userService.getStats(profileId);
   }
 
@@ -80,7 +81,9 @@ export class UserController {
   }
 
   @Get(':profileId/matches')
-  getProfileMatchHistory(@Param('profileId') profileId: string) {
+  getProfileMatchHistory(
+    @Param('profileId', ParsePositiveIntPipe) profileId: string,
+  ) {
     return this.userService.getMatchHistory(profileId);
   }
 
@@ -97,7 +100,10 @@ export class UserController {
   }
 
   @Post('me/friends/:friendId')
-  async addFriend(@Req() req: Request, @Param('friendId') friendId: string) {
+  async addFriend(
+    @Req() req: Request,
+    @Param('friendId', ParsePositiveIntPipe) friendId: string,
+  ) {
     const { userId } = req.user as { userId: string };
     const result = await this.userService.addFriend(userId, friendId);
     const requester = await this.userService.findById(userId);
@@ -110,7 +116,10 @@ export class UserController {
   }
 
   @Delete('me/friends/:friendId')
-  async removeFriend(@Req() req: Request, @Param('friendId') friendId: string) {
+  async removeFriend(
+    @Req() req: Request,
+    @Param('friendId', ParsePositiveIntPipe) friendId: string,
+  ) {
     const { userId } = req.user as { userId: string };
     const result = await this.userService.removeFriend(userId, friendId);
     this.presenceGateway.notifyUser(userId, 'friend:removed', { id: friendId });
@@ -121,7 +130,7 @@ export class UserController {
   @Patch('me/friend-requests/:requesterId/accept')
   async acceptFriendRequest(
     @Req() req: Request,
-    @Param('requesterId') requesterId: string,
+    @Param('requesterId', ParsePositiveIntPipe) requesterId: string,
   ) {
     const { userId } = req.user as { userId: string };
     const result = await this.userService.acceptFriendRequest(
@@ -140,7 +149,7 @@ export class UserController {
   @Post('me/friend-requests/:requesterId/decline')
   async declineFriendRequest(
     @Req() req: Request,
-    @Param('requesterId') requesterId: string,
+    @Param('requesterId', ParsePositiveIntPipe) requesterId: string,
   ) {
     const { userId } = req.user as { userId: string };
     const result = await this.userService.declineFriendRequest(

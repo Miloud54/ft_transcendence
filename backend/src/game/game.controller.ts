@@ -10,6 +10,7 @@ import {
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { GameService } from './game.service';
 import type { Request } from 'express';
+import { ParsePositiveIntPipe } from '../common/pipes/parse-positive-int.pipe';
 
 type AuthenticatedRequest = Request & {
   user: {
@@ -32,13 +33,13 @@ export class GameController {
   }
 
   @Get(':gameId/results')
-  getResults(@Param('gameId') gameId: string) {
+  getResults(@Param('gameId', ParsePositiveIntPipe) gameId: string) {
     return this.gameService.getResults(gameId);
   }
 
   @Patch(':gameId/leave')
   async leaveGame(
-    @Param('gameId') gameId: string,
+    @Param('gameId', ParsePositiveIntPipe) gameId: string,
     @Req() request: AuthenticatedRequest,
   ) {
     await this.gameService.leaveGame(gameId, request.user.userId);
