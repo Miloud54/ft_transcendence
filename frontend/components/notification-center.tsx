@@ -186,7 +186,7 @@ export function NotificationCenter() {
               ))}
               {friendRequests.map((request) => (
                 <div key={`friend-${request.id}`} className="rounded-lg bg-violet-50 p-3">
-                  <p className="text-sm">{request.username} wants to be your friend.</p>
+                  <p className="truncate text-sm" title={`${request.username} wants to be your friend.`}>{request.username} wants to be your friend.</p>
                   <div className="mt-2 flex gap-2">
                     <button type="button" disabled={busyId === request.id} onClick={() => void respondToFriend(request, "accept")} className="rounded-md bg-violet-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-60">Accept</button>
                     <button type="button" disabled={busyId === request.id} onClick={() => void respondToFriend(request, "decline")} className="rounded-md border border-violet-200 px-2 py-1 text-xs font-semibold text-violet-700 disabled:opacity-60">Decline</button>
@@ -195,7 +195,7 @@ export function NotificationCenter() {
               ))}
               {roomInvitations.map((invitation) => (
                 <div key={`room-${invitation.roomId}`} className="rounded-lg bg-violet-50 p-3">
-                  <p className="text-sm">{invitation.inviter.username} invited you to room #{invitation.roomId}.</p>
+                  <p className="truncate text-sm" title={`${invitation.inviter.username} invited you to room #${invitation.roomId}.`}>{invitation.inviter.username} invited you to room #{invitation.roomId}.</p>
                   <div className="mt-2 flex gap-2">
                     <button type="button" disabled={busyId === invitation.roomId} onClick={() => void respondToRoom(invitation, "accept")} className="rounded-md bg-lime-400 px-2 py-1 text-xs font-semibold text-violet-950 disabled:opacity-60">Join lobby</button>
                     <button type="button" disabled={busyId === invitation.roomId} onClick={() => void respondToRoom(invitation, "decline")} className="rounded-md border border-violet-200 px-2 py-1 text-xs font-semibold text-violet-700 disabled:opacity-60">Decline</button>

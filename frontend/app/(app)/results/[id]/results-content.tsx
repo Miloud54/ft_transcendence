@@ -78,12 +78,12 @@ function RankingCard({
       )}
 
       {rest.map((entry, index) => (
-        <div key={entry.userId} className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 last:border-b-0">
-          <span className="flex items-center gap-2 text-sm font-medium text-zinc-950">
+        <div key={entry.userId} className="flex min-w-0 items-center justify-between gap-3 border-b border-zinc-100 px-4 py-3 last:border-b-0">
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-zinc-950">
             <img src={entry.avatar} alt="" className="h-6 w-6 rounded-full bg-zinc-100" />
             {index + 4}. {entry.username}
           </span>
-          <span className="text-sm tabular-nums text-zinc-500">{metric(entry)}</span>
+          <span className="shrink-0 text-sm tabular-nums text-zinc-500">{metric(entry)}</span>
         </div>
       ))}
     </div>
