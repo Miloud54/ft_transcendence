@@ -27,7 +27,7 @@ COPY --from=builder --chown=node:node /app/prisma.config.ts ./
 COPY --from=builder --chown=node:node /app/data ./data
 COPY --from=builder --chown=node:node /app/src/pedantix-engine/article/curated/curated-articles.json ./src/pedantix-engine/article/curated/curated-articles.json
 
-RUN mkdir -p uploads/avatars && chown -R node:node /app/uploads
+RUN mkdir -p uploads/avatars cheat && chown -R node:node /app/uploads /app/cheat
 
 USER node
 

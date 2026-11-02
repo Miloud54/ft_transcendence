@@ -231,7 +231,7 @@ CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
 | --- | --- |
 | `FROM node:24.18.0-slim AS runner` | nouvel ordinateur **vide** : rien de l'étape 1 n'y est, sauf ce qu'on copie explicitement |
 | `RUN apt-get … openssl …` | Prisma a aussi besoin d'`openssl` au démarrage |
-| `ENV NODE_ENV=production` | mode production : bibliothèques optimisées, **mode cheat impossible** |
+| `ENV NODE_ENV=production` | mode production : bibliothèques optimisées ; le cheat reste activable avec `PEDANTIX_CHEAT=true` |
 | `COPY --from=builder --chown=node:node …` | prend **un élément précis** de l'étape 1 (`--from=builder`) et le donne à l'utilisateur `node` (`--chown`). Éléments copiés : `package*.json`, `node_modules` (bibliothèques), `dist` (backend compilé), `generated` (client Prisma, rangé hors de `node_modules`), `prisma` + `prisma.config.ts` (migrations), `data` (vecteurs de mots de Pedantix, 20 Mo), `curated-articles.json` (recopié au chemin exact où le code le lit : `src/pedantix-engine/article/curated/`) |
 | `RUN mkdir -p uploads/avatars && chown -R node:node /app/uploads` | crée le dossier des photos de profil et le donne à `node`, qui doit pouvoir y écrire |
 | `USER node` | tout tourne en utilisateur `node`, pas en root (moindre privilège) |
@@ -255,13 +255,13 @@ Le Dockerfile de dev est un **atelier vide** : c'est le compose qui y apporte le
 | Migrations | commande du compose (`npm run prisma:deploy`) | `CMD` : `npx prisma migrate deploy` |
 | Fichiers de Pedantix | déjà dans le dossier monté | copiés explicitement |
 | Photos de profil | écrites dans `backend/uploads/` de la machine, via le montage | dossier de l'image, rendu persistant par le volume `uploads` |
-| Mode | développement (mode cheat activable) | `NODE_ENV=production` (mode cheat impossible) |
+| Mode | développement (mode cheat activable) | `NODE_ENV=production` (mode cheat activable avec `PEDANTIX_CHEAT=true`) |
 | Utilisateur | `npm ci` en root, puis `node` ; `root` imposé par le compose sur les postes de l'école | `node` |
 | Taille | **2,34 Go** | **732 Mo** |
 
 **Pourquoi 732 Mo et pas moins** (le frontend descend à 216 Mo) : le frontend profite du mode `standalone` de Next.js, qui trie automatiquement les dépendances. Le backend garde **tout** `node_modules`, outils de dev compris, parce que `prisma` (nécessaire aux migrations au démarrage) est une dépendance de dev dans `package.json`. Piste : si l'équipe back passe `prisma` en dépendance normale, ajouter `npm prune --omit=dev` dans l'étape `builder`.
 
-**Pourquoi garder les deux** : en dev, le backend recompile tout seul à chaque fichier enregistré (`File change detected…`). En prod, on veut un backend figé, léger, sans root et sans mode cheat ; toute modification demande de reconstruire l'image.
+**Pourquoi garder les deux** : en dev, le backend recompile tout seul à chaque fichier enregistré (`File change detected…`). En prod, on veut un backend figé, léger et sans root ; le mode cheat reste optionnel et écrit dans `backend/cheat/` via le montage dédié.
 
 ### Bloc cible dans `docker-compose.prod.yml`
 
