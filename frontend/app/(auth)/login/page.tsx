@@ -1,30 +1,31 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PasswordInput } from "@/components/password-input";
 import { API_URL } from "@/lib/room-api";
 
+// Error passed in the URL (e.g. OAuth sign-in cancelled). Read with
+// useSyncExternalStore so the server render (no URL) and the first client render
+// match: reading window.location in useState caused a hydration error (#418).
+const subscribeToNothing = () => () => {};
+const readUrlError = () => new URLSearchParams(window.location.search).get("error");
+const noUrlErrorOnServer = () => null;
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return new URLSearchParams(window.location.search).get("error");
-  });
+  const urlError = useSyncExternalStore(subscribeToNothing, readUrlError, noUrlErrorOnServer);
+  const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    const message = new URLSearchParams(window.location.search).get("error");
-    if (message) {
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-  }, []);
+  const shownError = error ?? urlError;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // A new attempt replaces the message that came from the URL.
+    if (urlError) window.history.replaceState({}, "", window.location.pathname);
     setError(null);
     setIsSubmitting(true);
 
@@ -96,6 +97,7 @@ export default function LoginPage() {
             id="email"
             name="email"
             type="email"
+            autoComplete="email"
             required
             placeholder="name@example.com"
             value={email}
@@ -111,6 +113,7 @@ export default function LoginPage() {
           <PasswordInput
             id="password"
             name="password"
+            autoComplete="current-password"
             required
             minLength={8}
             value={password}
@@ -118,7 +121,7 @@ export default function LoginPage() {
           />
         </div>
 
-        {error && <p className="text-sm text-[#d03b3b]">{error}</p>}
+        {shownError && <p className="text-sm text-[#d03b3b]">{shownError}</p>}
 
         <button
           type="submit"

@@ -252,6 +252,7 @@ export function FriendsContent() {
           Search for friends
         </label>
         <input
+          autoComplete="off"
           id="friend-search"
           type="search"
           placeholder="Add friends"

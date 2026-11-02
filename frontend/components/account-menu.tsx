@@ -264,6 +264,7 @@ export function AccountMenu() {
             </label>
             <input
               id="account-username"
+              autoComplete="username"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
               minLength={3}
@@ -295,6 +296,7 @@ export function AccountMenu() {
             <PasswordInput
               id="current-password"
               name="currentPassword"
+              autoComplete="current-password"
               required
               value={currentPassword}
               onChange={(event) => setCurrentPassword(event.target.value)}
@@ -308,6 +310,7 @@ export function AccountMenu() {
             <PasswordInput
               id="new-password"
               name="newPassword"
+              autoComplete="new-password"
               required
               minLength={8}
               value={newPassword}
@@ -322,6 +325,7 @@ export function AccountMenu() {
             <PasswordInput
               id="confirm-new-password"
               name="confirmNewPassword"
+              autoComplete="new-password"
               required
               minLength={8}
               value={confirmNewPassword}
