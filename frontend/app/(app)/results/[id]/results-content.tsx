@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { API_URL, createRematchRoom } from "@/lib/room-api";
 import { useCurrentUser } from "@/lib/current-user-context";
+import { ResultsNotFound } from "@/components/results-not-found";
 
 type ResultPlayer = {
   userId: string;
@@ -96,8 +97,11 @@ export function ResultsContent({ gameId }: { gameId: string }) {
   const [results, setResults] = useState<GameResults | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCreatingRematch, setIsCreatingRematch] = useState(false);
+  const invalidGameId = !/^\d+$/.test(gameId);
 
   useEffect(() => {
+    if (invalidGameId) return;
+
     const token = localStorage.getItem("accessToken");
     fetch(`${API_URL}/game/${gameId}/results`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -108,10 +112,14 @@ export function ResultsContent({ gameId }: { gameId: string }) {
       })
       .then(setResults)
       .catch((err: Error) => setError(err.message));
-  }, [gameId]);
+  }, [gameId, invalidGameId]);
+
+  if (invalidGameId) {
+    return <ResultsNotFound message="The game ID is not valid." />;
+  }
 
   if (error) {
-    return <p className="text-sm text-[#d03b3b]">{error}</p>;
+    return <ResultsNotFound message="This game no longer exists or its results are unavailable." />;
   }
 
   if (!results) {
