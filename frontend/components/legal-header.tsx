@@ -31,6 +31,7 @@ export function LegalHeader() {
 
         <div className="flex items-center gap-4">
           <input
+            autoComplete="off"
             type="search"
             placeholder="Search..."
             className="hidden rounded-md border border-white/20 bg-white/10 px-3 py-1.5 text-sm text-white outline-none placeholder:text-violet-200 sm:block"

@@ -178,6 +178,7 @@ function RoomChatContent({ roomId }: { roomId: string | null }) {
       </div>
       <form onSubmit={handleSubmit} className="flex gap-2 border-t border-zinc-200 p-3">
         <input
+          autoComplete="off"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder="Send a message..."

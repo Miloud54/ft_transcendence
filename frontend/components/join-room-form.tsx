@@ -35,6 +35,7 @@ export function JoinRoomForm() {
     <form onSubmit={handleSubmit}>
       <div className="flex gap-2">
         <input
+          autoComplete="off"
           value={code}
           onChange={(event) => setCode(event.target.value)}
           placeholder="Room code"

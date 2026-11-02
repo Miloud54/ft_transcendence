@@ -94,6 +94,7 @@ export default function RegisterPage() {
             id="username"
             name="username"
             type="text"
+            autoComplete="username"
             required
             minLength={3}
             maxLength={30}
@@ -111,6 +112,7 @@ export default function RegisterPage() {
             id="email"
             name="email"
             type="email"
+            autoComplete="email"
             required
             placeholder="name@example.com"
             value={email}
@@ -126,6 +128,7 @@ export default function RegisterPage() {
           <PasswordInput
             id="password"
             name="password"
+            autoComplete="new-password"
             required
             minLength={8}
             value={password}
@@ -140,6 +143,7 @@ export default function RegisterPage() {
           <PasswordInput
             id="confirm-password"
             name="confirmPassword"
+            autoComplete="new-password"
             required
             minLength={8}
             value={confirmPassword}

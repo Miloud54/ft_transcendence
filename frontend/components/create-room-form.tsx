@@ -32,6 +32,7 @@ export function CreateRoomForm() {
         <label className="text-xs text-violet-200">
           Min players
           <input
+            autoComplete="off"
             type="number"
             min={2}
             max={maxPlayers}
@@ -43,6 +44,7 @@ export function CreateRoomForm() {
         <label className="text-xs text-violet-200">
           Max players
           <input
+            autoComplete="off"
             type="number"
             min={minPlayers}
             max={6}
